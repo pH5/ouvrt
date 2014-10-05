@@ -1,6 +1,9 @@
 bin_PROGRAMS = \
 	ouvrtd
 
+noinst_LIBRARIES = \
+	libouvrt.a
+
 ACLOCAL_AMFLAGS = -I m4
 
 EXTRA_DIST = \
@@ -11,6 +14,12 @@ MAINTAINERCLEANFILES = \
 	configure \
 	aclocal.m4 \
 	Makefile.in
+
+libouvrt_a_SOURCES = \
+	src/esp570.h \
+	src/esp570.c \
+	src/mt9v034.h \
+	src/mt9v034.c
 
 ouvrtd_SOURCES = \
 	src/camera-dk2.h \
@@ -30,6 +39,7 @@ ouvrtd_CFLAGS = \
 	$(GST_CFLAGS)
 
 ouvrtd_LDADD = \
+	libouvrt.a \
 	$(UDEV_LIBS) \
 	$(PTHREAD_LIBS) \
 	$(GST_LIBS)

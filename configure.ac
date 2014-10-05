@@ -12,6 +12,7 @@ CFLAGS="${CFLAGS} -W -Wall -O2"
 
 AC_PROG_CC
 AC_PROG_CXX
+AM_PROG_AR
 LT_INIT
 
 AM_INIT_AUTOMAKE([no-exeext dist-xz silent-rules subdir-objects])

@@ -9,11 +9,12 @@ ouvrt
 --------
 ouvrt is a playground to understand how the Oculus Rift DK2 positional tracking
 works. Its main component is the ouvrtd daemon that detects the Rift DK2 USB
-HID device and the DK2 Positional Tracker UVC camera, sets up synchronized
+HID device and the Positional Tracker DK2 UVC camera, sets up synchronized
 exposure, and captures video frames of the DK2's IR LEDs.
 
-Currently, features are limited to enabling the IR LEDs and capturing video
-frames into a GStreamer pipeline for debugging.
+Currently, features are limited to enabling the IR LEDs, setting up the camera
+sensor for synchronized exposure, and capturing video frames into a GStreamer
+pipeline for debugging.
 
 2. Setup
 --------
@@ -54,7 +55,6 @@ frames, run:
 4. Todo
 -------
 
-  - Enable synchronized exposure
   - Add blob detection and tracking
   - Enable Rift DK2 IR LED blinking patterns
   - Add individual blinking LED detection to the blob tracker
