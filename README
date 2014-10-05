@@ -3,7 +3,8 @@ ouvrt
 1. About
 2. Setup
 3. ouvrtd
-4. Todo
+4. Tools
+5. Todo
 
 1. About
 --------
@@ -51,6 +52,16 @@ into it as soon as a GStreamer shmsrc connects to it. To see the captured
 frames, run:
 
   $ gst-launch-1.0 shmsrc socket-path=/tmp/ouvrtd-gst ! video/x-raw,format=BGRx,width=752,height=480,framerate=60/1 ! ximagesink
+
+4. Tools
+--------
+
+The dump-eeprom tool reads the Positional Tracker DK2 EEPROM and writes it to
+a file or stdout:
+
+  $ ./dump-eeprom camera-dk2-rom.bin
+
+  $ ./dump-eeprom - | hexdump -C
 
 4. Todo
 -------

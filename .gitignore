@@ -9,6 +9,7 @@ compile
 config.*
 configure
 depcomp
+dump-eeprom
 INSTALL
 install-sh
 libtool

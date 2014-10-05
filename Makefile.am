@@ -1,6 +1,9 @@
 bin_PROGRAMS = \
 	ouvrtd
 
+noinst_PROGRAMS = \
+	dump-eeprom
+
 noinst_LIBRARIES = \
 	libouvrt.a
 
@@ -47,3 +50,12 @@ ouvrtd_LDADD = \
 	$(UDEV_LIBS) \
 	$(PTHREAD_LIBS) \
 	$(GST_LIBS)
+
+dump_eeprom_SOURCES = \
+	tools/dump-eeprom.c
+
+dump_eeprom_CFLAGS = \
+	-I $(top_srcdir)/src
+
+dump_eeprom_LDADD = \
+	libouvrt.a
