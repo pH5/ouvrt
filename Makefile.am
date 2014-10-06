@@ -16,6 +16,8 @@ MAINTAINERCLEANFILES = \
 	Makefile.in
 
 libouvrt_a_SOURCES = \
+	src/blobwatch.h \
+	src/blobwatch.c \
 	src/esp570.h \
 	src/esp570.c \
 	src/mt9v034.h \

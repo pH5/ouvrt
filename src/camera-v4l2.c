@@ -10,7 +10,10 @@
 #include <unistd.h>
 
 #include "camera-v4l2.h"
+#include "blobwatch.h"
 #include "debug-gst.h"
+
+#define MAX_BLOBS_PER_FRAME 42
 
 /*
  * Requests buffers and starts streaming.
@@ -131,11 +134,13 @@ static void convert_yuyv_to_grayscale(uint8_t *frame, int width, int height)
 void camera_v4l2_thread(struct device *dev)
 {
 	struct camera_v4l2 *camera = (struct camera_v4l2 *)dev;
+	struct blob blobs[MAX_BLOBS_PER_FRAME];
 	struct v4l2_buffer buf;
 	int width = camera->width;
 	int height = camera->height;
 	int sizeimage = camera->sizeimage;
 	struct pollfd pfd;
+	int num_blobs;
 	void *raw;
 	int ret;
 
@@ -169,6 +174,11 @@ void camera_v4l2_thread(struct device *dev)
 			convert_yuyv_to_grayscale(raw, width, height);
 
 		debug_gst_frame_new(camera->debug, raw, width, height);
+
+		process_frame_extents(raw, width, height, raw);
+
+		num_blobs = process_extent_blobs(raw, height,
+						 blobs, MAX_BLOBS_PER_FRAME);
 
 		munmap(raw, sizeimage);
 
