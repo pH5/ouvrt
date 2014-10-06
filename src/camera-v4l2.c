@@ -11,6 +11,7 @@
 
 #include "camera-v4l2.h"
 #include "blobwatch.h"
+#include "debug.h"
 #include "debug-gst.h"
 
 #define MAX_BLOBS_PER_FRAME 42
@@ -139,6 +140,7 @@ void camera_v4l2_thread(struct device *dev)
 	int width = camera->width;
 	int height = camera->height;
 	int sizeimage = camera->sizeimage;
+	uint32_t *debug_frame;
 	struct pollfd pfd;
 	int num_blobs;
 	void *raw;
@@ -173,9 +175,12 @@ void camera_v4l2_thread(struct device *dev)
 		if (camera->pixelformat == V4L2_PIX_FMT_YUYV)
 			convert_yuyv_to_grayscale(raw, width, height);
 
-		debug_gst_frame_new(camera->debug, raw, width, height);
+		debug_frame = debug_gst_frame_new(camera->debug, raw,
+						  width, height);
 
 		process_frame_extents(raw, width, height, raw);
+
+		debug_draw_extents(debug_frame, width, height, raw);
 
 		num_blobs = process_extent_blobs(raw, height,
 						 blobs, MAX_BLOBS_PER_FRAME);
@@ -189,6 +194,8 @@ void camera_v4l2_thread(struct device *dev)
 			dev->active = false;
 			break;
 		}
+
+		debug_draw_blobs(debug_frame, width, height, blobs, num_blobs);
 
 		debug_gst_frame_push(camera->debug);
 	}

@@ -28,6 +28,8 @@ ouvrtd_SOURCES = \
 	src/camera-dk2.c \
 	src/camera-v4l2.h \
 	src/camera-v4l2.c \
+	src/debug.h \
+	src/debug.c \
 	src/debug-gst.h \
 	src/debug-gst.c \
 	src/device.h \
