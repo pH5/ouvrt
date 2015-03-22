@@ -9,13 +9,17 @@
 
 #include "blobwatch.h"
 #include "imu.h"
+#include "math.h"
 
 extern int debug_mode;
 
 struct ouvrt_debug_attachment {
 	struct blobservation blobservation;
+	dquat rot;
+	dvec3 trans;
 	int num_imu_samples;
 	struct imu_state imu_samples[32];
+	double timestamps[4];
 };
 
 int debug_parse_arg(const char *arg);

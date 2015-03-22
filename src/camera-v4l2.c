@@ -13,6 +13,7 @@
 #include "camera-v4l2.h"
 #include "debug.h"
 #include "debug-gst.h"
+#include "tracker.h"
 
 struct _OuvrtCameraV4L2Private {
 	uint32_t offset[3];
@@ -164,6 +165,9 @@ static void convert_yuyv_to_grayscale(uint8_t *frame, int width, int height)
 	}
 }
 
+static dquat rot;
+static dvec3 trans;
+
 /*
  * Receives frames from the camera and processes them.
  */
@@ -175,6 +179,8 @@ static void ouvrt_camera_v4l2_thread(OuvrtDevice *dev)
 	struct v4l2_buffer buf;
 	int width = camera->width;
 	int height = camera->height;
+	double timestamps[4];
+	struct timespec tp;
 	struct pollfd pfd;
 	int skipped;
 	void *raw;
@@ -203,6 +209,10 @@ static void ouvrt_camera_v4l2_thread(OuvrtDevice *dev)
 			break;
 		}
 
+		clock_gettime(CLOCK_MONOTONIC, &tp);
+		timestamps[0] = buf.timestamp.tv_sec + 1e-6 * buf.timestamp.tv_usec;
+		timestamps[1] = tp.tv_sec + 1e-9 * tp.tv_nsec;
+
 		if (buf.memory == V4L2_MEMORY_MMAP) {
 			raw = priv->buf[buf.index];
 			if (buf.m.offset != priv->offset[buf.index])
@@ -229,11 +239,41 @@ static void ouvrt_camera_v4l2_thread(OuvrtDevice *dev)
 			skipped = 0;
 		camera->sequence = buf.sequence;
 
+		/*
+		 * TODO: get estimated pose at time of exposure from tracker
+		 */
+//		tracker_estimate_pose(tracker, timestamps[0], &pose);
+
+		/*
+		 * TODO: provide estimated positions of visible LEDs to the
+		 * blob tracker.
+		 */
+
 		struct blobservation *ob = NULL;
 		blobwatch_process(camera->bw, raw, width, height, skipped, &ob);
 
+		clock_gettime(CLOCK_MONOTONIC, &tp);
+		timestamps[2] = tp.tv_sec + 1e-9 * tp.tv_nsec;
+
+		if (ob) {
+
+			/*
+			 * If we got an observation, calculate the pose from
+			 * blob detector output, intrinsic camera parameters,
+			 * and the known LED positions.
+			 */
+			tracker_process(ob->blobs, ob->num_blobs,
+					camera->camera_matrix,
+					camera->dist_coeffs,
+					&rot, &trans);
+		}
+
+		clock_gettime(CLOCK_MONOTONIC, &tp);
+		timestamps[3] = tp.tv_sec + 1e-9 * tp.tv_nsec;
+
 		debug_gst_frame_push(camera->debug, raw, camera->sizeimage,
-				     width * height, ob);
+				     width * height, ob, &rot, &trans,
+				     timestamps);
 
 		ret = ioctl(dev->fd, VIDIOC_QBUF, &buf);
 		if (ret < 0) {

@@ -21,6 +21,7 @@ AM_SILENT_RULES([yes])
 PKG_CHECK_MODULES(UDEV, libudev)
 PKG_CHECK_MODULES([GLIB], [glib-2.0 gio-unix-2.0])
 PKG_CHECK_MODULES([GST], [gstreamer-1.0])
+PKG_CHECK_MODULES([OPENCV], [opencv])
 
 AC_CONFIG_FILES([
 	Makefile

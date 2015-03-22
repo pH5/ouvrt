@@ -13,4 +13,6 @@ typedef struct {
 	double x, y, z, w;
 } dquat;
 
+void dquat_from_axis_angle(dquat *quat, dvec3 *axis, double angle);
+
 #endif /* __MATH_H__ */

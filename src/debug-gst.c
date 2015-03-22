@@ -111,9 +111,11 @@ struct debug_gst *debug_gst_unref(struct debug_gst *gst)
  * GStreamer pipeline.
  */
 void debug_gst_frame_push(struct debug_gst *gst, void *src, size_t size,
-			  size_t attach_offset, struct blobservation *ob)
+			  size_t attach_offset, struct blobservation *ob,
+			  dquat *rot, dvec3 *trans, double timestamps[3])
 {
 	struct ouvrt_debug_attachment *attach = src + attach_offset;
+	unsigned int num;
 	GstBuffer *buf;
 	int ret;
 
@@ -123,6 +125,19 @@ void debug_gst_frame_push(struct debug_gst *gst, void *src, size_t size,
 	if (ob) {
 		/* Copy blobs and flicker history */
 		memcpy(&attach->blobservation, ob, sizeof(*ob));
+
+		/* Copy rotation and translation */
+		memcpy(&attach->rot, rot, sizeof(dquat));
+		memcpy(&attach->trans, trans, sizeof(dvec3));
+
+		/* Copy raw IMU sensor readings */
+		num = debug_imu_fifo_out(attach->imu_samples, 32);
+		attach->num_imu_samples = num;
+
+		if (timestamps) {
+			memcpy(attach->timestamps, timestamps,
+			       4 * sizeof(double));
+		}
 	}
 
 	buf = gst_buffer_new_wrapped_full(GST_MEMORY_FLAG_READONLY, src,
