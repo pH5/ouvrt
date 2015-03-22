@@ -14,6 +14,9 @@
 #include "rift-dk2.h"
 #include "debug.h"
 #include "device.h"
+#include "math.h"
+#include "leds.h"
+#include "tracker.h"
 
 /* temporary global */
 gboolean rift_dk2_flicker = false;
@@ -40,6 +43,146 @@ static int hid_send_feature_report(int fd, const unsigned char *data,
 				   size_t length)
 {
 	return ioctl(fd, HIDIOCSFEATURE(length), data);
+}
+
+/*
+ * Obtains the factory calibrated position data of IR LEDs and IMU
+ * from the Rift DK2. Values are stored with µm accuracy in the
+ * Rift's local reference frame: the positive x axis points left,
+ * the y axis points upward, and z forward:
+ *
+ *      up
+ *       y z forward
+ * left  |/
+ *    x--+
+ */
+static int rift_dk2_get_positions(OuvrtRiftDK2 *rift)
+{
+	unsigned char buf[30] = { 0x0f };
+	int fd = rift->dev.fd;
+	uint8_t type;
+	vec3 pos, dir;
+	uint16_t index;
+	uint16_t num;
+	int ret;
+	int i;
+
+	ret = hid_get_feature_report(fd, buf, sizeof(buf));
+	if (ret < 0)
+		return ret;
+
+	num = __le16_to_cpup((__le16 *)(buf + 26));
+	if (num > MAX_POSITIONS)
+		return -1;
+
+	for (i = 0; ; i++) {
+		index = __le16_to_cpup((__le16 *)(buf + 24));
+		if (index >= num)
+			return -1;
+
+		type = __le16_to_cpup((__le16 *)(buf + 28));
+
+		/* Position in µm */
+		pos.x = 1e-6f * (int32_t)__le32_to_cpup((__le32 *)(buf + 4));
+		pos.y = 1e-6f * (int32_t)__le32_to_cpup((__le32 *)(buf + 8));
+		pos.z = 1e-6f * (int32_t)__le32_to_cpup((__le32 *)(buf + 12));
+
+		if (type == 0) {
+			rift->leds.positions[index] = pos;
+
+			/* Direction, magnitude in unknown units */
+			dir.x = 1e-6f * (int16_t)__le16_to_cpup((__le16 *)(buf + 16));
+			dir.y = 1e-6f * (int16_t)__le16_to_cpup((__le16 *)(buf + 18));
+			dir.z = 1e-6f * (int16_t)__le16_to_cpup((__le16 *)(buf + 20));
+			rift->leds.directions[index] = dir;
+		} else if (type == 1) {
+			rift->imu.position = pos;
+		}
+
+		/* Break out before reading the first report again */
+		if (i + 1 == num)
+			break;
+
+		ret = hid_get_feature_report(fd, buf, sizeof(buf));
+		if (ret < 0)
+			return ret;
+	}
+
+	rift->leds.num = num - 1;
+
+	return 0;
+}
+
+/*
+ * Obtains the blinking patterns of the 40 IR LEDs from the Rift DK2.
+ */
+static int rift_dk2_get_led_patterns(OuvrtRiftDK2 *rift)
+{
+	unsigned char buf[12] = { 0x10 };
+	int fd = rift->dev.fd;
+	uint8_t pattern_length;
+	uint32_t pattern;
+	uint16_t index;
+	uint16_t num;
+	int ret;
+	int i;
+
+	ret = hid_get_feature_report(fd, buf, sizeof(buf));
+	if (ret < 0)
+		return ret;
+
+	num = __le16_to_cpup((__le16 *)(buf + 10));
+	if (num > MAX_LEDS)
+		return -1;
+
+	for (i = 0; ; i++) {
+		index = __le16_to_cpup((__le16 *)(buf + 8));
+		if (index >= num)
+			return -1;
+
+		pattern_length = buf[3];
+		pattern = __le32_to_cpup((__le32 *)(buf + 4));
+
+		/* pattern_length should be 10 */
+		if (pattern_length != 10) {
+			g_print("Rift DK2: Unexpected pattern length: %d\n",
+				pattern_length);
+			return -1;
+		}
+
+		/*
+		 * pattern should consist of 10 2-bit values that are either
+		 * 1 (dark) or 3 (bright).
+		 */
+		if ((pattern & ~0xaaaaa) != 0x55555) {
+			g_print("Rift DK2: Unexpected pattern: 0x%x\n",
+				pattern);
+			return -1;
+		}
+
+		/* Convert into 10 single-bit values 1 -> 0, 3 -> 1 */
+		pattern &= 0xaaaaa;
+		pattern |= pattern >> 1;
+		pattern &= 0x66666;
+		pattern |= pattern >> 2;
+		pattern &= 0xe1e1e;
+		pattern |= pattern >> 4;
+		pattern &= 0xe01fe;
+		pattern |= pattern >> 8;
+		pattern = (pattern >> 1) & 0x3ff;
+
+		rift->leds.patterns[index] = pattern;
+
+		/* Break out before reading the first report again */
+		if (i + 1 == num)
+			break;
+
+		ret = hid_get_feature_report(fd, buf, sizeof(buf));
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
 }
 
 /*
@@ -100,9 +243,25 @@ static int rift_dk2_start(OuvrtDevice *dev)
 		rift->dev.fd = fd;
 	}
 
+	ret = rift_dk2_get_positions(rift);
+	if (ret < 0) {
+		g_print("Rift DK2: Error reading factory calibrated positions\n");
+		return ret;
+	}
+
+	ret = rift_dk2_get_led_patterns(rift);
+	if (ret < 0) {
+		g_print("Rift DK2: Error reading IR LED blinking patterns\n");
+		return ret;
+	}
+	if (rift->leds.num != 40)
+		g_print("Rift DK2: Reported %d IR LEDs\n", rift->leds.num);
+
 	ret = rift_dk2_send_tracking(rift, TRUE);
 	if (ret < 0)
 		return ret;
+
+	tracker_register_leds(&rift->leds);
 
 	return 0;
 }
@@ -151,13 +310,16 @@ static void rift_dk2_thread(OuvrtDevice *dev)
 }
 
 /*
- * Disables the IR tracking LEDs
+ * Disables the IR tracking LEDs and unregisters model from the
+ * tracker.
  */
 static void rift_dk2_stop(OuvrtDevice *dev)
 {
 	OuvrtRiftDK2 *rift = OUVRT_RIFT_DK2(dev);
 	unsigned char tracking[13] = { 0x0c };
 	int fd = rift->dev.fd;
+
+	tracker_unregister_leds(&rift->leds);
 
 	hid_get_feature_report(fd, tracking, sizeof(tracking));
 	tracking[4] &= ~(1 << 0);

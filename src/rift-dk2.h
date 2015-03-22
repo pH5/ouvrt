@@ -5,6 +5,8 @@
 #include <glib-object.h>
 
 #include "device.h"
+#include "leds.h"
+#include "math.h"
 
 #define OUVRT_TYPE_RIFT_DK2		(ouvrt_rift_dk2_get_type())
 #define OUVRT_RIFT_DK2(obj)		(G_TYPE_CHECK_INSTANCE_CAST((obj), \
@@ -22,6 +24,10 @@
 
 #define MAX_POSITIONS	(MAX_LEDS + 1)
 
+struct imu {
+	vec3 position;
+};
+
 typedef struct _OuvrtRiftDK2		OuvrtRiftDK2;
 typedef struct _OuvrtRiftDK2Class	OuvrtRiftDK2Class;
 typedef struct _OuvrtRiftDK2Private	OuvrtRiftDK2Private;
@@ -30,6 +36,9 @@ struct _OuvrtRiftDK2Private;
 
 struct _OuvrtRiftDK2 {
 	OuvrtDevice dev;
+
+	struct leds leds;
+	struct imu imu;
 
 	OuvrtRiftDK2Private *priv;
 };

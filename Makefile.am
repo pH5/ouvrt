@@ -22,6 +22,8 @@ libouvrt_a_SOURCES = \
 	src/blobwatch.c \
 	src/esp570.h \
 	src/esp570.c \
+	src/flicker.h \
+	src/flicker.c \
 	src/mt9v034.h \
 	src/mt9v034.c
 
@@ -38,8 +40,13 @@ ouvrtd_SOURCES = \
 	src/debug-gst.c \
 	src/device.h \
 	src/device.c \
+	src/imu.h \
+	src/leds.c \
+	src/leds.h \
 	src/rift-dk2.h \
 	src/rift-dk2.c \
+	src/tracker.c \
+	src/tracker.h \
 	src/ouvrtd.c
 
 ouvrtd_CFLAGS = \

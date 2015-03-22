@@ -6,6 +6,7 @@
 
 #include "blobwatch.h"
 #include "debug.h"
+#include "flicker.h"
 
 #include <stdio.h>
 
@@ -27,6 +28,7 @@ struct blobwatch {
 	struct blobservation history[NUM_FRAMES_HISTORY];
 	struct extent_line el[480];
 	bool debug;
+	struct flicker *fl;
 };
 
 /*
@@ -46,6 +48,7 @@ struct blobwatch *blobwatch_new(int width, int height)
 	bw->height = height;
 	bw->last_observation = -1;
 	bw->debug = true;
+	bw->fl = flicker_new();
 
 	return bw;
 }
@@ -322,6 +325,9 @@ void blobwatch_process(struct blobwatch *bw, uint8_t *frame,
 			       ob->tracked[b->track_index], i + 1);
 		}
 	}
+
+	/* Identify blobs by their blinking pattern */
+	flicker_process(bw->fl, ob->blobs, ob->num_blobs, skipped);
 
 	/* Return observed blobs */
 	if (output)
