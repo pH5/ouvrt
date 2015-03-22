@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <getopt.h>
 #include <glib.h>
 #include <gst/gst.h>
 #include <libudev.h>
@@ -10,6 +11,7 @@
 #include <sys/fcntl.h>
 
 #include "dbus.h"
+#include "debug.h"
 #include "device.h"
 #include "gdbus-generated.h"
 #include "rift-dk2.h"
@@ -252,6 +254,18 @@ static void ouvrtd_signal_handler(int sig)
 	exit(0);
 }
 
+static void ouvrtd_usage(void)
+{
+	g_print("ouvrtd [OPTIONS...] ...\n\n"
+		"Positional tracking daemon for Oculus VR Rift DK2.\n\n"
+		"  -h --help          Show this help\n");
+}
+
+static const struct option ouvrtd_options[] = {
+	{ "help", no_argument, NULL, 'h' },
+	{ NULL }
+};
+
 /*
  * Main function. Initialize GStreamer for debugging purposes and udev for
  * device detection.
@@ -261,10 +275,24 @@ int main(int argc, char *argv[])
 	struct udev *udev;
 	GMainLoop *loop;
 	guint owner_id;
+	int longind;
+	int ret;
 
 	setlocale(LC_CTYPE, "");
 
 	gst_init(&argc, &argv);
+
+	do {
+		ret = getopt_long(argc, argv, "h", ouvrtd_options, &longind);
+		switch (ret) {
+		case -1:
+			break;
+		case 'h':
+		default:
+			ouvrtd_usage();
+			exit(0);
+		}
+	} while (ret != -1);
 
 	signal(SIGINT, ouvrtd_signal_handler);
 
