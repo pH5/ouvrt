@@ -9,7 +9,9 @@
 #include <stdlib.h>
 #include <sys/fcntl.h>
 
+#include "dbus.h"
 #include "device.h"
+#include "gdbus-generated.h"
 #include "rift-dk2.h"
 #include "camera-dk2.h"
 
@@ -258,6 +260,7 @@ int main(int argc, char *argv[])
 {
 	struct udev *udev;
 	GMainLoop *loop;
+	guint owner_id;
 
 	setlocale(LC_CTYPE, "");
 
@@ -270,10 +273,12 @@ int main(int argc, char *argv[])
 		return -1;
 
 	loop = g_main_loop_new(NULL, TRUE);
+	owner_id = ouvrt_dbus_own_name();
 
 	ouvrtd_startup(udev);
 	g_main_loop_run(loop);
 
+	g_bus_unown_name(owner_id);
 	udev_unref(udev);
 	g_object_unref(loop);
 

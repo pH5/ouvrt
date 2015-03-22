@@ -9,13 +9,22 @@ noinst_LIBRARIES = \
 
 ACLOCAL_AMFLAGS = -I m4
 
+CLEANFILES = \
+	src/gdbus-generated.h \
+	src/gdbus-generated.c
+
 EXTRA_DIST = \
-	autogen.sh
+	autogen.sh \
+	xml/de.phfuenf.ouvrt.Camera1.xml \
+	xml/de.phfuenf.ouvrt.Tracker1.xml
 
 MAINTAINERCLEANFILES = \
 	configure \
 	aclocal.m4 \
 	Makefile.in
+
+BUILT_SOURCES = \
+	src/gdbus-generated.h
 
 libouvrt_a_SOURCES = \
 	src/blobwatch.h \
@@ -34,6 +43,8 @@ ouvrtd_SOURCES = \
 	src/camera-dk2.c \
 	src/camera-v4l2.h \
 	src/camera-v4l2.c \
+	src/dbus.c \
+	src/dbus.h \
 	src/debug.h \
 	src/debug.c \
 	src/debug-gst.h \
@@ -52,6 +63,10 @@ ouvrtd_SOURCES = \
 	src/ouvrtd.c \
 	src/opencv.h \
 	src/opencv.cpp
+
+nodist_ouvrtd_SOURCES = \
+	src/gdbus-generated.h \
+	src/gdbus-generated.c
 
 ouvrtd_CFLAGS = \
 	$(UDEV_CFLAGS) \
@@ -73,3 +88,13 @@ dump_eeprom_CFLAGS = \
 
 dump_eeprom_LDADD = \
 	libouvrt.a
+
+src/gdbus-generated.c: src/gdbus-generated.h
+src/gdbus-generated.h: xml/de.phfuenf.ouvrt.Tracker1.xml \
+		       xml/de.phfuenf.ouvrt.Camera1.xml
+	@gdbus-codegen --interface-prefix de.phfuenf.ouvrt. \
+		--generate-c-code src/gdbus-generated \
+		--c-namespace Ouvrt \
+		--c-generate-object-manager \
+		$^
+

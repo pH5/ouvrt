@@ -1,0 +1,30 @@
+<node>
+	<!--
+	  de.phfuenf.ouvrt.Tracker1:
+
+	  A pose tracker that tracks orientation and position of an object
+	  in realtime.
+	-->
+	<interface name="de.phfuenf.ouvrt.Tracker1">
+		<!--
+		  Acquire:
+
+		  Enable the tracker and start writing position data to a
+		  shared memory region. A file handle to the shared memory
+		  is returned by this call.
+		-->
+		<method name="Acquire">
+			<annotation name="org.gtk.GDBus.C.UnixFD" value="1"/>
+		</method>
+		<!--
+		  Release:
+
+		  Disable the tracker. The shared memory region will not be
+		  updated anymore, the file handle returned by
+		  <function>Acquire</function> should be closed.
+		-->
+		<method name="Release"/>
+		<property name="Tracking" type="b" access="readwrite"/>
+		<property name="Flicker" type="b" access="readwrite"/>
+	</interface>
+</node>

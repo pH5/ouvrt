@@ -1,0 +1,47 @@
+<node>
+	<!--
+	  de.phfuenf.ouvrt.Camera1
+	  @short_description: Raw camera output for debugging purposes
+
+	  Provides raw camera images from a Positional Tracker via a GStreamer
+	  shmsink as well as the camera's intrinsic parameters for debugging
+	  purposes.
+	-->
+	<interface name="de.phfuenf.ouvrt.Camera1">
+		<!--
+		  CameraMatrix: Matrix of intrinsic parameters
+
+		  Matrix of camera intrinsic parameters including the focal
+		  lengths and the principal point in units of pixels:
+
+		  fx, 0, cx, 0, fy, cy, 0, 0, 1.
+		-->
+		<property name="CameraMatrix" type="(ddddddddd)" access="read"/>
+		<!--
+		  DistortionCoefficients: Lens distortion coefficients
+
+		  Radial and tangential distortion coefficients in OpenCV order:
+
+		  k1, k2, p1, p2, k3.
+		-->
+		<property name="DistortionCoefficients" type="(ddddd)" access="read"/>
+		<!--
+		  GstShmCaps:
+
+		  Caps for gstshmsrc.
+		-->
+		<property name="GstShmCaps" type="s" access="read"/>
+		<!--
+		  GstShmSocket:
+
+		  Socket path for gstshmsrc.
+		-->
+		<property name="GstShmSocket" type="s" access="read"/>
+		<!--
+		  SyncExposure
+
+		  Synchronise exposure to Rift LED illumination
+		-->
+		<property name="SyncExposure" type="b" access="readwrite"/>
+	</interface>
+</node>
