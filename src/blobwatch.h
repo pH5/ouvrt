@@ -1,13 +1,21 @@
 #ifndef __BLOBWATCH_H__
 #define __BLOBWATCH_H__
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #define MAX_EXTENTS_PER_LINE 11
+#define MAX_BLOBS_PER_FRAME  42
 
 struct extent {
 	uint16_t start;
 	uint16_t end;
+	/* inherited parameters */
+	uint16_t top;
+	uint16_t left;
+	uint16_t right;
+	uint8_t index;
+	uint32_t area;
 };
 
 struct extent_line {
@@ -20,16 +28,34 @@ struct blob {
 	/* center of bounding box */
 	uint16_t x;
 	uint16_t y;
+	int16_t vx;
+	int16_t vy;
 	/* bounding box */
-	uint16_t left;
-	uint16_t right;
-	uint16_t top;
-	uint16_t bottom;
+	uint16_t width;
+	uint16_t height;
+	uint32_t area;
+	uint32_t last_area;
+	uint32_t age;
+	int16_t track_index;
+	uint16_t pattern;
+	int8_t led_id;
 };
 
-void process_frame_extents(uint8_t *lines, int width, int height,
-			   struct extent_line *extent_lines);
-int process_extent_blobs(struct extent_line *el, int height,
-			 struct blob *blobs, int num_blobs_per_frame);
+/*
+ * Stores all blobs observed in a single frame.
+ */
+struct blobservation {
+	int num_blobs;
+	struct blob blobs[MAX_BLOBS_PER_FRAME];
+	int tracked_blobs;
+	uint8_t tracked[MAX_BLOBS_PER_FRAME];
+};
+
+struct blobwatch;
+
+struct blobwatch *blobwatch_new(int width, int height);
+void blobwatch_process(struct blobwatch *bw, uint8_t *frame,
+		       int width, int height, int skipped,
+		       struct blobservation **output);
 
 #endif /* __BLOBWATCH_H__*/

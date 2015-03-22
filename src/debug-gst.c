@@ -1,33 +1,30 @@
 #include <gst/gst.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
+#include "debug.h"
 #include "debug-gst.h"
 
 struct debug_gst {
 	GstElement *pipeline;
 	GstElement *appsrc;
-	GstBuffer *buffer;
-	GstMapInfo map;
-	bool connected;
+	gboolean connected;
 };
 
 /*
  * Enables the output of debug frames whenever a GStreamer shmsrc connects to
  * the ouvrtd-gst socket.
  */
-static void debug_gst_client_connected(GstElement *sink, gint arg1,
+static void debug_gst_client_connected(GstElement *sink G_GNUC_UNUSED,
+				       gint arg1 G_GNUC_UNUSED,
 				       gpointer data)
 {
 	struct debug_gst *gst = data;
 
-	(void)sink;
-	(void)arg1;
-
-	gst->connected = true;
+	gst->connected = TRUE;
 	printf("debug: connected\n");
 }
 
@@ -35,7 +32,8 @@ static void debug_gst_client_connected(GstElement *sink, gint arg1,
  * Disables the output of debug frames whenever a GStreamer shmsrc disconnects
  * from the ouvrtd-gst socket.
  */
-static void debug_gst_client_disconnected(GstElement *sink, gint arg1,
+static void debug_gst_client_disconnected(GstElement *sink G_GNUC_UNUSED,
+					  gint arg1 G_GNUC_UNUSED,
 					  gpointer data)
 {
 	struct debug_gst *gst = data;
@@ -43,12 +41,12 @@ static void debug_gst_client_disconnected(GstElement *sink, gint arg1,
 	(void)sink;
 	(void)arg1;
 
-	gst->connected = false;
+	gst->connected = FALSE;
 	printf("debug: disconnected\n");
 }
 
 /*
- * Enables GStreamer debug output of BGRx frames into a shmsink.
+ * Enables GStreamer debug output of GRAY8 frames into a shmsink.
  */
 struct debug_gst *debug_gst_new(int width, int height, int framerate)
 {
@@ -66,7 +64,7 @@ struct debug_gst *debug_gst_new(int width, int height, int framerate)
 		g_error("Could not create elements");
 
 	caps = gst_caps_new_simple("video/x-raw",
-		"format", G_TYPE_STRING, "BGRx",
+		"format", G_TYPE_STRING, "GRAY8",
 		"framerate", GST_TYPE_FRACTION, framerate, 1,
 		"pixel-aspect-ratio", GST_TYPE_FRACTION, 1, 1,
 		"width", G_TYPE_INT, width,
@@ -87,8 +85,7 @@ struct debug_gst *debug_gst_new(int width, int height, int framerate)
 		return NULL;
 	gst->pipeline = pipeline;
 	gst->appsrc = src;
-	gst->buffer = NULL;
-	gst->connected = false;
+	gst->connected = FALSE;
 
 	g_signal_connect(G_OBJECT(sink), "client-connected",
 			 G_CALLBACK(debug_gst_client_connected), gst);
@@ -103,62 +100,38 @@ struct debug_gst *debug_gst_new(int width, int height, int framerate)
 struct debug_gst *debug_gst_unref(struct debug_gst *gst)
 {
 	gst_element_set_state(gst->pipeline, GST_STATE_NULL);
-	if (gst->buffer)
-		gst_buffer_unref(gst->buffer);
 	gst_object_unref(gst->pipeline);
 	free(gst);
 
 	return NULL;
 }
 
-static inline uint32_t xrgb(int red, int green, int blue)
-{
-	return (0xff << 24) | (red << 16) | (green << 8) | blue;
-}
-
 /*
- * Allocates and maps a new frame, copies the captured source image into it.
- *
- * Returns a pointer to the pixel data.
+ * Allocates a GstBuffer that wraps the frame and pushes it into the
+ * GStreamer pipeline.
  */
-uint32_t *debug_gst_frame_new(struct debug_gst *gst, uint8_t *src,
-			      int width, int height)
+void debug_gst_frame_push(struct debug_gst *gst, void *src, size_t size,
+			  size_t attach_offset, struct blobservation *ob)
 {
-	uint32_t *dst;
-	int x, y;
-
-	if (!gst->connected || gst->buffer != NULL)
-		return NULL;
-
-	gst->buffer = gst_buffer_new_and_alloc(width * height * 4);
-
-	if (!gst_buffer_map(gst->buffer, &gst->map, GST_MAP_WRITE)) {
-		gst_buffer_unref(gst->buffer);
-		gst->buffer = NULL;
-		return NULL;
-	}
-
-	dst = (uint32_t *)gst->map.data;
-	for (y = 0; y < height; y++, src += width, dst += width) {
-		for (x = 0; x < width; x++)
-			dst[x] = xrgb(src[x] >> 1, src[x] >> 4, src[x] >> 4);
-	}
-
-	return (uint32_t *)gst->map.data;
-}
-
-/*
- * Unmaps the frame and releases it into the GStreamer pipeline.
- */
-void debug_gst_frame_push(struct debug_gst *gst)
-{
+	struct ouvrt_debug_attachment *attach = src + attach_offset;
+	GstBuffer *buf;
 	int ret;
 
-	if (gst->buffer == NULL)
+	if (!gst->connected)
 		return;
 
-	gst_buffer_unmap(gst->buffer, &gst->map);
-	g_signal_emit_by_name(gst->appsrc, "push-buffer", gst->buffer, &ret);
-	gst_buffer_unref(gst->buffer);
-	gst->buffer = NULL;
+	if (ob) {
+		/* Copy blobs and flicker history */
+		memcpy(&attach->blobservation, ob, sizeof(*ob));
+	}
+
+	buf = gst_buffer_new_wrapped_full(GST_MEMORY_FLAG_READONLY, src,
+					  size, 0, size, NULL, NULL);
+	if (!buf)
+		return;
+
+//	GST_BUFFER_TIMESTAMP(buffer) = ...
+//	GST_BUFFER_DURATION(buffer) = ...
+	g_signal_emit_by_name(gst->appsrc, "push-buffer", buf, &ret);
+	gst_buffer_unref(buf);
 }

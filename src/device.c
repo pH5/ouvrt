@@ -1,64 +1,69 @@
+#include <glib.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "device.h"
 
-/*
- * Decrements the reference count. If refcount reaches zero, stops the device
- * and calls the device specific function to free the device structure.
- *
- * Returns NULL.
- */
-struct device *device_unref(struct device *dev)
-{
-	dev->refcount--;
+struct _OuvrtDevicePrivate {
+	GThread *thread;
+};
 
-	if (dev->refcount <= 0) {
-		device_stop(dev);
-		dev->ops->free(dev);
-	}
-
-	return NULL;
-}
+G_DEFINE_TYPE_WITH_PRIVATE(OuvrtDevice, ouvrt_device, G_TYPE_OBJECT)
 
 /*
- * Initializes common fields of the device structure.
+ * Stops the device before disposing of it
  */
-void device_init(struct device *dev, const char *devnode,
-		 const struct device_ops *ops)
+static void ouvrt_device_dispose(GObject *object)
 {
-	dev->devnode = strdup(devnode);
-	dev->serial = NULL;
-	dev->refcount = 1;
-	dev->ops = ops;
+	ouvrt_device_stop(OUVRT_DEVICE(object));
+
+	G_OBJECT_CLASS(ouvrt_device_parent_class)->dispose(object);
 }
 
 /*
  * Frees common fields of the device structure. To be called from the device
  * specific free operation.
  */
-void device_fini(struct device *dev)
+static void ouvrt_device_finalize(GObject *object)
 {
+	OuvrtDevice *dev = OUVRT_DEVICE(object);
+
+	if (dev->fd != -1)
+		close(dev->fd);
 	free(dev->devnode);
 	free(dev->serial);
+	G_OBJECT_CLASS(ouvrt_device_parent_class)->finalize(object);
+}
+
+static void ouvrt_device_class_init(OuvrtDeviceClass *klass)
+{
+	G_OBJECT_CLASS(klass)->finalize = ouvrt_device_finalize;
+	G_OBJECT_CLASS(klass)->dispose = ouvrt_device_dispose;
 }
 
 /*
- * Checks whether the device matches a given device node.
+ * Initializes common fields of the device structure.
  */
-bool device_match_devnode(struct device *dev, const char *devnode)
+static void ouvrt_device_init(OuvrtDevice *self)
 {
-	return strcmp(dev->devnode, devnode) == 0;
+	self->type = 0;
+	self->devnode = NULL;
+	self->serial = NULL;
+	self->active = FALSE;
+	self->fd = -1;
+	self->priv = ouvrt_device_get_instance_private(self);
+	self->priv->thread = NULL;
 }
 
 /*
- * Wraps the device specific thread worker function for pthreads.
+ * GThreadFunc that wraps the device specific thread worker function
  */
-static void *device_start_routine(void *ptr)
+static gpointer device_start_routine(gpointer data)
 {
-	struct device *dev = ptr;
+	OuvrtDevice *dev = OUVRT_DEVICE(data);
 
-	dev->ops->thread(dev);
+	OUVRT_DEVICE_GET_CLASS(dev)->thread(dev);
 
 	return NULL;
 }
@@ -66,33 +71,35 @@ static void *device_start_routine(void *ptr)
 /*
  * Starts the device and its worker thread.
  */
-int device_start(struct device *dev)
+int ouvrt_device_start(OuvrtDevice *dev)
 {
 	int ret;
 
 	if (dev->active)
 		return 0;
 
-	ret = dev->ops->start(dev);
+	ret = OUVRT_DEVICE_GET_CLASS(dev)->start(dev);
 	if (ret < 0)
 		return ret;
 
-	dev->active = true;
+	dev->active = TRUE;
+	dev->priv->thread = g_thread_new(NULL, device_start_routine, dev);
 
-	return pthread_create(&dev->thread, NULL, device_start_routine, dev);
+	return 0;
 }
 
 /*
  * Stops the device and its worker thread.
  */
-void device_stop(struct device *dev)
+void ouvrt_device_stop(OuvrtDevice *dev)
 {
 	if (!dev->active)
 		return;
 
-	dev->active = false;
+	dev->active = FALSE;
 
-	pthread_join(dev->thread, NULL);
+	g_thread_join(dev->priv->thread);
+	dev->priv->thread = NULL;
 
-	dev->ops->stop(dev);
+	OUVRT_DEVICE_GET_CLASS(dev)->stop(dev);
 }

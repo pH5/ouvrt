@@ -1,34 +1,53 @@
 #ifndef __DEVICE_H__
 #define __DEVICE_H__
 
-#include <stdbool.h>
-#include <pthread.h>
+#include <glib.h>
+#include <glib-object.h>
 
-struct device_ops;
+enum device_type {
+	DEVICE_TYPE_HMD,
+	DEVICE_TYPE_CAMERA,
+};
 
-struct device {
+#define OUVRT_TYPE_DEVICE		(ouvrt_device_get_type())
+#define OUVRT_DEVICE(obj)		(G_TYPE_CHECK_INSTANCE_CAST((obj), \
+					 OUVRT_TYPE_DEVICE, OuvrtDevice))
+#define OUVRT_IS_DEVICE(obj)		(G_TYPE_CHECK_INSTANCE_TYPE((obj), \
+					 OUVRT_TYPE_DEVICE))
+#define OUVRT_DEVICE_CLASS(klass)	(G_TYPE_CHECK_CLASS_CAST((klass), \
+					 OUVRT_TYPE_DEVICE, OuvrtDeviceClass))
+#define OUVRT_IS_DEVICE_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE((klass), \
+					 OUVRT_TYPE_DEVICE))
+#define OUVRT_DEVICE_GET_CLASS(obj)	(G_TYPE_INSTANCE_GET_CLASS((obj), \
+					 OUVRT_TYPE_DEVICE, OuvrtDeviceClass))
+
+typedef struct _OuvrtDevice		OuvrtDevice;
+typedef struct _OuvrtDeviceClass	OuvrtDeviceClass;
+typedef struct _OuvrtDevicePrivate	OuvrtDevicePrivate;
+
+struct _OuvrtDevice {
+	GObject parent_instance;
+
+	enum device_type type;
 	char *devnode;
 	char *serial;
-	int refcount;
-	bool active;
-	pthread_t thread;
-	const struct device_ops *ops;
+	gboolean active;
+	int fd;
+
+	OuvrtDevicePrivate *priv;
 };
 
-struct device_ops {
-	int (*start)(struct device *dev);
-	void (*thread)(struct device *dev);
-	void (*stop)(struct device *dev);
-	void (*free)(struct device *dev);
+struct _OuvrtDeviceClass {
+	GObjectClass parent_class;
+
+	int (*start)(OuvrtDevice *dev);
+	void (*thread)(OuvrtDevice *dev);
+	void (*stop)(OuvrtDevice *dev);
 };
 
-struct device *device_unref(struct device *dev);
-bool device_match_devnode(struct device *dev, const char *devnode);
-void device_init(struct device *dev, const char *devnode,
-		 const struct device_ops *ops);
-void device_fini(struct device *dev);
+GType ouvrt_device_get_type(void);
 
-int device_start(struct device *dev);
-void device_stop(struct device *dev);
+int ouvrt_device_start(OuvrtDevice *dev);
+void ouvrt_device_stop(OuvrtDevice *dev);
 
 #endif /* __DEVICE_H__ */

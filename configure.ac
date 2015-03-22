@@ -19,7 +19,7 @@ AM_INIT_AUTOMAKE([no-exeext dist-xz silent-rules subdir-objects])
 AM_SILENT_RULES([yes])
 
 PKG_CHECK_MODULES(UDEV, libudev)
-AX_PTHREAD
+PKG_CHECK_MODULES([GLIB], [glib-2.0 gio-unix-2.0])
 PKG_CHECK_MODULES([GST], [gstreamer-1.0])
 
 AC_CONFIG_FILES([

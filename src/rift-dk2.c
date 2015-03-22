@@ -1,23 +1,28 @@
+#include <asm/byteorder.h>
 #include <errno.h>
 #include <linux/hidraw.h>
 #include <poll.h>
 #include <pthread.h>
-#include <stdio.h>
 #include <string.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include <math.h>
 
 #include "rift-dk2.h"
+#include "debug.h"
 #include "device.h"
 
-struct rift_dk2 {
-	struct device dev;
-	int fd;
+/* temporary global */
+gboolean rift_dk2_flicker = false;
+
+struct _OuvrtRiftDK2Private {
+	gboolean flicker;
 };
+
+G_DEFINE_TYPE_WITH_PRIVATE(OuvrtRiftDK2, ouvrt_rift_dk2, OUVRT_TYPE_DEVICE)
 
 /*
  * Receives a feature report from the HID device.
@@ -40,62 +45,93 @@ static int hid_send_feature_report(int fd, const unsigned char *data,
 /*
  * Sends a keepalive report to keep the device active for 10 seconds.
  */
-static int rift_dk2_send_keepalive(struct rift_dk2 *rift)
+static int rift_dk2_send_keepalive(OuvrtRiftDK2 *rift)
 {
-	static const unsigned char keepalive[6] = {
-		0x11, 0x00, 0x00, 0x0b, 0x10, 0x27
-	};
+	unsigned char buf[6] = { 0x11 };
+	const uint16_t keepalive_ms = 10000;
 
-	printf("Rift DK2: Sending keepalive\n");
-	return hid_send_feature_report(rift->fd, keepalive, sizeof(keepalive));
+	buf[3] = 0xb;
+	*(uint16_t *)(buf + 4) = __cpu_to_le16(keepalive_ms);
+
+	return hid_send_feature_report(rift->dev.fd, buf, sizeof(buf));
 }
 
 /*
- * Enables the IR tracking LEDs.
+ * Sends a tracking report to enable the IR tracking LEDs.
  */
-static int rift_dk2_start(struct device *dev)
+static int rift_dk2_send_tracking(OuvrtRiftDK2 *rift, bool blink)
 {
-	struct rift_dk2 *rift = (struct rift_dk2 *)dev;
-	unsigned char tracking[13] = { 0x0c };
-	const bool blink = false;
+	unsigned char buf[13] = { 0x0c };
 	const uint16_t exposure_us = 350;
 	const uint16_t period_us = 16666;
+	const uint16_t vsync_offset = 0;
+	const uint8_t duty_cycle = 0x7f;
 
 	if (blink) {
-		tracking[4] = 0x07;
+		buf[4] = 0x07;
 	} else {
-		tracking[3] = 0xff;
-		tracking[4] = 0x05;
+		buf[3] = 0xff;
+		buf[4] = 0x05;
 	}
-	tracking[6] = exposure_us & 0xff;
-	tracking[7] = (exposure_us >> 8) & 0xff;
-	tracking[8] = period_us & 0xff;
-	tracking[9] = (period_us >> 8) & 0xff;
-	tracking[12] = 0x7f;
-	return hid_send_feature_report(rift->fd, tracking, sizeof(tracking));
+	*(uint16_t *)(buf + 6) = __cpu_to_le16(exposure_us);
+	*(uint16_t *)(buf + 8) = __cpu_to_le16(period_us);
+	*(uint16_t *)(buf + 10) = __cpu_to_le16(vsync_offset);
+	buf[12] = duty_cycle;
+
+	return hid_send_feature_report(rift->dev.fd, buf, sizeof(buf));
+}
+
+/*
+ * Enables the IR tracking LEDs and registers them with the tracker.
+ */
+static int rift_dk2_start(OuvrtDevice *dev)
+{
+	OuvrtRiftDK2 *rift = OUVRT_RIFT_DK2(dev);
+	int fd = rift->dev.fd;
+	int ret;
+
+	if (fd == -1) {
+		fd = open(rift->dev.devnode, O_RDWR);
+		if (fd == -1) {
+			g_print("Rift DK2: Failed to open '%s': %d\n",
+				rift->dev.devnode, errno);
+			return -1;
+		}
+		rift->dev.fd = fd;
+	}
+
+	ret = rift_dk2_send_tracking(rift, TRUE);
+	if (ret < 0)
+		return ret;
+
+	return 0;
 }
 
 /*
  * Keeps the Rift active.
  */
-void rift_dk2_thread(struct device *dev)
+static void rift_dk2_thread(OuvrtDevice *dev)
 {
-	struct rift_dk2 *rift = (struct rift_dk2 *)dev;
+	OuvrtRiftDK2 *rift = OUVRT_RIFT_DK2(dev);
 	unsigned char buf[64];
 	struct pollfd fds;
 	int count;
 	int ret;
 
+	g_print("Rift DK2: Sending keepalive\n");
 	rift_dk2_send_keepalive(rift);
 	count = 0;
 
 	while (dev->active) {
-		fds.fd = rift->fd;
+		fds.fd = rift->dev.fd;
 		fds.events = POLLIN;
 		fds.revents = 0;
 
 		ret = poll(&fds, 1, 1000);
-		if (ret == -1 || ret == 0 || count > 9000) {
+		if (ret == -1 || ret == 0 ||
+		    count > 9000) {
+			if (ret == -1 || ret == 0)
+				g_print("Rift DK2: Resending keepalive\n");
 			rift_dk2_send_keepalive(rift);
 			count = 0;
 			continue;
@@ -104,44 +140,52 @@ void rift_dk2_thread(struct device *dev)
 		if (fds.events & (POLLERR | POLLHUP | POLLNVAL))
 			break;
 
-		ret = read(rift->fd, buf, sizeof(buf));
-		if (ret < 64)
-			printf("Error, invalid report\n");
+		ret = read(rift->dev.fd, buf, sizeof(buf));
+		if (ret < 64) {
+			g_print("Error, invalid report\n");
+			continue;
+		}
+
 		count++;
 	}
 }
 
 /*
- * Disables the IR tracking LEDs.
+ * Disables the IR tracking LEDs
  */
-static void rift_dk2_stop(struct device *dev)
+static void rift_dk2_stop(OuvrtDevice *dev)
 {
-	struct rift_dk2 *rift = (struct rift_dk2 *)dev;
+	OuvrtRiftDK2 *rift = OUVRT_RIFT_DK2(dev);
 	unsigned char tracking[13] = { 0x0c };
+	int fd = rift->dev.fd;
 
-	hid_get_feature_report(rift->fd, tracking, sizeof(tracking));
+	hid_get_feature_report(fd, tracking, sizeof(tracking));
 	tracking[4] &= ~(1 << 0);
-	hid_send_feature_report(rift->fd, tracking, sizeof(tracking));
+	hid_send_feature_report(fd, tracking, sizeof(tracking));
 }
 
 /*
  * Frees the device structure and its contents.
  */
-static void rift_dk2_free(struct device *dev)
+static void ouvrt_rift_dk2_finalize(GObject *object)
 {
-	struct rift_dk2 *rift = (struct rift_dk2 *)dev;
-
-	close(rift->fd);
-	device_fini(dev);
-	free(rift);
+	G_OBJECT_CLASS(ouvrt_rift_dk2_parent_class)->finalize(object);
 }
 
-static const struct device_ops rift_dk2_ops = {
-	.start = rift_dk2_start,
-	.thread = rift_dk2_thread,
-	.stop = rift_dk2_stop,
-	.free = rift_dk2_free,
-};
+static void ouvrt_rift_dk2_class_init(OuvrtRiftDK2Class *klass)
+{
+	G_OBJECT_CLASS(klass)->finalize = ouvrt_rift_dk2_finalize;
+	OUVRT_DEVICE_CLASS(klass)->start = rift_dk2_start;
+	OUVRT_DEVICE_CLASS(klass)->thread = rift_dk2_thread;
+	OUVRT_DEVICE_CLASS(klass)->stop = rift_dk2_stop;
+}
+
+static void ouvrt_rift_dk2_init(OuvrtRiftDK2 *self)
+{
+	self->dev.type = DEVICE_TYPE_HMD;
+	self->priv = ouvrt_rift_dk2_get_instance_private(self);
+	self->priv->flicker = false;
+}
 
 /*
  * Allocates and initializes the device structure and opens the HID device
@@ -149,22 +193,27 @@ static const struct device_ops rift_dk2_ops = {
  *
  * Returns the newly allocated Rift DK2 device.
  */
-struct device *rift_dk2_new(const char *devnode)
+OuvrtDevice *rift_dk2_new(const char *devnode)
 {
-	struct rift_dk2 *rift;
+	OuvrtRiftDK2 *rift;
 
-	rift = malloc(sizeof(*rift));
-	if (!rift)
+	rift = g_object_new(OUVRT_TYPE_RIFT_DK2, NULL);
+	if (rift == NULL)
 		return NULL;
 
-	device_init(&rift->dev, devnode, &rift_dk2_ops);
-	rift->fd = open(devnode, O_RDWR);
-	if (rift->fd == -1) {
-		printf("Rift DK2: Failed to open '%s': %d\n", devnode, errno);
-		device_fini(&rift->dev);
-		free(rift);
-		return NULL;
-	}
+	rift->dev.devnode = g_strdup(devnode);
 
-	return (struct device *)rift;
+	return &rift->dev;
+}
+
+void ouvrt_rift_dk2_set_flicker(OuvrtRiftDK2 *rift, gboolean flicker)
+{
+	if (rift->priv->flicker == flicker)
+		return;
+
+	rift->priv->flicker = flicker;
+	rift_dk2_flicker = flicker;
+
+	if (rift->dev.active)
+		rift_dk2_send_tracking(rift, flicker);
 }

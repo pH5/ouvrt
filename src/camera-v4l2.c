@@ -2,28 +2,36 @@
 #include <linux/videodev2.h>
 #include <poll.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <sys/fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <time.h>
 #include <unistd.h>
 
-#include "camera-v4l2.h"
 #include "blobwatch.h"
+#include "camera-v4l2.h"
 #include "debug.h"
 #include "debug-gst.h"
 
-#define MAX_BLOBS_PER_FRAME 42
+struct _OuvrtCameraV4L2Private {
+	uint32_t offset[3];
+	void *buf[3];
+};
+
+G_DEFINE_TYPE_WITH_PRIVATE(OuvrtCameraV4L2, ouvrt_camera_v4l2,
+			   OUVRT_TYPE_CAMERA)
 
 /*
  * Requests buffers and starts streaming.
  *
  * Returns 0 on success, negative values on error.
  */
-int camera_v4l2_start(struct device *dev)
+static int ouvrt_camera_v4l2_start(OuvrtDevice *dev)
 {
-	struct camera_v4l2 *camera = (struct camera_v4l2 *)dev;
+	OuvrtCameraV4L2 *v4l2 = OUVRT_CAMERA_V4L2(dev);
+	OuvrtCameraV4L2Private *priv = v4l2->priv;
+	OuvrtCamera *camera = OUVRT_CAMERA(dev);
 	int width = camera->width;
 	int height = camera->height;
 	struct v4l2_format format = {
@@ -31,7 +39,7 @@ int camera_v4l2_start(struct device *dev)
 		.fmt.pix = {
 			.width = width,
 			.height = height,
-			.pixelformat = camera->pixelformat,
+			.pixelformat = v4l2->pixelformat,
 			.field = V4L2_FIELD_ANY,
 		}
 	};
@@ -49,39 +57,54 @@ int camera_v4l2_start(struct device *dev)
 		.type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
 		.memory = V4L2_MEMORY_MMAP,
 	};
-	int ret;
 	int fd;
+	int ret;
 	unsigned int i;
 
-	fd = camera->fd;
-
-	if (camera->pixelformat == V4L2_PIX_FMT_GREY) {
-		format.fmt.pix.bytesperline = width;
-		format.fmt.pix.sizeimage = width * height;
-	} else if (camera->pixelformat == V4L2_PIX_FMT_YUYV) {
-		format.fmt.pix.bytesperline = width * 2;
-		format.fmt.pix.sizeimage = width * height * 2;
+	if (dev->fd == -1) {
+		dev->fd = open(dev->devnode, O_RDWR);
+		if (dev->fd == -1) {
+			g_print("v4l2: Failed to open '%s': %d\n",
+				dev->devnode, errno);
+			return -1;
+		}
 	}
+	fd = dev->fd;
+
+	if (v4l2->pixelformat == V4L2_PIX_FMT_GREY)
+		format.fmt.pix.bytesperline = width;
+	else if (v4l2->pixelformat == V4L2_PIX_FMT_YUYV)
+		format.fmt.pix.bytesperline = width * 2;
+	format.fmt.pix.sizeimage = format.fmt.pix.bytesperline * height;
 	camera->sizeimage = format.fmt.pix.sizeimage;
 
 	ret = ioctl(fd, VIDIOC_S_FMT, &format);
 	if (ret < 0)
-		printf("v4l2: S_FMT error: %d\n", errno);
+		g_print("v4l2: S_FMT error: %d\n", errno);
 
 	ret = ioctl(fd, VIDIOC_S_PARM, &parm);
 	if (ret < 0)
-		printf("v4l2: S_PARM error: %d\n", errno);
+		g_print("v4l2: S_PARM error: %d\n", errno);
+
+	if (1 /* DEBUG */) {
+		reqbufs.memory = V4L2_MEMORY_USERPTR;
+		camera->sizeimage += sizeof(struct ouvrt_debug_attachment);
+	}
 
 	ret = ioctl(fd, VIDIOC_REQBUFS, &reqbufs);
 	if (ret < 0)
-		printf("v4l2: REQBUFS error: %d\n", errno);
+		g_print("v4l2: REQBUFS error: %d\n", errno);
+	if (reqbufs.count > 3) {
+		g_print("v4l2: REQBUFS error: %d buffers\n", reqbufs.count);
+		return -1;
+	}
 
-	printf("v4l2: %dx%d %4.4s %d Hz, %d buffers\n",
-	       format.fmt.pix.width, format.fmt.pix.height,
-	       (char *)&format.fmt.pix.pixelformat,
-	       parm.parm.capture.timeperframe.denominator /
-	       parm.parm.capture.timeperframe.numerator,
-	       reqbufs.count);
+	g_print("v4l2: %dx%d %4.4s %d Hz, %d buffers à %d bytes\n",
+		format.fmt.pix.width, format.fmt.pix.height,
+		(char *)&format.fmt.pix.pixelformat,
+		parm.parm.capture.timeperframe.denominator /
+		parm.parm.capture.timeperframe.numerator,
+		reqbufs.count, format.fmt.pix.sizeimage);
 
 	for (i = 0; i < reqbufs.count; i++) {
 		struct v4l2_buffer buf;
@@ -90,22 +113,34 @@ int camera_v4l2_start(struct device *dev)
 		buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 		ret = ioctl(fd, VIDIOC_QUERYBUF, &buf);
 		if (ret < 0)
-			printf("v4l2: QUERYBUF error\n");
+			g_print("v4l2: QUERYBUF error\n");
+
+		if (reqbufs.memory == V4L2_MEMORY_MMAP) {
+			priv->buf[i] = mmap(NULL, camera->sizeimage,
+					    PROT_READ | PROT_WRITE,
+					    MAP_SHARED, dev->fd,
+					    buf.m.offset);
+			priv->offset[i] = buf.m.offset;
+		} else if (reqbufs.memory == V4L2_MEMORY_USERPTR) {
+			priv->buf[i] = malloc(camera->sizeimage);
+			buf.m.userptr = (unsigned long)priv->buf[i];
+		}
 
 		ret = ioctl(fd, VIDIOC_QBUF, &buf);
 		if (ret < 0)
-			printf("v4l2: QBUF error\n");
+			g_print("v4l2: QBUF error\n");
 	}
 
 	ret = ioctl(fd, VIDIOC_STREAMON, &format.type);
 	if (ret < 0) {
-		printf("v4l2: STREAMON error\n");
+		g_print("v4l2: STREAMON error\n");
 		reqbufs.count = 0;
 		ioctl(fd, VIDIOC_REQBUFS, &reqbufs);
 	}
 
-	printf("v4l2: Started streaming\n");
+	g_print("v4l2: Started streaming\n");
 
+	camera->bw = blobwatch_new(width, height);
 	camera->debug = debug_gst_new(width, height, camera->framerate);
 
 	return ret;
@@ -132,28 +167,27 @@ static void convert_yuyv_to_grayscale(uint8_t *frame, int width, int height)
 /*
  * Receives frames from the camera and processes them.
  */
-void camera_v4l2_thread(struct device *dev)
+static void ouvrt_camera_v4l2_thread(OuvrtDevice *dev)
 {
-	struct camera_v4l2 *camera = (struct camera_v4l2 *)dev;
-	struct blob blobs[MAX_BLOBS_PER_FRAME];
+	OuvrtCameraV4L2 *v4l2 = OUVRT_CAMERA_V4L2(dev);
+	OuvrtCameraV4L2Private *priv = v4l2->priv;
+	OuvrtCamera *camera = OUVRT_CAMERA(dev);
 	struct v4l2_buffer buf;
 	int width = camera->width;
 	int height = camera->height;
-	int sizeimage = camera->sizeimage;
-	uint32_t *debug_frame;
 	struct pollfd pfd;
-	int num_blobs;
+	int skipped;
 	void *raw;
 	int ret;
 
-	pfd.fd = camera->fd;
+	pfd.fd = dev->fd;
 	pfd.events = POLLIN;
 
 	while (dev->active) {
 		ret = poll(&pfd, 1, 1000);
 		if (ret == -1 || ret == 0) {
 			if (ret == -1)
-				printf("v4l2: poll error: %d\n", errno);
+				g_print("v4l2: poll error: %d\n", errno);
 			continue;
 		}
 
@@ -161,127 +195,116 @@ void camera_v4l2_thread(struct device *dev)
 			break;
 
 		buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-		ret = ioctl(camera->fd, VIDIOC_DQBUF, &buf);
+		ret = ioctl(dev->fd, VIDIOC_DQBUF, &buf);
 		if (ret < 0) {
-			printf("v4l2: DQBUF error: %d, disabling camera\n",
+			g_print("v4l2: DQBUF error: %d, disabling camera\n",
 			       errno);
-			dev->active = false;
+			dev->active = FALSE;
 			break;
 		}
 
-		raw = mmap(NULL, sizeimage, PROT_READ | PROT_WRITE,
-			   MAP_SHARED, camera->fd, buf.m.offset);
+		if (buf.memory == V4L2_MEMORY_MMAP) {
+			raw = priv->buf[buf.index];
+			if (buf.m.offset != priv->offset[buf.index])
+				raw = NULL;
+		} else if (buf.memory == V4L2_MEMORY_USERPTR) {
+			raw = (void *)buf.m.userptr;
+			if (raw != priv->buf[buf.index])
+				raw = NULL;
+		} else {
+			raw = NULL;
+		}
+		if (!raw) {
+			g_print("v4l2: DQBUF error: %d, disabling camera\n",
+				errno);
+			dev->active = FALSE;
+			break;
+		}
 
-		if (camera->pixelformat == V4L2_PIX_FMT_YUYV)
+		if (v4l2->pixelformat == V4L2_PIX_FMT_YUYV)
 			convert_yuyv_to_grayscale(raw, width, height);
 
-		debug_frame = debug_gst_frame_new(camera->debug, raw,
-						  width, height);
+		skipped = buf.sequence - camera->sequence - 1;
+		if (skipped < 0)
+			skipped = 0;
+		camera->sequence = buf.sequence;
 
-		process_frame_extents(raw, width, height, raw);
+		struct blobservation *ob = NULL;
+		blobwatch_process(camera->bw, raw, width, height, skipped, &ob);
 
-		debug_draw_extents(debug_frame, width, height, raw);
+		debug_gst_frame_push(camera->debug, raw, camera->sizeimage,
+				     width * height, ob);
 
-		num_blobs = process_extent_blobs(raw, height,
-						 blobs, MAX_BLOBS_PER_FRAME);
-
-		munmap(raw, sizeimage);
-
-		ret = ioctl(camera->fd, VIDIOC_QBUF, &buf);
+		ret = ioctl(dev->fd, VIDIOC_QBUF, &buf);
 		if (ret < 0) {
-			printf("v4l2: QBUF error: %d, disabling camera\n",
-			       errno);
-			dev->active = false;
+			g_print("v4l2: QBUF error: %d, disabling camera\n",
+				errno);
+			dev->active = FALSE;
 			break;
 		}
-
-		debug_draw_blobs(debug_frame, width, height, blobs, num_blobs);
-
-		debug_gst_frame_push(camera->debug);
 	}
 }
 
 /*
  * Stops streaming and releases buffers.
  */
-void camera_v4l2_stop(struct device *dev)
+static void ouvrt_camera_v4l2_stop(OuvrtDevice *dev)
 {
-	struct camera_v4l2 *camera = (struct camera_v4l2 *)dev;
-	const struct v4l2_requestbuffers reqbufs = {
+	OuvrtCameraV4L2 *v4l2 = OUVRT_CAMERA_V4L2(dev);
+	OuvrtCameraV4L2Private *priv = v4l2->priv;
+	OuvrtCamera *camera = OUVRT_CAMERA(dev);
+	struct v4l2_requestbuffers reqbufs = {
 		.count = 0,
 		.type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
 		.memory = V4L2_MEMORY_MMAP,
 	};
 	int ret;
+	int i;
 
-	ret = ioctl(camera->fd, VIDIOC_STREAMOFF, &reqbufs.type);
+	if (priv->offset[1]) {
+		for (i = 0; i < 3; i++) {
+			munmap(priv->buf[i], camera->sizeimage);
+			priv->buf[i] = NULL;
+		}
+	} else {
+		reqbufs.memory = V4L2_MEMORY_USERPTR;
+		for (i = 0; i < 3; i++) {
+			free(priv->buf[i]);
+			priv->buf[i] = NULL;
+		}
+	}
+
+	ret = ioctl(dev->fd, VIDIOC_STREAMOFF, &reqbufs.type);
 	if (ret < 0)
-		printf("v4l2: STREAMOFF error: %d\n", errno);
+		g_print("v4l2: STREAMOFF error: %d\n", errno);
 
-	ret = ioctl(camera->fd, VIDIOC_REQBUFS, &reqbufs);
+	ret = ioctl(dev->fd, VIDIOC_REQBUFS, &reqbufs);
 	if (ret < 0)
-		printf("v4l2: REQBUFS error: %d\n", errno);
+		g_print("v4l2: REQBUFS error: %d\n", errno);
 
-	printf("v4l2: Stopped streaming\n");
+	g_print("v4l2: Stopped streaming\n");
 
+	/* TODO: move up to camera */
+	free(camera->bw);
+	camera->bw = NULL;
 	camera->debug = debug_gst_unref(camera->debug);
 }
 
-/*
- * Frees common fields of the device structure. To be called from the camera
- * specific free operation.
- */
-void camera_v4l2_fini(struct device *dev)
+static void ouvrt_camera_v4l2_class_init(OuvrtCameraV4L2Class *klass)
 {
-	struct camera_v4l2 *camera = (struct camera_v4l2 *)dev;
+	OuvrtDeviceClass *device_class = OUVRT_DEVICE_CLASS(klass);
 
-	close(camera->fd);
-	device_fini(dev);
+	device_class->start = ouvrt_camera_v4l2_start;
+	device_class->thread = ouvrt_camera_v4l2_thread;
+	device_class->stop = ouvrt_camera_v4l2_stop;
 }
-
-/*
- * Frees the camera structure.
- */
-void camera_v4l2_free(struct device *dev)
-{
-	camera_v4l2_fini(dev);
-	free(dev);
-}
-
-const struct device_ops camera_v4l2_ops = {
-	.start = camera_v4l2_start,
-	.thread = camera_v4l2_thread,
-	.stop = camera_v4l2_stop,
-	.free = camera_v4l2_free,
-};
 
 /*
  * Initializes common fields of the camera structure.
  *
  * Returns 0 on success, negative values on error.
  */
-int camera_v4l2_init(struct device *dev, const char *devnode,
-		     const struct device_ops *ops, int width, int height,
-		     uint32_t pixelformat, int framerate)
+static void ouvrt_camera_v4l2_init(OuvrtCameraV4L2 *self)
 {
-	struct camera_v4l2 *camera = (struct camera_v4l2 *)dev;
-
-	if (ops == NULL)
-		ops = &camera_v4l2_ops;
-
-	device_init(dev, devnode, ops);
-
-	camera->fd = open(devnode, O_RDWR);
-	if (camera->fd == -1) {
-		printf("v4l2: Failed to open '%s': %d\n", devnode, errno);
-		device_fini(&camera->dev);
-		return camera->fd;
-	}
-
-	camera->width = width;
-	camera->height = height;
-	camera->pixelformat = pixelformat;
-	camera->framerate = framerate;
-
-	return 0;
+        self->priv = ouvrt_camera_v4l2_get_instance_private(self);
 }

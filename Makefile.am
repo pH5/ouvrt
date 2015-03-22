@@ -10,8 +10,7 @@ noinst_LIBRARIES = \
 ACLOCAL_AMFLAGS = -I m4
 
 EXTRA_DIST = \
-	autogen.sh \
-	m4/ax_pthread.m4
+	autogen.sh
 
 MAINTAINERCLEANFILES = \
 	configure \
@@ -27,6 +26,8 @@ libouvrt_a_SOURCES = \
 	src/mt9v034.c
 
 ouvrtd_SOURCES = \
+	src/camera.h \
+	src/camera.c \
 	src/camera-dk2.h \
 	src/camera-dk2.c \
 	src/camera-v4l2.h \
@@ -43,12 +44,13 @@ ouvrtd_SOURCES = \
 
 ouvrtd_CFLAGS = \
 	$(UDEV_CFLAGS) \
+	$(GLIB_CFLAGS) \
 	$(GST_CFLAGS)
 
 ouvrtd_LDADD = \
 	libouvrt.a \
 	$(UDEV_LIBS) \
-	$(PTHREAD_LIBS) \
+	$(GLIB_LIBS) \
 	$(GST_LIBS)
 
 dump_eeprom_SOURCES = \
