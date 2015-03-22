@@ -8,6 +8,9 @@
 #include "debug.h"
 #include "flicker.h"
 
+/* temporary global */
+extern int rift_dk2_flicker;
+
 #include <stdio.h>
 
 #define THRESHOLD 0x9f
@@ -326,8 +329,10 @@ void blobwatch_process(struct blobwatch *bw, uint8_t *frame,
 		}
 	}
 
-	/* Identify blobs by their blinking pattern */
-	flicker_process(bw->fl, ob->blobs, ob->num_blobs, skipped);
+	if (rift_dk2_flicker) {
+		/* Identify blobs by their blinking pattern */
+		flicker_process(bw->fl, ob->blobs, ob->num_blobs, skipped);
+	}
 
 	/* Return observed blobs */
 	if (output)

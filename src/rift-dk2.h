@@ -51,4 +51,6 @@ GType ouvrt_rift_dk2_get_type(void);
 
 OuvrtDevice *rift_dk2_new(const char *devnode);
 
+void ouvrt_rift_dk2_set_flicker(OuvrtRiftDK2 *camera, gboolean flicker);
+
 #endif /* __RIFT_DK2_H__ */
