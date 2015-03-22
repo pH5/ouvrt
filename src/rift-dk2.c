@@ -14,6 +14,7 @@
 #include "rift-dk2.h"
 #include "debug.h"
 #include "device.h"
+#include "imu.h"
 #include "math.h"
 #include "leds.h"
 #include "tracker.h"
@@ -22,6 +23,8 @@
 gboolean rift_dk2_flicker = false;
 
 struct _OuvrtRiftDK2Private {
+	int report_rate;
+	int report_interval;
 	gboolean flicker;
 };
 
@@ -43,6 +46,77 @@ static int hid_send_feature_report(int fd, const unsigned char *data,
 				   size_t length)
 {
 	return ioctl(fd, HIDIOCSFEATURE(length), data);
+}
+
+#define RIFT_DK2_CONFIG_USE_CALIBRATION		0x04
+#define RIFT_DK2_CONFIG_AUTO_CALIBRATION	0x08
+#define RIFT_DK2_CONFIG_SENSOR_COORDINATES	0x40
+
+/*
+ * Returns the current sensor configuration.
+ */
+static int rift_dk2_get_config(OuvrtRiftDK2 *rift)
+{
+	unsigned char buf[7] = { 0x02 };
+	uint8_t flags;
+	uint8_t packet_interval;
+	uint16_t sample_rate;
+	uint16_t report_rate;
+	int ret;
+
+	ret = hid_get_feature_report(rift->dev.fd, buf, sizeof(buf));
+	if (ret < 0)
+		return ret;
+
+	flags = buf[3];
+	packet_interval = buf[4];
+	sample_rate = __le16_to_cpup((__le16 *)(buf + 5));
+	report_rate = sample_rate / (packet_interval + 1);
+
+	g_print("Rift DK2: Got sample rate %d Hz, report rate %d Hz, flags: 0x%x\n",
+		sample_rate, report_rate, flags);
+
+	rift->priv->report_rate = report_rate;
+	rift->priv->report_interval = 1000000 / report_rate;
+
+	return 0;
+}
+
+/*
+ * Configures the sensor report rate
+ */
+static int rift_dk2_set_report_rate(OuvrtRiftDK2 *rift, int report_rate)
+{
+	unsigned char buf[7] = { 0x02 };
+	uint8_t packet_interval;
+	uint16_t sample_rate;
+	int ret;
+
+	ret = hid_get_feature_report(rift->dev.fd, buf, sizeof(buf));
+	if (ret < 0)
+		return ret;
+
+	sample_rate = __le16_to_cpup((__le16 *)(buf + 5));
+
+	if (report_rate > sample_rate)
+		report_rate = sample_rate;
+	if (report_rate < 5)
+		report_rate = 5;
+
+	packet_interval = sample_rate / report_rate - 1;
+	buf[4] = packet_interval;
+
+	g_print("Rift DK2: Set sample rate %d Hz, report rate %d Hz\n",
+		sample_rate, report_rate);
+
+	ret = hid_send_feature_report(rift->dev.fd, buf, sizeof(buf));
+	if (ret < 0)
+		return ret;
+
+	rift->priv->report_rate = report_rate;
+	rift->priv->report_interval = 1000000 / report_rate;
+
+	return 0;
 }
 
 /*
@@ -225,6 +299,110 @@ static int rift_dk2_send_tracking(OuvrtRiftDK2 *rift, bool blink)
 }
 
 /*
+ * Unpacks three big-endian signed 21-bit values packed into 8 bytes
+ * and stores them in a floating point vector after multiplying by 10⁻⁴.
+ */
+static void unpack_3x21bit(const unsigned char *buf, vec3 *v)
+{
+	uint32_t xy = __be32_to_cpup((__be32 *)buf);
+	uint32_t yz = __be32_to_cpup((__be32 *)(buf + 4));
+
+	v->x = 0.0001f * ((int32_t)xy >> 11);
+	v->y = 0.0001f * ((int32_t)((xy << 21) | (yz >> 11)) >> 11);
+	v->z = 0.0001f * ((int32_t)(yz << 10) >> 11);
+}
+
+static uint16_t last_sample_timestamp;
+
+/*
+ * Decodes the periodic sensor message containing IMU sample(s) and
+ * frame timing data.
+ * Without calibration, the accelerometer reports acceleration in units
+ * of 10⁻⁴ m/s² in the accelerometer reference frame: the positive x
+ * axis points forward, the y axis points right, and z down.
+ * The gyroscope reports angular velocity in units of 10⁻⁴ rad/s around
+ * those axes. With onboard calibration enabled, the Rift's local frame
+ * of reference is used instead:
+ *
+ *      x forward       up
+ *     /                 y z forward
+ *    +--y right   left  |/
+ *    |               x--+
+ *    z down
+ */
+static void rift_dk2_decode_sensor_message(OuvrtRiftDK2 *rift,
+					   const unsigned char *buf,
+					   size_t len)
+{
+	/* IMU sample */
+	uint8_t num_samples;
+	uint16_t sample_count;
+	int16_t temperature;
+	uint16_t sample_timestamp;
+	int16_t mag[3];
+	/* HDMI input frames */
+	uint16_t frame_count;
+	uint32_t frame_timestamp;
+	uint8_t frame_id;
+	uint8_t led_pattern_phase;
+	/* LED illumination and exposure sync */
+	uint16_t exposure_count;
+	uint32_t exposure_timestamp;
+
+	struct imu_state state;
+	int dt;
+	int i;
+
+	if (len < 64)
+		return;
+
+	num_samples = buf[3];
+	sample_count = __le16_to_cpup((__le16 *)(buf + 4));
+	/* 10⁻²°C */
+	temperature = __le16_to_cpup((__le16 *)(buf + 6));
+	state.sample.temperature = 0.01f * temperature;
+
+	sample_timestamp = __le16_to_cpup((__le16 *)(buf + 8));
+	/* µs, wraps every 65536 ms */
+	state.sample.time = 1e-6 * sample_timestamp;
+
+	dt = sample_timestamp - last_sample_timestamp;
+	last_sample_timestamp = sample_timestamp;
+	if (dt < 0)
+		dt += 65536;
+	if ((dt < rift->priv->report_interval - 1) ||
+	    (dt > rift->priv->report_interval + 1) ||
+	    (1000 * num_samples != rift->priv->report_interval)) {
+		g_print("Rift DK2: got %d samples after %d µs\n", num_samples,
+			dt);
+	}
+
+	mag[0] = __le16_to_cpup((__le16 *)(buf + 44));
+	mag[1] = __le16_to_cpup((__le16 *)(buf + 46));
+	mag[2] = __le16_to_cpup((__le16 *)(buf + 48));
+	state.sample.magnetic_field.x = 0.0001f * mag[0];
+	state.sample.magnetic_field.y = 0.0001f * mag[1];
+	state.sample.magnetic_field.z = 0.0001f * mag[2];
+
+	frame_count = __le16_to_cpup((__le16 *)(buf + 50));
+	frame_timestamp = __le32_to_cpup((__le32 *)(buf + 52));
+	frame_id = buf[56];
+	led_pattern_phase = buf[57];
+	exposure_count = __le16_to_cpup((__le16 *)(buf + 58));
+	exposure_timestamp = __le32_to_cpup((__le32 *)(buf + 60));
+
+	num_samples = num_samples > 1 ? 2 : 1;
+	for (i = 0; i < num_samples; i++) {
+		/* 10⁻⁴ m/s² */
+		unpack_3x21bit(buf + 12 + 16 * i, &state.sample.acceleration);
+		/* 10⁻⁴ rad/s */
+		unpack_3x21bit(buf + 20 + 16 * i, &state.sample.angular_velocity);
+
+		debug_imu_fifo_in(&state, 1);
+	}
+}
+
+/*
  * Enables the IR tracking LEDs and registers them with the tracker.
  */
 static int rift_dk2_start(OuvrtDevice *dev)
@@ -257,6 +435,14 @@ static int rift_dk2_start(OuvrtDevice *dev)
 	if (rift->leds.num != 40)
 		g_print("Rift DK2: Reported %d IR LEDs\n", rift->leds.num);
 
+	ret = rift_dk2_get_config(rift);
+	if (ret < 0)
+		return ret;
+
+	ret = rift_dk2_set_report_rate(rift, 500);
+	if (ret < 0)
+		return ret;
+
 	ret = rift_dk2_send_tracking(rift, TRUE);
 	if (ret < 0)
 		return ret;
@@ -288,7 +474,7 @@ static void rift_dk2_thread(OuvrtDevice *dev)
 
 		ret = poll(&fds, 1, 1000);
 		if (ret == -1 || ret == 0 ||
-		    count > 9000) {
+		    count > 9 * rift->priv->report_rate) {
 			if (ret == -1 || ret == 0)
 				g_print("Rift DK2: Resending keepalive\n");
 			rift_dk2_send_keepalive(rift);
@@ -305,6 +491,7 @@ static void rift_dk2_thread(OuvrtDevice *dev)
 			continue;
 		}
 
+		rift_dk2_decode_sensor_message(rift, buf, sizeof(buf));
 		count++;
 	}
 }
@@ -324,6 +511,8 @@ static void rift_dk2_stop(OuvrtDevice *dev)
 	hid_get_feature_report(fd, tracking, sizeof(tracking));
 	tracking[4] &= ~(1 << 0);
 	hid_send_feature_report(fd, tracking, sizeof(tracking));
+
+	rift_dk2_set_report_rate(rift, 50);
 }
 
 /*
