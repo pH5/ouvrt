@@ -200,6 +200,7 @@ static void ouvrt_camera1_on_sync_exposure_changed(GObject *object,
 
 	sync = ouvrt_camera1_get_sync_exposure(camera);
 
+	ouvrt_camera_dk2_set_sync_exposure(OUVRT_CAMERA_DK2(dev), sync);
 	if (sync) {
 		g_print("Synchronised exposure enabled\n");
 	} else {

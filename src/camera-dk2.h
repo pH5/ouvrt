@@ -39,4 +39,6 @@ GType ouvrt_camera_dk2_get_type(void);
 
 OuvrtDevice *camera_dk2_new(const char *devnode);
 
+void ouvrt_camera_dk2_set_sync_exposure(OuvrtCameraDK2 *camera, gboolean sync);
+
 #endif /* __CAMERA_DK2_H__ */

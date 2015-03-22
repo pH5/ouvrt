@@ -51,8 +51,7 @@
  */
 int mt9v034_sensor_setup(int fd)
 {
-	uint16_t version, width, height, hblank, vblank, read_mode,
-		  chip_control;
+	uint16_t version, width, height, hblank, vblank, read_mode;
 	uint8_t addr = 0x4c << 1;
 
 	i2c_read(fd, addr, MT9V034_CHIP_VERSION, &version);
@@ -68,6 +67,19 @@ int mt9v034_sensor_setup(int fd)
 	printf("MT9V034: Blanking changed from %d,%d to 94,5\n",
 	       hblank, vblank);
 
+	/* Enable horizontal and vertical flip */
+	i2c_read(fd, addr, MT9V034_READ_MODE, &read_mode);
+	i2c_write(fd, addr, MT9V034_READ_MODE, read_mode |
+			    MT9V034_READ_MODE_ROW_FLIP |
+			    MT9V034_READ_MODE_COLUMN_FLIP);
+	return 0;
+}
+
+int mt9v034_sensor_enable_sync(int fd)
+{
+	uint16_t chip_control;
+	uint8_t addr = 0x4c << 1;
+
 	/* Disable AEC/AGC */
 	i2c_write(fd, addr, MT9V034_AEC_AGC_ENABLE, 0);
 	/* Raise black level with manual black level calibration override */
@@ -82,11 +94,7 @@ int mt9v034_sensor_setup(int fd)
 			    MT9V034_CHIP_CONTROL_MASTER_MODE |
 			    MT9V034_CHIP_CONTROL_DOUT_ENABLE |
 			    MT9V034_CHIP_CONTROL_SEQUENTIAL);
-	/* Enable horizontal and vertical flip */
-	i2c_read(fd, addr, MT9V034_READ_MODE, &read_mode);
-	i2c_write(fd, addr, MT9V034_READ_MODE, read_mode |
-			    MT9V034_READ_MODE_ROW_FLIP |
-			    MT9V034_READ_MODE_COLUMN_FLIP);
+
 	/* Set integration time in number of rows + number of clock cycles */
 	i2c_write(fd, addr, MT9V034_COARSE_SHUTTER_WIDTH_TOTAL, 11);
 	i2c_write(fd, addr, MT9V034_FINE_SHUTTER_WIDTH_TOTAL, 111);
@@ -105,5 +113,31 @@ int mt9v034_sensor_setup(int fd)
 	/* Enable LED? */
 	i2c_write(fd, addr, MT9V034_LED_OUT_CONTROL,
 			    MT9V034_LED_OUT_INVERT);
+	return 0;
+}
+
+int mt9v034_sensor_disable_sync(int fd)
+{
+	uint8_t addr = 0x4c << 1;
+
+	/* Disable LED? */
+	i2c_write(fd, addr, MT9V034_LED_OUT_CONTROL, 0);
+
+	/* Disable AEC/AGC */
+	i2c_write(fd, addr, MT9V034_AEC_AGC_ENABLE, 0);
+	/* Raise black level with manual black level calibration override */
+	i2c_write(fd, addr, MT9V034_BLACK_LEVEL_CALIB_CTRL, 0x80);
+	/* Set analog gain to default */
+	i2c_write(fd, addr, MT9V034_ANALOG_GAIN, 0x20);
+	i2c_write(fd, addr, MT9V034_VERTICAL_BLANKING, 57);
+	i2c_write(fd, addr, MT9V034_HORIZONTAL_BLANKING, 94);
+	i2c_write(fd, addr, MT9V034_CHIP_CONTROL,
+			    MT9V034_CHIP_CONTROL_MASTER_MODE |
+			    MT9V034_CHIP_CONTROL_DOUT_ENABLE |
+			    MT9V034_CHIP_CONTROL_SEQUENTIAL);
+	/* Set integration time in number of rows + number of clock cycles */
+	i2c_write(fd, addr, MT9V034_COARSE_SHUTTER_WIDTH_TOTAL, 0xf0);
+	i2c_write(fd, addr, MT9V034_FINE_SHUTTER_WIDTH_TOTAL, 0);
+
 	return 0;
 }

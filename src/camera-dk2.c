@@ -20,6 +20,7 @@
 
 struct _OuvrtCameraDK2Private {
 	char *version;
+	bool sync;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtCameraDK2, ouvrt_camera_dk2, \
@@ -50,6 +51,10 @@ static int camera_dk2_start(OuvrtDevice *dev)
 		OUVRT_DEVICE_CLASS(klass)->stop(dev);
 		return ret;
 	}
+
+	/* Enable synchronised exposure by default */
+	mt9v034_sensor_enable_sync(fd);
+	camera->priv->sync = TRUE;
 
 	/* I have no idea what this does */
 	esp570_i2c_write(fd, 0x60, 0x05, 0x0001);
@@ -84,6 +89,7 @@ static void ouvrt_camera_dk2_init(OuvrtCameraDK2 *self)
 	camera->framerate = FRAMERATE;
 	self->v4l2.pixelformat = V4L2_PIX_FMT_GREY;
 	self->priv = ouvrt_camera_dk2_get_instance_private(self);
+	self->priv->sync = FALSE;
 }
 
 static void camera_dk2_get_calibration(OuvrtCameraDK2 *camera_dk2)
@@ -174,4 +180,23 @@ OuvrtDevice *camera_dk2_new(const char *devnode)
 	camera_dk2_get_calibration(camera);
 
 	return &camera->v4l2.camera.dev;
+}
+
+void ouvrt_camera_dk2_set_sync_exposure(OuvrtCameraDK2 *camera, gboolean sync)
+{
+	int fd = camera->v4l2.camera.dev.fd;
+
+	if (sync == camera->priv->sync)
+		return;
+
+	camera->priv->sync = sync;
+
+	if (!camera->v4l2.camera.dev.active)
+		return;
+
+	if (sync) {
+		mt9v034_sensor_enable_sync(fd);
+	} else {
+		mt9v034_sensor_disable_sync(fd);
+	}
 }
