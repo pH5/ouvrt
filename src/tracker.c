@@ -5,26 +5,36 @@
 #include "leds.h"
 #include "math.h"
 #include "opencv.h"
+#include "tracker.h"
 
-static struct leds *global_leds = NULL;
+struct _OuvrtTrackerPrivate {
+	struct leds *leds;
+};
 
-void tracker_register_leds(struct leds *leds)
+G_DEFINE_TYPE_WITH_PRIVATE(OuvrtTracker, ouvrt_tracker, G_TYPE_OBJECT)
+
+void ouvrt_tracker_register_leds(OuvrtTracker *tracker, struct leds *leds)
 {
-	if (global_leds == NULL)
-		global_leds = leds;
+	if (!tracker || tracker->priv->leds)
+		return;
+
+	tracker->priv->leds = leds;
 }
 
-void tracker_unregister_leds(struct leds *leds)
+void ouvrt_tracker_unregister_leds(OuvrtTracker *tracker, struct leds *leds)
 {
-	if (global_leds == leds)
-		global_leds = NULL;
+	if (!tracker || tracker->priv->leds != leds)
+		return;
+
+	tracker->priv->leds = NULL;
 }
 
-void tracker_process(struct blob *blobs, int num_blobs,
-		     double camera_matrix[9], double dist_coeffs[5],
-		     dquat *rot, dvec3 *trans)
+void ouvrt_tracker_process(OuvrtTracker *tracker,
+			   struct blob *blobs, int num_blobs,
+			   double camera_matrix[9], double dist_coeffs[5],
+			   dquat *rot, dvec3 *trans)
 {
-	struct leds *leds = global_leds;
+	struct leds *leds = tracker->priv->leds;
 
 	if (leds == NULL)
 		return;
@@ -32,4 +42,19 @@ void tracker_process(struct blob *blobs, int num_blobs,
 	estimate_initial_pose(blobs, num_blobs, leds->positions, leds->num,
 			      camera_matrix, dist_coeffs, rot, trans,
 			      true);
+}
+
+static void ouvrt_tracker_class_init(OuvrtTrackerClass *klass G_GNUC_UNUSED)
+{
+}
+
+static void ouvrt_tracker_init(OuvrtTracker *self)
+{
+	self->priv = ouvrt_tracker_get_instance_private(self);
+	self->priv->leds = NULL;
+}
+
+OuvrtTracker *ouvrt_tracker_new(void)
+{
+	return g_object_new(OUVRT_TYPE_TRACKER, NULL);
 }

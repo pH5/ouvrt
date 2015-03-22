@@ -6,6 +6,7 @@
 
 #include "camera-v4l2.h"
 #include "device.h"
+#include "tracker.h"
 
 #define OUVRT_TYPE_CAMERA_DK2		(ouvrt_camera_dk2_get_type())
 #define OUVRT_CAMERA_DK2(obj)		(G_TYPE_CHECK_INSTANCE_CAST((obj), \

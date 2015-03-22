@@ -7,6 +7,7 @@
 #include "device.h"
 #include "leds.h"
 #include "math.h"
+#include "tracker.h"
 
 #define OUVRT_TYPE_RIFT_DK2		(ouvrt_rift_dk2_get_type())
 #define OUVRT_RIFT_DK2(obj)		(G_TYPE_CHECK_INSTANCE_CAST((obj), \
@@ -36,6 +37,7 @@ struct _OuvrtRiftDK2Private;
 
 struct _OuvrtRiftDK2 {
 	OuvrtDevice dev;
+	OuvrtTracker *tracker;
 
 	struct leds leds;
 	struct imu imu;

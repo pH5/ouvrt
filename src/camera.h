@@ -4,6 +4,7 @@
 #include <glib-object.h>
 
 #include "device.h"
+#include "tracker.h"
 
 struct blobwatch;
 struct debug_gst;
@@ -25,6 +26,7 @@ typedef struct _OuvrtCameraClass	OuvrtCameraClass;
 
 struct _OuvrtCamera {
 	OuvrtDevice dev;
+	OuvrtTracker *tracker;
 
 	int width;
 	int height;

@@ -255,17 +255,17 @@ static void ouvrt_camera_v4l2_thread(OuvrtDevice *dev)
 		clock_gettime(CLOCK_MONOTONIC, &tp);
 		timestamps[2] = tp.tv_sec + 1e-9 * tp.tv_nsec;
 
-		if (ob) {
-
+		if (ob && camera->tracker) {
 			/*
 			 * If we got an observation, calculate the pose from
 			 * blob detector output, intrinsic camera parameters,
 			 * and the known LED positions.
 			 */
-			tracker_process(ob->blobs, ob->num_blobs,
-					camera->camera_matrix,
-					camera->dist_coeffs,
-					&rot, &trans);
+			ouvrt_tracker_process(camera->tracker, ob->blobs,
+					      ob->num_blobs,
+					      camera->camera_matrix,
+					      camera->dist_coeffs,
+					      &rot, &trans);
 		}
 
 		clock_gettime(CLOCK_MONOTONIC, &tp);

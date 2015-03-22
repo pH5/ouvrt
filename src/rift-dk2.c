@@ -447,7 +447,7 @@ static int rift_dk2_start(OuvrtDevice *dev)
 	if (ret < 0)
 		return ret;
 
-	tracker_register_leds(&rift->leds);
+	ouvrt_tracker_register_leds(rift->tracker, &rift->leds);
 
 	return 0;
 }
@@ -506,7 +506,9 @@ static void rift_dk2_stop(OuvrtDevice *dev)
 	unsigned char tracking[13] = { 0x0c };
 	int fd = rift->dev.fd;
 
-	tracker_unregister_leds(&rift->leds);
+	ouvrt_tracker_unregister_leds(rift->tracker, &rift->leds);
+	g_object_unref(rift->tracker);
+	rift->tracker = NULL;
 
 	hid_get_feature_report(fd, tracking, sizeof(tracking));
 	tracking[4] &= ~(1 << 0);
@@ -520,6 +522,9 @@ static void rift_dk2_stop(OuvrtDevice *dev)
  */
 static void ouvrt_rift_dk2_finalize(GObject *object)
 {
+	OuvrtRiftDK2 *rift = OUVRT_RIFT_DK2(object);
+
+	g_object_unref(rift->tracker);
 	G_OBJECT_CLASS(ouvrt_rift_dk2_parent_class)->finalize(object);
 }
 
@@ -553,6 +558,7 @@ OuvrtDevice *rift_dk2_new(const char *devnode)
 		return NULL;
 
 	rift->dev.devnode = g_strdup(devnode);
+	rift->tracker = ouvrt_tracker_new();
 
 	return &rift->dev;
 }
