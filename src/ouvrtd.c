@@ -39,10 +39,18 @@ GList *device_list = NULL;
 static int num_devices;
 
 /*
+ * Compares the device's serial against a given serial.
+ */
+static gint ouvrt_device_cmp_serial(OuvrtDevice *dev, const char *serial)
+{
+	return g_strcmp0(dev->serial, serial);
+}
+
+/*
  * Check if an added device matches the table of known hardware, if yes create
  * a new device structure and start the device.
  */
-void ouvrtd_device_add(struct udev_device *dev)
+static void ouvrtd_device_add(struct udev_device *dev)
 {
 	const char *devnode, *vid, *pid, *serial;
 	struct udev_device *parent;
@@ -79,8 +87,37 @@ void ouvrtd_device_add(struct udev_device *dev)
 		return;
 	if (serial && d->serial == NULL)
 		d->serial = strdup(serial);
-	if (d->serial)
+	if (d->serial) {
+		GList *link;
+
 		g_print("%s: Serial %s\n", device_matches[i].name, d->serial);
+
+		link = g_list_find_custom(device_list, d->serial,
+					  (GCompareFunc)ouvrt_device_cmp_serial);
+		if (link) {
+			OuvrtRiftDK2 *rift = NULL;
+			OuvrtCameraDK2 *camera = NULL;
+
+			if (OUVRT_IS_RIFT_DK2(d) &&
+			    OUVRT_IS_CAMERA_DK2(link->data)) {
+				g_print("Associate %s and %s\n", d->devnode,
+					OUVRT_DEVICE(link->data)->devnode);
+				rift = OUVRT_RIFT_DK2(d);
+				camera = OUVRT_CAMERA_DK2(link->data);
+			}
+			if (OUVRT_IS_CAMERA_DK2(d) &&
+			    OUVRT_IS_RIFT_DK2(link->data)) {
+				camera = OUVRT_CAMERA_DK2(d);
+				rift = OUVRT_RIFT_DK2(link->data);
+			}
+			if (rift && camera) {
+				g_print("Associate %s and %s\n", d->devnode,
+					OUVRT_DEVICE(link->data)->devnode);
+
+				camera->v4l2.camera.tracker = rift->tracker;
+			}
+		}
+	}
 
 	device_list = g_list_append(device_list, d);
 	ouvrt_device_start(d);
