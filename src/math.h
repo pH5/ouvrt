@@ -7,6 +7,7 @@
 #define __MATH_H__
 
 #include <math.h>
+#include <float.h>
 #include <stdint.h>
 
 typedef struct {
@@ -26,7 +27,6 @@ typedef struct {
 } dmat3;
 
 float f16_to_float(uint16_t f16);
-void dquat_from_axis_angle(dquat *quat, const dvec3 *axis, double angle);
 
 static inline double vec3_dot(const vec3 *a, const vec3 *b)
 {
@@ -53,5 +53,37 @@ static inline void vec3_cross(vec3 *c, const vec3 *a, const vec3 *b)
 	c->y = a->z * b->x - b->z * a->x;
 	c->z = a->x * b->y - b->x * a->y;
 }
+
+static inline double dquat_dot(const dquat *q, const dquat *p)
+{
+	return q->w * p->w + q->x * p->x + q->y * p->y + q->z * p->z;
+}
+
+static inline double dquat_norm(const dquat *q)
+{
+	return sqrt(dquat_dot(q, q));
+}
+
+static inline void dquat_normalize(dquat *q)
+{
+	const double inv_norm = 1.0 / dquat_norm(q);
+
+	q->w *= inv_norm;
+	q->x *= inv_norm;
+	q->y *= inv_norm;
+	q->z *= inv_norm;
+}
+
+static inline void dquat_mult(dquat *r, dquat *p, const dquat *q)
+{
+	r->w = p->w * q->w - p->x * q->x - p->y * q->y - p->z * q->z;
+	r->x = p->w * q->x + p->x * q->w + p->y * q->z - p->z * q->y;
+	r->y = p->w * q->y + p->y * q->w + p->z * q->x - p->x * q->z;
+	r->z = p->w * q->z + p->z * q->w + p->x * q->y - p->y * q->x;
+}
+
+void dquat_from_axis_angle(dquat *quat, const dvec3 *axis, double angle);
+void dquat_from_axes(dquat *q, const vec3 *a, const vec3 *b);
+void dquat_from_gyro(dquat *q, const vec3 *gyro, double dt);
 
 #endif /* __MATH_H__ */
