@@ -135,7 +135,7 @@ static gint ouvrt_device_cmp_devnode(OuvrtDevice *dev, const char *devnode)
  * Check if a removed device matches a registered device structure. If yes,
  * dereference the device to stop it and free the device structure.
  */
-int ouvrtd_device_remove(struct udev_device *dev)
+static int ouvrtd_device_remove(struct udev_device *dev)
 {
 	const char *devnode;
 	GList *link;
@@ -158,7 +158,7 @@ int ouvrtd_device_remove(struct udev_device *dev)
 /*
  * Enumerate currently present USB devices to find known hardware.
  */
-int ouvrtd_enumerate(struct udev *udev)
+static int ouvrtd_enumerate(struct udev *udev)
 {
 	struct udev_enumerate *enumerate;
 	struct udev_list_entry *devices, *dev_list_entry;
@@ -191,7 +191,7 @@ struct udev_source {
 	gpointer tag;
 };
 
-gboolean udev_source_prepare(GSource *source, gint *timeout)
+static gboolean udev_source_prepare(GSource *source, gint *timeout)
 {
 	(void)source;
 
@@ -199,15 +199,15 @@ gboolean udev_source_prepare(GSource *source, gint *timeout)
 	return FALSE;
 }
 
-gboolean udev_source_check(GSource *source)
+static gboolean udev_source_check(GSource *source)
 {
 	struct udev_source *usrc = (struct udev_source *)source;
 
 	return (g_source_query_unix_fd(source, usrc->tag) > 0);
 }
 
-gboolean udev_source_dispatch(GSource *source, GSourceFunc callback,
-			      gpointer user_data)
+static gboolean udev_source_dispatch(GSource *source, GSourceFunc callback,
+				     gpointer user_data)
 {
 	struct udev_source *usrc = (struct udev_source *)source;
 	GIOCondition revents = g_source_query_unix_fd(source, usrc->tag);
@@ -227,7 +227,7 @@ GSourceFuncs udev_source_funcs = {
 	.dispatch = udev_source_dispatch,
 };
 
-gboolean udev_source_callback(gpointer user_data)
+static gboolean udev_source_callback(gpointer user_data)
 {
 	struct udev_monitor *monitor = user_data;
 	struct udev_device *dev;
@@ -252,7 +252,7 @@ gboolean udev_source_callback(gpointer user_data)
  * Set up a udev event monitor, call device enumeration, and then monitor
  * for appearing and disappearing known hardware.
  */
-void ouvrtd_startup(struct udev *udev)
+static void ouvrtd_startup(struct udev *udev)
 {
 	struct udev_monitor *monitor;
 	struct udev_source *source;
