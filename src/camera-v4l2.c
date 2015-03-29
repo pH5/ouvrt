@@ -260,7 +260,7 @@ static void ouvrt_camera_v4l2_thread(OuvrtDevice *dev)
 			 */
 			ouvrt_tracker_process_blobs(camera->tracker, ob->blobs,
 						    ob->num_blobs,
-						    camera->camera_matrix,
+						    &camera->camera_matrix,
 						    camera->dist_coeffs,
 						    &rot, &trans);
 		}

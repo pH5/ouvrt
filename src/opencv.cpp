@@ -11,7 +11,7 @@ extern "C" {
 
 extern "C" void estimate_initial_pose(struct blob *blobs, int num_blobs,
 				      vec3 *leds, int num_pos,
-				      double *camera_matrix, double *dist_coeffs,
+				      dmat3 *camera_matrix, double *dist_coeffs,
 				      dquat &rot, dvec3 &trans,
 				      bool use_extrinsic_guess)
 {
@@ -23,7 +23,7 @@ extern "C" void estimate_initial_pose(struct blob *blobs, int num_blobs,
 	int iterationsCount = 50;
 	float reprojectionError = 1.0;
 	float confidence = 0.95;
-	cv::Mat A = cv::Mat(3, 3, CV_64FC1, camera_matrix);
+	cv::Mat A = cv::Mat(3, 3, CV_64FC1, camera_matrix->m);
 	cv::Mat distCoeffs = cv::Mat(5, 1, CV_64FC1, dist_coeffs);
 	cv::Mat rvec = cv::Mat::zeros(3, 1, CV_64FC1);
 	cv::Mat tvec = cv::Mat(3, 1, CV_64FC1, (double *)&trans);

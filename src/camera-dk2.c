@@ -96,7 +96,7 @@ static void camera_dk2_get_calibration(OuvrtCameraDK2 *camera_dk2)
 {
 	OuvrtCamera *camera = OUVRT_CAMERA(camera_dk2);
 	OuvrtDevice *dev = &camera->dev;
-	double * const A = camera->camera_matrix;
+	double * const A = camera->camera_matrix.m;
 	double * const k = camera->dist_coeffs;
 	char buf[128];
 	double fx, fy, cx, cy;

@@ -214,7 +214,7 @@ static void ouvrt_camera1_on_sync_exposure_changed(GObject *object,
 static void ouvrt_dbus_export_camera1_interface(OuvrtDevice *dev)
 {
 	OuvrtCamera *camera = OUVRT_CAMERA(dev);
-	double *A = camera->camera_matrix;
+	double *A = camera->camera_matrix.m;
 	OuvrtObjectSkeleton *object;
 	OuvrtCamera1 *camera1;
 	const gchar *caps;

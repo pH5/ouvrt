@@ -48,7 +48,7 @@ void ouvrt_tracker_process_frame(OuvrtTracker *tracker,
 				 int skipped, struct blobservation **ob);
 void ouvrt_tracker_process_blobs(OuvrtTracker *tracker,
 				 struct blob *blobs, int num_blobs,
-				 double camera_matrix[9], double dist_coeffs[5],
+				 dmat3 *camera_matrix, double dist_coeffs[5],
 				 dquat *rot, dvec3 *trans);
 
 OuvrtTracker *ouvrt_tracker_new();

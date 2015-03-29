@@ -5,6 +5,7 @@
 
 #include "device.h"
 #include "tracker.h"
+#include "math.h"
 
 struct debug_gst;
 
@@ -30,7 +31,7 @@ struct _OuvrtCamera {
 	int width;
 	int height;
 	int framerate;
-	double camera_matrix[9];
+	dmat3 camera_matrix;
 	double dist_coeffs[5];
 	int sizeimage;
 	int sequence;
