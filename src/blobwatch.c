@@ -8,6 +8,8 @@
 #include "debug.h"
 #include "flicker.h"
 
+struct leds;
+
 /* temporary global */
 extern int rift_dk2_flicker;
 
@@ -234,7 +236,7 @@ static int find_free_track(uint8_t *tracked)
  * history.
  */
 void blobwatch_process(struct blobwatch *bw, uint8_t *frame,
-		       int width, int height, int skipped,
+		       int width, int height, int skipped, struct leds *leds,
 		       struct blobservation **output)
 {
 	int last = bw->last_observation;
@@ -331,7 +333,8 @@ void blobwatch_process(struct blobwatch *bw, uint8_t *frame,
 
 	if (rift_dk2_flicker) {
 		/* Identify blobs by their blinking pattern */
-		flicker_process(bw->fl, ob->blobs, ob->num_blobs, skipped);
+		flicker_process(bw->fl, ob->blobs, ob->num_blobs, skipped,
+				leds);
 	}
 
 	/* Return observed blobs */

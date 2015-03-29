@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+struct leds;
+
 #define MAX_EXTENTS_PER_LINE 11
 #define MAX_BLOBS_PER_FRAME  42
 
@@ -56,6 +58,7 @@ struct blobwatch;
 struct blobwatch *blobwatch_new(int width, int height);
 void blobwatch_process(struct blobwatch *bw, uint8_t *frame,
 		       int width, int height, int skipped,
+		       struct leds *leds,
 		       struct blobservation **output);
 
 #endif /* __BLOBWATCH_H__*/

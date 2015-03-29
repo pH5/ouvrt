@@ -6,7 +6,6 @@
 #include "device.h"
 #include "tracker.h"
 
-struct blobwatch;
 struct debug_gst;
 
 #define OUVRT_TYPE_CAMERA		(ouvrt_camera_get_type())
@@ -35,7 +34,6 @@ struct _OuvrtCamera {
 	double dist_coeffs[5];
 	int sizeimage;
 	int sequence;
-	struct blobwatch *bw;
 	struct debug_gst *debug;
 };
 

@@ -6,9 +6,10 @@
 
 struct flicker;
 struct blob;
+struct leds;
 
 struct flicker *flicker_new();
 void flicker_process(struct flicker *fl, struct blob *blobs, int num_blobs,
-		     int skipped);
+		     int skipped, struct leds *leds);
 
 #endif /* __BLOBWATCH_H__*/

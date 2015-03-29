@@ -27,7 +27,6 @@ typedef struct _OuvrtCameraV4L2		OuvrtCameraV4L2;
 typedef struct _OuvrtCameraV4L2Class	OuvrtCameraV4L2Class;
 typedef struct _OuvrtCameraV4L2Private	OuvrtCameraV4L2Private;
 
-struct blobwatch;
 struct debug_gst;
 
 struct _OuvrtCameraV4L2 {

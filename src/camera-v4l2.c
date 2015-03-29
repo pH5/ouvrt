@@ -9,7 +9,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "blobwatch.h"
 #include "camera-v4l2.h"
 #include "debug.h"
 #include "debug-gst.h"
@@ -141,7 +140,6 @@ static int ouvrt_camera_v4l2_start(OuvrtDevice *dev)
 
 	g_print("v4l2: Started streaming\n");
 
-	camera->bw = blobwatch_new(width, height);
 	camera->debug = debug_gst_new(width, height, camera->framerate);
 
 	return ret;
@@ -240,17 +238,16 @@ static void ouvrt_camera_v4l2_thread(OuvrtDevice *dev)
 		camera->sequence = buf.sequence;
 
 		/*
-		 * TODO: get estimated pose at time of exposure from tracker
+		 * Find bright blobs in the camera image and identify individual LEDs
+		 * using the estimated pose at time of exposure or, if that is not
+		 * available, using the LED blinking pattern.
 		 */
-//		tracker_estimate_pose(tracker, timestamps[0], &pose);
-
-		/*
-		 * TODO: provide estimated positions of visible LEDs to the
-		 * blob tracker.
-		 */
-
 		struct blobservation *ob = NULL;
-		blobwatch_process(camera->bw, raw, width, height, skipped, &ob);
+		if (camera->tracker) {
+			ouvrt_tracker_process_frame(camera->tracker,
+						    raw, width, height, skipped,
+						    &ob);
+		}
 
 		clock_gettime(CLOCK_MONOTONIC, &tp);
 		timestamps[2] = tp.tv_sec + 1e-9 * tp.tv_nsec;
@@ -261,11 +258,11 @@ static void ouvrt_camera_v4l2_thread(OuvrtDevice *dev)
 			 * blob detector output, intrinsic camera parameters,
 			 * and the known LED positions.
 			 */
-			ouvrt_tracker_process(camera->tracker, ob->blobs,
-					      ob->num_blobs,
-					      camera->camera_matrix,
-					      camera->dist_coeffs,
-					      &rot, &trans);
+			ouvrt_tracker_process_blobs(camera->tracker, ob->blobs,
+						    ob->num_blobs,
+						    camera->camera_matrix,
+						    camera->dist_coeffs,
+						    &rot, &trans);
 		}
 
 		clock_gettime(CLOCK_MONOTONIC, &tp);
@@ -325,8 +322,6 @@ static void ouvrt_camera_v4l2_stop(OuvrtDevice *dev)
 	g_print("v4l2: Stopped streaming\n");
 
 	/* TODO: move up to camera */
-	free(camera->bw);
-	camera->bw = NULL;
 	camera->debug = debug_gst_unref(camera->debug);
 }
 

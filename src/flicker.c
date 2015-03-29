@@ -6,6 +6,7 @@
 
 #include "blobwatch.h"
 #include "debug.h"
+#include "leds.h"
 
 #include <stdio.h>
 
@@ -14,20 +15,6 @@
  */
 struct flicker {
 	int phase;
-	const uint16_t *patterns;
-	int num_patterns;
-};
-
-/* FIXME */
-/*
- * Static copy of the blinking patterns for LEDs 0 to 39 as read from a
- * Rift DK2.
- */
-static const uint16_t rift_dk2_patterns[40] = {
-	0x001, 0x006, 0x01a, 0x01d, 0x028, 0x02f, 0x033, 0x04b, 0x04c, 0x057,
-	0x062, 0x065, 0x079, 0x07e, 0x090, 0x0a4, 0x114, 0x151, 0x183, 0x18c,
-	0x199, 0x1aa, 0x1b5, 0x1c0, 0x1cf, 0x1d6, 0x1e9, 0x1f3, 0x1fc, 0x230,
-	0x252, 0x282, 0x285, 0x29b, 0x29c, 0x2ae, 0x2b7, 0x2c8, 0x2d1, 0x2e3,
 };
 
 /*
@@ -44,8 +31,6 @@ struct flicker *flicker_new()
 
 	memset(fl, 0, sizeof(*fl));
 	fl->phase = -1;
-	fl->patterns = rift_dk2_patterns;
-	fl->num_patterns = 40;
 
 	return fl;
 }
@@ -63,16 +48,17 @@ static int hamming_distance(uint16_t a, uint16_t b)
 	return distance;
 }
 
-static int pattern_find_id(struct flicker *fl, uint16_t pattern, int8_t *id)
+static int pattern_find_id(uint16_t *patterns, int num_patterns,
+			   uint16_t pattern, int8_t *id)
 {
 	int i;
 
-	for (i = 0; i < 40; i++) {
-		if (pattern == fl->patterns[i]) {
+	for (i = 0; i < num_patterns; i++) {
+		if (pattern == patterns[i]) {
 			*id = i;
 			return 2;
 		}
-		if (hamming_distance(pattern, fl->patterns[i]) < 2) {
+		if (hamming_distance(pattern, patterns[i]) < 2) {
 			*id = i;
 			return 1;
 		}
@@ -81,14 +67,14 @@ static int pattern_find_id(struct flicker *fl, uint16_t pattern, int8_t *id)
 	return -2;
 }
 
-static int pattern_get_phase(struct flicker *fl, uint16_t pattern)
+static int pattern_get_phase(uint16_t *patterns, int num_patterns, uint16_t pattern)
 {
 	int i, j;
 
 	for (i = 1; i < 10; i++) {
 		pattern = ((pattern & 0x1ff) << 1) | (pattern >> 9);
-		for (j = 0; j < 40; j++)
-			if (pattern == fl->patterns[j])
+		for (j = 0; j < num_patterns; j++)
+			if (pattern == patterns[j])
 				return i;
 	}
 
@@ -100,7 +86,7 @@ static int pattern_get_phase(struct flicker *fl, uint16_t pattern)
  * stored in the Rift DK2 to determine the corresponding LED IDs.
  */
 void flicker_process(struct flicker *fl, struct blob *blobs, int num_blobs,
-		     int skipped)
+		     int skipped, struct leds *leds)
 {
 	struct blob *b;
 	int success = 0;
@@ -159,7 +145,8 @@ void flicker_process(struct flicker *fl, struct blob *blobs, int num_blobs,
 		pattern = ((pattern >> (10 - phase)) | (pattern << phase)) &
 			  0x3ff;
 
-		success += pattern_find_id(fl, pattern, &b->led_id);
+		success += pattern_find_id(leds->patterns, leds->num, pattern,
+					   &b->led_id);
 	}
 
 	if (success < 0 || phase < 0) {
@@ -169,7 +156,8 @@ void flicker_process(struct flicker *fl, struct blob *blobs, int num_blobs,
 		int i;
 
 		for (b = blobs; b < blobs + num_blobs; b++) {
-			int phase = pattern_get_phase(fl, b->pattern);
+			int phase = pattern_get_phase(leds->patterns, leds->num,
+						      b->pattern);
 			if (phase >= 0)
 				phase_error[phase]++;
 		}
