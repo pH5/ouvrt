@@ -1,3 +1,8 @@
+/*
+ * LED pattern detection and identification
+ * Copyright 2015 Philipp Zabel
+ * SPDX-License-Identifier:	LGPL-2.0+
+ */
 #ifndef __FLICKER_H__
 #define __FLICKER_H__
 

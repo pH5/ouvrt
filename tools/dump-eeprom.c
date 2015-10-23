@@ -1,3 +1,8 @@
+/*
+ * Dumps the Oculus Positional Tracker DK2 EEPROM
+ * Copyright 2014 Philipp Zabel
+ * SPDX-License-Identifier:	GPL-2.0+
+ */
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/fcntl.h>
@@ -5,9 +10,6 @@
 
 #include "esp570.h"
 
-/*
- * Dumps the Oculus Positional Tracker DK2 EEPROM 
- */
 int main(int argc, char *argv[])
 {
 	char buf[0x20];

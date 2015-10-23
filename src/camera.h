@@ -1,3 +1,8 @@
+/*
+ * Camera base class
+ * Copyright 2015 Philipp Zabel
+ * SPDX-License-Identifier:	LGPL-2.0+
+ */
 #ifndef __CAMERA_H__
 #define __CAMERA_H__
 

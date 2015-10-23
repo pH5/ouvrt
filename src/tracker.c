@@ -1,3 +1,8 @@
+/*
+ * Position estimation and tracking
+ * Copyright 2015 Philipp Zabel
+ * SPDX-License-Identifier:	LGPL-2.0+
+ */
 #include <stdlib.h>
 #include <stdio.h>
 

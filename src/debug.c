@@ -1,3 +1,8 @@
+/*
+ * Debug output helpers
+ * Copyright 2015 Philipp Zabel
+ * SPDX-License-Identifier:	GPL-2.0+
+ */
 #include <stdint.h>
 #include <stdlib.h>
 

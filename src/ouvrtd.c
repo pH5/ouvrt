@@ -1,3 +1,8 @@
+/*
+ * Main loop and device enumeration
+ * Copyright 2015 Philipp Zabel
+ * SPDX-License-Identifier:	GPL-2.0+
+ */
 #include <errno.h>
 #include <getopt.h>
 #include <glib.h>

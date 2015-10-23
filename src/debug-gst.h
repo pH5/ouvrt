@@ -1,3 +1,8 @@
+/*
+ * GStreamer debug video output
+ * Copyright 2015 Philipp Zabel
+ * SPDX-License-Identifier:	GPL-2.0+
+ */
 #ifndef __DEBUG_GST_H__
 #define __DEBUG_GST_H__
 

@@ -1,3 +1,8 @@
+/*
+ * V4L2 camera class
+ * Copyright 2015 Philipp Zabel
+ * SPDX-License-Identifier:	LGPL-2.0+
+ */
 #include <errno.h>
 #include <linux/videodev2.h>
 #include <poll.h>

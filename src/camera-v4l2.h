@@ -1,3 +1,8 @@
+/*
+ * V4L2 camera class
+ * Copyright 2015 Philipp Zabel
+ * SPDX-License-Identifier:	LGPL-2.0+
+ */
 #ifndef __CAMERA_V4L2_H__
 #define __CAMERA_V4L2_H__
 

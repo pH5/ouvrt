@@ -1,3 +1,8 @@
+/*
+ * Oculus Positional Tracker DK2 camera
+ * Copyright 2014-2015 Philipp Zabel
+ * SPDX-License-Identifier:	LGPL-2.0+
+ */
 #ifndef __CAMERA_DK2_H__
 #define __CAMERA_DK2_H__
 

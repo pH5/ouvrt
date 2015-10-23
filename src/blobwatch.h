@@ -1,3 +1,8 @@
+/*
+ * Blob detection
+ * Copyright 2014-2015 Philipp Zabel
+ * SPDX-License-Identifier:	LGPL-2.0+
+ */
 #ifndef __BLOBWATCH_H__
 #define __BLOBWATCH_H__
 

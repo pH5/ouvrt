@@ -1,3 +1,8 @@
+/*
+ * LED debug tools
+ * Copyright 2015 Philipp Zabel
+ * SPDX-License-Identifier:	GPL-2.0+
+ */
 #include <stdio.h>
 
 #include "leds.h"

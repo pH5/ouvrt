@@ -1,3 +1,8 @@
+/*
+ * Oculus Rift DK2 HMD
+ * Copyright 2015 Philipp Zabel
+ * SPDX-License-Identifier:	LGPL-2.0+
+ */
 #ifndef __RIFT_DK2_H__
 #define __RIFT_DK2_H__
 
