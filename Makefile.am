@@ -97,4 +97,5 @@ src/gdbus-generated.h: xml/de.phfuenf.ouvrt.Tracker1.xml \
 		--c-namespace Ouvrt \
 		--c-generate-object-manager \
 		$^
-
+	@sed -i '/^ouvrt_tracker1_complete_/{N;s/object,/object G_GNUC_UNUSED,/}' \
+		src/gdbus-generated.c
