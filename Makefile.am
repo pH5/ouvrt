@@ -9,6 +9,8 @@ noinst_LIBRARIES = \
 
 ACLOCAL_AMFLAGS = -I m4
 
+ARFLAGS = crD
+
 CLEANFILES = \
 	src/gdbus-generated.h \
 	src/gdbus-generated.c
