@@ -312,6 +312,58 @@ static int rift_dk2_send_tracking(OuvrtRiftDK2 *rift, bool blink)
 	return hid_send_feature_report(rift->dev.fd, buf, sizeof(buf));
 }
 
+#define DISPLAY_READ_PIXEL	0x04
+#define DISPLAY_DIRECT_PENTILE	0x08
+
+/*
+ * Sends a display report to set up low persistence and pixel readback
+ * for latency measurement.
+ */
+static int rift_dk2_send_display(OuvrtRiftDK2 *rift, bool low_persistence,
+				 bool pixel_readback)
+{
+	unsigned char buf[16] = { 0x0d };
+	uint8_t brightness;
+	uint8_t flags1;
+	uint8_t flags2;
+	uint16_t persistence;
+	uint16_t lighting_offset;
+	uint16_t pixel_settle;
+	uint16_t total_rows;
+	int ret;
+
+	ret = hid_get_feature_report(rift->dev.fd, buf, sizeof(buf));
+	if (ret < 0)
+		return ret;
+
+	brightness = buf[3];
+	flags1 = buf[4];
+	flags2 = buf[5];
+	persistence = __le16_to_cpup((__le16 *)(buf + 8));
+	lighting_offset = __le16_to_cpup((__le16 *)(buf + 10));
+	pixel_settle = __le16_to_cpup((__le16 *)(buf + 12));
+	total_rows = __le16_to_cpup((__le16 *)(buf + 14));
+
+	if (low_persistence) {
+		brightness = 255;
+		persistence = total_rows * 18 / 100;
+	} else {
+		brightness = 0;
+		persistence = total_rows;
+	}
+	if (pixel_readback)
+		flags2 |= DISPLAY_READ_PIXEL;
+	else
+		flags2 &= ~DISPLAY_READ_PIXEL;
+	flags2 &= ~DISPLAY_DIRECT_PENTILE;
+
+	buf[3] = brightness;
+	buf[5] = flags2;
+	*(uint16_t *)(buf + 8) = __cpu_to_le16(persistence);
+
+	return hid_send_feature_report(rift->dev.fd, buf, sizeof(buf));
+}
+
 /*
  * Unpacks three big-endian signed 21-bit values packed into 8 bytes
  * and stores them in a floating point vector after multiplying by 10⁻⁴.
@@ -458,6 +510,10 @@ static int rift_dk2_start(OuvrtDevice *dev)
 		return ret;
 
 	ret = rift_dk2_send_tracking(rift, TRUE);
+	if (ret < 0)
+		return ret;
+
+	ret = rift_dk2_send_display(rift, TRUE, TRUE);
 	if (ret < 0)
 		return ret;
 
