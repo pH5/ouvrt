@@ -278,6 +278,13 @@ static int rift_dk2_send_keepalive(OuvrtRiftDK2 *rift)
 	return hid_send_feature_report(rift->dev.fd, buf, sizeof(buf));
 }
 
+#define TRACKING_ENABLE		0x01
+#define TRACKING_AUTO_INCREMENT	0x02
+#define TRACKING_USE_CARRIER	0x04
+#define TRACKING_SYNC_INPUT	0x08
+#define TRACKING_VSYNC_LOCK	0x10
+#define TRACKING_CUSTOM_PATTERN	0x20
+
 /*
  * Sends a tracking report to enable the IR tracking LEDs.
  */
@@ -290,10 +297,12 @@ static int rift_dk2_send_tracking(OuvrtRiftDK2 *rift, bool blink)
 	const uint8_t duty_cycle = 0x7f;
 
 	if (blink) {
-		buf[4] = 0x07;
+		buf[3] = 0;
+		buf[4] = TRACKING_ENABLE | TRACKING_USE_CARRIER |
+			 TRACKING_AUTO_INCREMENT;
 	} else {
-		buf[3] = 0xff;
-		buf[4] = 0x05;
+		buf[3] = 0xff; /* pattern ? */
+		buf[4] = TRACKING_ENABLE | TRACKING_USE_CARRIER;
 	}
 	*(uint16_t *)(buf + 6) = __cpu_to_le16(exposure_us);
 	*(uint16_t *)(buf + 8) = __cpu_to_le16(period_us);
