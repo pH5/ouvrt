@@ -1,7 +1,7 @@
 /*
  * Pose estimation using OpenCV
  * Copyright 2015 Philipp Zabel
- * SPDX-License-Identifier:	LGPL-2.0+
+ * SPDX-License-Identifier:	LGPL-2.0+ or BSL-1.0
  */
 #ifndef __OPENCV_H__
 #define __OPENCV_H__

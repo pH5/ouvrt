@@ -1,7 +1,7 @@
 /*
  * Position estimation and tracking
  * Copyright 2015 Philipp Zabel
- * SPDX-License-Identifier:	LGPL-2.0+
+ * SPDX-License-Identifier:	LGPL-2.0+ or BSL-1.0
  */
 #ifndef __TRACKER_H__
 #define __TRACKER_H__

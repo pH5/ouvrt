@@ -1,7 +1,7 @@
 /*
  * Blob detection
  * Copyright 2014-2015 Philipp Zabel
- * SPDX-License-Identifier:	LGPL-2.0+
+ * SPDX-License-Identifier:	LGPL-2.0+ or BSL-1.0
  */
 #include <stdbool.h>
 #include <stdint.h>

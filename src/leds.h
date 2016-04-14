@@ -1,7 +1,7 @@
 /*
  * A 3D object of (possibly blinking) LEDs
  * Copyright 2015 Philipp Zabel
- * SPDX-License-Identifier:	LGPL-2.0+
+ * SPDX-License-Identifier:	LGPL-2.0+ or BSL-1.0
  */
 #ifndef __LEDS_H__
 #define __LEDS_H__

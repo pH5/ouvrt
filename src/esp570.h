@@ -1,7 +1,7 @@
 /*
  * Etron Technology eSP570 webcam controller specific UVC functionality
  * Copyright 2014 Philipp Zabel
- * SPDX-License-Identifier:	LGPL-2.0+
+ * SPDX-License-Identifier:	LGPL-2.0+ or BSL-1.0
  */
 #include <stdint.h>
 
