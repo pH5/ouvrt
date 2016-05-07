@@ -5,20 +5,19 @@
  */
 #include <asm/byteorder.h>
 #include <errno.h>
-#include <linux/hidraw.h>
 #include <poll.h>
 #include <pthread.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/fcntl.h>
-#include <sys/ioctl.h>
 #include <unistd.h>
 #include <math.h>
 
 #include "rift-dk2.h"
 #include "debug.h"
 #include "device.h"
+#include "hidraw.h"
 #include "imu.h"
 #include "math.h"
 #include "leds.h"
@@ -34,24 +33,6 @@ struct _OuvrtRiftDK2Private {
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtRiftDK2, ouvrt_rift_dk2, OUVRT_TYPE_DEVICE)
-
-/*
- * Receives a feature report from the HID device.
- */
-static int hid_get_feature_report(int fd, const unsigned char *data,
-				  size_t length)
-{
-	return ioctl(fd, HIDIOCGFEATURE(length), data);
-}
-
-/*
- * Sends a feature report to the HID device.
- */
-static int hid_send_feature_report(int fd, const unsigned char *data,
-				   size_t length)
-{
-	return ioctl(fd, HIDIOCSFEATURE(length), data);
-}
 
 #define RIFT_DK2_CONFIG_USE_CALIBRATION		0x04
 #define RIFT_DK2_CONFIG_AUTO_CALIBRATION	0x08
