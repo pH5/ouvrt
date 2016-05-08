@@ -37,6 +37,7 @@ static void ouvrt_device_finalize(GObject *object)
 	if (dev->fd != -1)
 		close(dev->fd);
 	free(dev->devnode);
+	free(dev->name);
 	free(dev->serial);
 	G_OBJECT_CLASS(ouvrt_device_parent_class)->finalize(object);
 }
@@ -54,6 +55,7 @@ static void ouvrt_device_init(OuvrtDevice *self)
 {
 	self->type = 0;
 	self->devnode = NULL;
+	self->name = NULL;
 	self->serial = NULL;
 	self->active = FALSE;
 	self->fd = -1;

@@ -35,6 +35,7 @@ struct _OuvrtDevice {
 
 	enum device_type type;
 	char *devnode;
+	char *name;
 	char *serial;
 	gboolean active;
 	int fd;
