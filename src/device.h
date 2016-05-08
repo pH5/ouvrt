@@ -12,6 +12,7 @@
 enum device_type {
 	DEVICE_TYPE_HMD,
 	DEVICE_TYPE_CAMERA,
+	DEVICE_TYPE_CONTROLLER,
 };
 
 #define OUVRT_TYPE_DEVICE		(ouvrt_device_get_type())
