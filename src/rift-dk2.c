@@ -342,6 +342,10 @@ static int rift_dk2_send_display(OuvrtRiftDK2 *rift, bool low_persistence,
 	buf[5] = flags2;
 	*(uint16_t *)(buf + 8) = __cpu_to_le16(persistence);
 
+	(void)pixel_settle;
+	(void)lighting_offset;
+	(void)flags1;
+
 	return hid_send_feature_report(rift->dev.fd, buf, sizeof(buf));
 }
 
@@ -447,6 +451,14 @@ static void rift_dk2_decode_sensor_message(OuvrtRiftDK2 *rift,
 
 		debug_imu_fifo_in(&state, 1);
 	}
+
+	(void)exposure_timestamp;
+	(void)exposure_count;
+	(void)led_pattern_phase;
+	(void)frame_id;
+	(void)frame_timestamp;
+	(void)frame_count;
+	(void)sample_count;
 }
 
 /*
