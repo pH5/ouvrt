@@ -19,12 +19,17 @@
 #include "vive-hid-reports.h"
 #include "device.h"
 #include "hidraw.h"
+#include "json.h"
 #include "math.h"
 
 struct _OuvrtViveControllerPrivate {
 	JsonNode *config;
 	const gchar *serial;
 	gboolean connected;
+	vec3 acc_bias;
+	vec3 acc_scale;
+	vec3 gyro_bias;
+	vec3 gyro_scale;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveController, ouvrt_vive_controller, \
@@ -87,8 +92,14 @@ static int vive_controller_get_config(OuvrtViveController *self)
 
 	object = json_node_get_object(self->priv->config);
 
+	json_object_get_vec3_member(object, "acc_bias", &self->priv->acc_bias);
+	json_object_get_vec3_member(object, "acc_scale", &self->priv->acc_scale);
+
 	self->priv->serial = json_object_get_string_member(object,
 							   "device_serial_number");
+
+	json_object_get_vec3_member(object, "gyro_bias", &self->priv->gyro_bias);
+	json_object_get_vec3_member(object, "gyro_scale", &self->priv->gyro_scale);
 
 	return 0;
 }
