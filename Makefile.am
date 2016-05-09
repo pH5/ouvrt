@@ -66,7 +66,9 @@ ouvrtd_SOURCES = \
 	src/opencv.h \
 	src/opencv.cpp \
 	src/vive-headset-imu.h \
-	src/vive-headset-imu.c
+	src/vive-headset-imu.c \
+	src/vive-headset-lighthouse.h \
+	src/vive-headset-lighthouse.c
 
 nodist_ouvrtd_SOURCES = \
 	src/gdbus-generated.h \

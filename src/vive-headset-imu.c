@@ -110,8 +110,15 @@ static void vive_headset_imu_decode_message(OuvrtViveHeadsetIMU *self,
 	}
 }
 
+static int vive_headset_enable_lighthouse(OuvrtViveHeadsetIMU *self)
+{
+	unsigned char buf[5] = { 0x04 };
+
+	return hid_send_feature_report(self->dev.fd, buf, sizeof(buf));
+}
+
 /*
- * Opens the IMU HID device file descriptor.
+ * Opens the IMU device and enables the Lighthouse Receiver.
  */
 static int vive_headset_imu_start(OuvrtDevice *dev)
 {
@@ -132,6 +139,13 @@ static int vive_headset_imu_start(OuvrtDevice *dev)
 	ret = vive_headset_get_firmware_version(self);
 	if (ret < 0) {
 		g_print("%s: Failed to get firmware version\n", dev->name);
+		return ret;
+	}
+
+	ret = vive_headset_enable_lighthouse(self);
+	if (ret < 0) {
+		g_print("%s: Failed to enable Lighthouse Receiver\n",
+			dev->name);
 		return ret;
 	}
 

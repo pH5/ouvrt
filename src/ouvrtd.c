@@ -22,6 +22,7 @@
 #include "rift-dk2.h"
 #include "camera-dk2.h"
 #include "vive-headset-imu.h"
+#include "vive-headset-lighthouse.h"
 
 #define VID_OCULUSVR		"2833"
 #define PID_RIFT_DK2		"0021"
@@ -30,7 +31,7 @@
 #define VID_VALVE		"28de"
 #define PID_VIVE_HEADSET	"2000"
 
-#define NUM_MATCHES	3
+#define NUM_MATCHES	4
 
 struct device_match {
 	const char *vid;
@@ -57,6 +58,12 @@ static const struct device_match device_matches[NUM_MATCHES] = {
 		.name = "Vive Headset IMU",
 		.interface = 0,
 		.new = vive_headset_imu_new,
+	}, {
+		.vid = VID_VALVE,
+		.pid = PID_VIVE_HEADSET,
+		.name = "Vive Headset Lighthouse RX",
+		.interface = 1,
+		.new = vive_headset_lighthouse_new,
 	},
 };
 
