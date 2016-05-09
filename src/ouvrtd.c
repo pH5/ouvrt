@@ -32,12 +32,22 @@ struct device_match {
 	const char *vid;
 	const char *pid;
 	const char *name;
+	int interface;
 	OuvrtDevice *(*new)(const char *devnode);
 };
 
 static const struct device_match device_matches[NUM_MATCHES] = {
-	{ VID_OCULUSVR, PID_RIFT_DK2,    "Rift DK2",    rift_dk2_new    },
-	{ VID_OCULUSVR, PID_CAMERA_DK2,  "Camera DK2",  camera_dk2_new  },
+	{
+		.vid = VID_OCULUSVR,
+		.pid = PID_RIFT_DK2,
+		.name = "Rift DK2",
+		.new = rift_dk2_new
+	}, {
+		.vid = VID_OCULUSVR,
+		.pid = PID_CAMERA_DK2,
+		.name = "Camera DK2",
+		.new = camera_dk2_new
+	},
 };
 
 GList *device_list = NULL;
@@ -57,13 +67,22 @@ static gint ouvrt_device_cmp_serial(OuvrtDevice *dev, const char *serial)
  */
 static void ouvrtd_device_add(struct udev_device *dev)
 {
-	const char *devnode, *vid, *pid, *serial;
+	const char *devnode, *vid, *pid, *serial, *interface;
 	struct udev_device *parent;
 	OuvrtDevice *d;
-	int i;
+	int i, iface;
 
 	parent = udev_device_get_parent_with_subsystem_devtype(dev,
-						"usb", "usb_device");
+						"usb", "usb_interface");
+	if (!parent)
+		return;
+
+	interface = udev_device_get_sysattr_value(parent, "bInterfaceNumber");
+	if (!interface)
+		return;
+	iface = atoi(interface);
+
+	parent = udev_device_get_parent(parent);
 	if (!parent)
 		return;
 
@@ -77,7 +96,8 @@ static void ouvrtd_device_add(struct udev_device *dev)
 
 	for (i = 0; i < NUM_MATCHES; i++) {
 		if (strcmp(vid, device_matches[i].vid) == 0 &&
-		    strcmp(pid, device_matches[i].pid) == 0)
+		    strcmp(pid, device_matches[i].pid) == 0 &&
+		    device_matches[i].interface == iface)
 			break;
 	}
 	if (i == NUM_MATCHES)
