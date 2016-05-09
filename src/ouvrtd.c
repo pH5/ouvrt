@@ -21,12 +21,16 @@
 #include "gdbus-generated.h"
 #include "rift-dk2.h"
 #include "camera-dk2.h"
+#include "vive-headset-imu.h"
 
-#define VID_OCULUSVR	"2833"
-#define PID_RIFT_DK2	"0021"
-#define PID_CAMERA_DK2	"0201"
+#define VID_OCULUSVR		"2833"
+#define PID_RIFT_DK2		"0021"
+#define PID_CAMERA_DK2		"0201"
 
-#define NUM_MATCHES	2
+#define VID_VALVE		"28de"
+#define PID_VIVE_HEADSET	"2000"
+
+#define NUM_MATCHES	3
 
 struct device_match {
 	const char *vid;
@@ -41,12 +45,18 @@ static const struct device_match device_matches[NUM_MATCHES] = {
 		.vid = VID_OCULUSVR,
 		.pid = PID_RIFT_DK2,
 		.name = "Rift DK2",
-		.new = rift_dk2_new
+		.new = rift_dk2_new,
 	}, {
 		.vid = VID_OCULUSVR,
 		.pid = PID_CAMERA_DK2,
 		.name = "Camera DK2",
-		.new = camera_dk2_new
+		.new = camera_dk2_new,
+	}, {
+		.vid = VID_VALVE,
+		.pid = PID_VIVE_HEADSET,
+		.name = "Vive Headset IMU",
+		.interface = 0,
+		.new = vive_headset_imu_new,
 	},
 };
 

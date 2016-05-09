@@ -64,7 +64,9 @@ ouvrtd_SOURCES = \
 	src/tracker.h \
 	src/ouvrtd.c \
 	src/opencv.h \
-	src/opencv.cpp
+	src/opencv.cpp \
+	src/vive-headset-imu.h \
+	src/vive-headset-imu.c
 
 nodist_ouvrtd_SOURCES = \
 	src/gdbus-generated.h \
