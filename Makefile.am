@@ -70,7 +70,9 @@ ouvrtd_SOURCES = \
 	src/vive-headset-imu.h \
 	src/vive-headset-imu.c \
 	src/vive-headset-lighthouse.h \
-	src/vive-headset-lighthouse.c
+	src/vive-headset-lighthouse.c \
+	src/vive-config.h \
+	src/vive-config.c
 
 nodist_ouvrtd_SOURCES = \
 	src/gdbus-generated.h \
@@ -79,14 +81,18 @@ nodist_ouvrtd_SOURCES = \
 ouvrtd_CFLAGS = \
 	$(UDEV_CFLAGS) \
 	$(GLIB_CFLAGS) \
-	$(GST_CFLAGS)
+	$(GST_CFLAGS) \
+	$(JSON_GLIB_CFLAGS) \
+	$(ZLIB_CFLAGS)
 
 ouvrtd_LDADD = \
 	libouvrt.a \
 	$(UDEV_LIBS) \
 	$(GLIB_LIBS) \
 	$(GST_LIBS) \
-	$(OPENCV_LIBS)
+	$(JSON_GLIB_LIBS) \
+	$(OPENCV_LIBS) \
+	$(ZLIB_LIBS)
 
 dump_eeprom_SOURCES = \
 	tools/dump-eeprom.c
