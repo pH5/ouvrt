@@ -23,6 +23,7 @@
 #include "camera-dk2.h"
 #include "vive-headset-imu.h"
 #include "vive-headset-lighthouse.h"
+#include "vive-controller.h"
 
 #define VID_OCULUSVR		"2833"
 #define PID_RIFT_DK2		"0021"
@@ -30,8 +31,9 @@
 
 #define VID_VALVE		"28de"
 #define PID_VIVE_HEADSET	"2000"
+#define PID_VIVE_CONTROLLER	"2101"
 
-#define NUM_MATCHES	4
+#define NUM_MATCHES	5
 
 struct device_match {
 	const char *vid;
@@ -64,6 +66,11 @@ static const struct device_match device_matches[NUM_MATCHES] = {
 		.name = "Vive Headset Lighthouse RX",
 		.interface = 1,
 		.new = vive_headset_lighthouse_new,
+	}, {
+		.vid = VID_VALVE,
+		.pid = PID_VIVE_CONTROLLER,
+		.name = "Vive Wireless Receiver",
+		.new = vive_controller_new,
 	},
 };
 
