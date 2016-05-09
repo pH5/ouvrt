@@ -12,13 +12,17 @@
 #include <stdlib.h>
 #include <sys/fcntl.h>
 #include <unistd.h>
+#include <json-glib/json-glib.h>
 
 #include "vive-controller.h"
+#include "vive-config.h"
 #include "device.h"
 #include "hidraw.h"
 #include "math.h"
 
 struct _OuvrtViveControllerPrivate {
+	JsonNode *config;
+	const gchar *serial;
 	gboolean connected;
 };
 
@@ -56,8 +60,33 @@ static int vive_controller_get_firmware_version(OuvrtViveController *self)
 }
 
 /*
- * Causes the Vive Controller do disconnect and power off.
+ * Downloads the configuration data stored in the controller
  */
+static int vive_controller_get_config(OuvrtViveController *self)
+{
+	char *config_json;
+	JsonObject *object;
+
+	config_json = ouvrt_vive_get_config(&self->dev);
+	if (!config_json)
+		return -1;
+
+	self->priv->config = json_from_string(config_json, NULL);
+	g_free(config_json);
+	if (!self->priv->config) {
+		g_print("Vive Wireless Receiver %s: Parsing JSON configuration data failed\n",
+			self->dev.serial);
+		return -1;
+	}
+
+	object = json_node_get_object(self->priv->config);
+
+	self->priv->serial = json_object_get_string_member(object,
+							   "device_serial_number");
+
+	return 0;
+}
+
 static int vive_controller_poweroff(OuvrtViveController *self)
 {
 	unsigned char buf[7] = {
@@ -262,9 +291,12 @@ static void vive_controller_thread(OuvrtDevice *dev)
 			dev->serial);
 	}
 	if (!ret) {
-		g_print("Vive Wireless Receiver %s: Controller connected\n",
-			dev->serial);
-		self->priv->connected = TRUE;
+		ret = vive_controller_get_config(self);
+		if (!ret) {
+			g_print("Vive Wireless Receiver %s: Controller %s connected\n",
+				dev->serial, self->priv->serial);
+			self->priv->connected = TRUE;
+		}
 	}
 
 	while (dev->active) {
@@ -295,15 +327,19 @@ static void vive_controller_thread(OuvrtDevice *dev)
 			if (ret < 0)
 				continue;
 
-			g_print("Vive Wireless Receiver %s: Controller connected\n",
-				dev->serial);
+			ret = vive_controller_get_config(self);
+			if (ret < 0)
+				continue;
+
+			g_print("Vive Wireless Receiver %s: Controller %s connected\n",
+				dev->serial, self->priv->serial);
 			self->priv->connected = TRUE;
 		}
 
 		ret = read(dev->fd, buf, sizeof(buf));
 		if (ret == -1) {
-			g_print("Vive Wireless Receiver %s: Read error: %d\n",
-				dev->serial, errno);
+			g_print("Vive Controller %s: Read error: %d\n",
+				self->priv->serial, errno);
 			continue;
 		}
 		if (ret == 30 && buf[0] == 0x23) {
@@ -312,12 +348,12 @@ static void vive_controller_thread(OuvrtDevice *dev)
 			vive_controller_decode_message(self, buf, 30);
 			vive_controller_decode_message(self, buf + 29, 30);
 		} else if (ret == 2 && buf[0] == 0x26 && buf[1] == 0x01) {
-			g_print("Vive Wireless Receiver %s: Controller disconnected\n",
-				dev->serial);
+			g_print("Vive Wireless Receiver %s: Controller %s disconnected\n",
+				dev->serial, self->priv->serial);
 			self->priv->connected = FALSE;
 		} else {
-			g_print("Vive Wireless Receiver %s: Error, invalid %d-byte report 0x%02x\n",
-				dev->serial, ret, buf[0]);
+			g_print("Vive Controller %s: Error, invalid %d-byte report 0x%02x\n",
+				self->priv->serial, ret, buf[0]);
 		}
 	}
 }
@@ -353,6 +389,7 @@ static void ouvrt_vive_controller_init(OuvrtViveController *self)
 	self->dev.type = DEVICE_TYPE_CONTROLLER;
 	self->priv = ouvrt_vive_controller_get_instance_private(self);
 
+	self->priv->config = NULL;
 	self->priv->connected = FALSE;
 }
 
