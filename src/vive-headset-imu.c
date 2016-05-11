@@ -5,6 +5,7 @@
  */
 #include <asm/byteorder.h>
 #include <errno.h>
+#include <json-glib/json-glib.h>
 #include <poll.h>
 #include <stdint.h>
 #include <string.h>
@@ -13,16 +14,54 @@
 
 #include "vive-headset-imu.h"
 #include "vive-hid-reports.h"
+#include "vive-config.h"
 #include "device.h"
 #include "hidraw.h"
 #include "imu.h"
+#include "json.h"
+#include "math.h"
 
 struct _OuvrtViveHeadsetIMUPrivate {
+	JsonNode *config;
 	uint8_t sequence;
+	vec3 acc_bias;
+	vec3 acc_scale;
+	vec3 gyro_bias;
+	vec3 gyro_scale;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveHeadsetIMU, ouvrt_vive_headset_imu, \
 			   OUVRT_TYPE_DEVICE)
+
+/*
+ * Downloads the configuration data stored in the headset
+ */
+static int vive_headset_imu_get_config(OuvrtViveHeadsetIMU *self)
+{
+	char *config_json;
+	JsonObject *object;
+
+	config_json = ouvrt_vive_get_config(&self->dev);
+	if (!config_json)
+		return -1;
+
+	self->priv->config = json_from_string(config_json, NULL);
+	g_free(config_json);
+	if (!self->priv->config) {
+		g_print("%s: Parsing JSON configuration data failed\n",
+			self->dev.name);
+		return -1;
+	}
+
+	object = json_node_get_object(self->priv->config);
+
+	json_object_get_vec3_member(object, "acc_bias", &self->priv->acc_bias);
+	json_object_get_vec3_member(object, "acc_scale", &self->priv->acc_scale);
+	json_object_get_vec3_member(object, "gyro_bias", &self->priv->gyro_bias);
+	json_object_get_vec3_member(object, "gyro_scale", &self->priv->gyro_scale);
+
+	return 0;
+}
 
 /*
  * Retrieves the headset firmware version
@@ -137,7 +176,8 @@ static int vive_headset_enable_lighthouse(OuvrtViveHeadsetIMU *self)
 }
 
 /*
- * Opens the IMU device and enables the Lighthouse Receiver.
+ * Opens the IMU device, reads the stored configuration and enables
+ * the Lighthouse receiver.
  */
 static int vive_headset_imu_start(OuvrtDevice *dev)
 {
@@ -158,6 +198,12 @@ static int vive_headset_imu_start(OuvrtDevice *dev)
 	ret = vive_headset_get_firmware_version(self);
 	if (ret < 0) {
 		g_print("%s: Failed to get firmware version\n", dev->name);
+		return ret;
+	}
+
+	ret = vive_headset_imu_get_config(self);
+	if (ret < 0) {
+		g_print("%s: Failed to read configuration\n", dev->name);
 		return ret;
 	}
 
