@@ -18,6 +18,7 @@
 #include "device.h"
 
 struct _OuvrtViveHeadsetLighthousePrivate {
+	gboolean base_visible;
 	uint32_t last_timestamp;
 };
 
@@ -103,7 +104,17 @@ static void vive_headset_lighthouse_thread(OuvrtDevice *dev)
 
 		if (!(fds.revents & POLLIN)) {
 			/* No Lighthouse base station visible */
+			if (self->priv->base_visible) {
+				g_print("%s: Lost base station visibility\n",
+					dev->name);
+				self->priv->base_visible = FALSE;
+			}
 			continue;
+		}
+
+		if (!self->priv->base_visible) {
+			g_print("%s: Spotted a base station\n", dev->name);
+			self->priv->base_visible = TRUE;
 		}
 
 		ret = read(dev->fd, buf, sizeof(buf));
