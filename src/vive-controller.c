@@ -105,6 +105,18 @@ static int vive_controller_get_config(OuvrtViveController *self)
 	return 0;
 }
 
+static int vive_controller_haptic_pulse(OuvrtViveController *self)
+{
+	const struct vive_controller_haptic_pulse_report report = {
+		.id = VIVE_CONTROLLER_COMMAND_REPORT_ID,
+		.command = VIVE_CONTROLLER_HAPTIC_PULSE_COMMAND,
+		.len = 7,
+		.unknown = { 0x00, 0xf4, 0x01, 0xb5, 0xa2, 0x01, 0x00 },
+	};
+
+	return hid_send_feature_report(self->dev.fd, &report, sizeof(report));
+}
+
 static int vive_controller_poweroff(OuvrtViveController *self)
 {
 	const struct vive_controller_poweroff_report report = {
@@ -424,6 +436,8 @@ static void vive_controller_thread(OuvrtDevice *dev)
 						    self->priv->serial);
 			self->priv->watchman.name = dev->name;
 			self->priv->connected = TRUE;
+
+			vive_controller_haptic_pulse(self);
 		}
 
 		if (self->priv->imu.gyro_range == 0.0) {

@@ -189,6 +189,15 @@ struct vive_headset_lighthouse_pulse_report {
 
 #define VIVE_CONTROLLER_COMMAND_REPORT_ID		0xff
 
+#define VIVE_CONTROLLER_HAPTIC_PULSE_COMMAND		0x8f
+
+struct vive_controller_haptic_pulse_report {
+	__u8 id;
+	__u8 command;
+	__u8 len;
+	__u8 unknown[7];
+} __attribute__((packed));
+
 #define VIVE_CONTROLLER_POWEROFF_COMMAND		0x9f
 
 struct vive_controller_poweroff_report {
