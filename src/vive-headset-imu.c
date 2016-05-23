@@ -186,7 +186,7 @@ static void vive_headset_imu_thread(OuvrtDevice *dev)
 			g_print("%s: Read error: %d\n", dev->name, errno);
 			continue;
 		}
-		if (ret != 52) {
+		if (ret != 52 || buf[0] != 0x20) {
 			g_print("%s: Error, invalid %d-byte report 0x%02x\n",
 				dev->name, ret, buf[0]);
 			continue;
