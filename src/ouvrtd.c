@@ -22,8 +22,12 @@
 #include "rift-dk2.h"
 #include "camera-dk2.h"
 #include "vive-headset-imu.h"
+#include "vive-headset-mainboard.h"
 #include "vive-headset-lighthouse.h"
 #include "vive-controller.h"
+
+#define VID_HTC			"0bb4"
+#define PID_VIVE		"2c87"
 
 #define VID_OCULUSVR		"2833"
 #define PID_RIFT_DK2		"0021"
@@ -33,7 +37,7 @@
 #define PID_VIVE_HEADSET	"2000"
 #define PID_VIVE_CONTROLLER	"2101"
 
-#define NUM_MATCHES	5
+#define NUM_MATCHES	6
 
 struct device_match {
 	const char *vid;
@@ -57,6 +61,13 @@ static const struct device_match device_matches[NUM_MATCHES] = {
 		.subsystem = "video4linux",
 		.name = "Camera DK2",
 		.new = camera_dk2_new,
+	}, {
+		.vid = VID_HTC,
+		.pid = PID_VIVE,
+		.subsystem = "hidraw",
+		.name = "Vive Headset Mainboard",
+		.interface = 0,
+		.new = vive_headset_mainboard_new,
 	}, {
 		.vid = VID_VALVE,
 		.pid = PID_VIVE_HEADSET,

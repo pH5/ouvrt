@@ -8,6 +8,52 @@
 
 #include <asm/byteorder.h>
 
+#define VIVE_MAINBOARD_STATUS_REPORT_ID			0x03
+
+struct vive_mainboard_status_report {
+	__u8 id;
+	__le16 unknown;
+	__u8 len;
+	__le16 lens_separation;
+	__le16 reserved1;
+	__u8 button;
+	__u8 reserved2[3];
+	__u8 proximity_change;
+	__u8 reserved3;
+	__le16 proximity;
+	__le16 ipd;
+	__u8 reserved4[46];
+} __attribute__((packed));
+
+#define VIVE_HEADSET_POWER_REPORT_ID			0x04
+
+#define VIVE_HEADSET_POWER_REPORT_TYPE			0x2978
+
+struct vive_headset_power_report {
+	__u8 id;
+	__le16 type;
+	__u8 len;
+	__u8 unknown1[9];
+	__u8 reserved1[32];
+	__u8 unknown2;
+	__u8 reserved2[18];
+} __attribute__((packed));
+
+#define VIVE_HEADSET_MAINBOARD_DEVICE_INFO_REPORT_ID	0x04
+
+#define VIVE_HEADSET_MAINBOARD_DEVICE_INFO_REPORT_TYPE	0x2987
+
+struct vive_headset_mainboard_device_info_report {
+	__u8 id;
+	__le16 type;
+	__u8 len;
+	__be16 edid_vid;
+	__le16 edid_pid;
+	__u8 unknown1[4];
+	__le32 display_firmware_version;
+	__u8 unknown2[48];
+} __attribute__((packed));
+
 #define VIVE_FIRMWARE_VERSION_REPORT_ID			0x05
 
 struct vive_firmware_version_report {
