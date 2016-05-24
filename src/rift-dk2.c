@@ -547,7 +547,8 @@ static void rift_dk2_thread(OuvrtDevice *dev)
 
 		ret = read(rift->dev.fd, buf, sizeof(buf));
 		if (ret < 64) {
-			g_print("Error, invalid report\n");
+			g_print("%s: Error, invalid %d-byte report 0x%02x\n",
+				dev->name, ret, buf[0]);
 			continue;
 		}
 
