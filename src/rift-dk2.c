@@ -30,6 +30,7 @@ struct _OuvrtRiftDK2Private {
 	int report_rate;
 	int report_interval;
 	gboolean flicker;
+	uint32_t last_sample_timestamp;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtRiftDK2, ouvrt_rift_dk2, OUVRT_TYPE_DEVICE)
@@ -363,8 +364,6 @@ static void unpack_3x21bit(const unsigned char *buf, vec3 *v)
 	v->z = 0.0001f * ((int32_t)(yz << 10) >> 11);
 }
 
-static uint16_t last_sample_timestamp;
-
 /*
  * Decodes the periodic sensor message containing IMU sample(s) and
  * frame timing data.
@@ -389,7 +388,7 @@ static void rift_dk2_decode_sensor_message(OuvrtRiftDK2 *rift,
 	uint8_t num_samples;
 	uint16_t sample_count;
 	int16_t temperature;
-	uint16_t sample_timestamp;
+	uint32_t sample_timestamp;
 	int16_t mag[3];
 	/* HDMI input frames */
 	uint16_t frame_count;
@@ -401,7 +400,7 @@ static void rift_dk2_decode_sensor_message(OuvrtRiftDK2 *rift,
 	uint32_t exposure_timestamp;
 
 	struct imu_state state;
-	int dt;
+	int32_t dt;
 	int i;
 
 	if (len < 64)
@@ -413,14 +412,12 @@ static void rift_dk2_decode_sensor_message(OuvrtRiftDK2 *rift,
 	temperature = __le16_to_cpup((__le16 *)(buf + 6));
 	state.sample.temperature = 0.01f * temperature;
 
-	sample_timestamp = __le16_to_cpup((__le16 *)(buf + 8));
-	/* µs, wraps every 65536 ms */
+	sample_timestamp = __le32_to_cpup((__le32 *)(buf + 8));
+	/* µs, wraps every ~72 min */
 	state.sample.time = 1e-6 * sample_timestamp;
 
-	dt = sample_timestamp - last_sample_timestamp;
-	last_sample_timestamp = sample_timestamp;
-	if (dt < 0)
-		dt += 65536;
+	dt = sample_timestamp - rift->priv->last_sample_timestamp;
+	rift->priv->last_sample_timestamp = sample_timestamp;
 	if ((dt < rift->priv->report_interval - 1) ||
 	    (dt > rift->priv->report_interval + 1) ||
 	    (1000 * num_samples != rift->priv->report_interval)) {
@@ -604,6 +601,7 @@ static void ouvrt_rift_dk2_init(OuvrtRiftDK2 *self)
 	self->dev.type = DEVICE_TYPE_HMD;
 	self->priv = ouvrt_rift_dk2_get_instance_private(self);
 	self->priv->flicker = false;
+	self->priv->last_sample_timestamp = 0;
 }
 
 /*
