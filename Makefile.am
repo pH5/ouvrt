@@ -69,7 +69,6 @@ ouvrtd_SOURCES = \
 	src/tracker.h \
 	src/ouvrtd.c \
 	src/opencv.h \
-	src/opencv.cpp \
 	src/vive-controller.h \
 	src/vive-controller.c \
 	src/vive-headset-imu.h \
@@ -80,6 +79,11 @@ ouvrtd_SOURCES = \
 	src/vive-headset-lighthouse.c \
 	src/vive-config.h \
 	src/vive-config.c
+
+if HAVE_OPENCV
+ouvrtd_SOURCES += \
+	src/opencv.cpp
+endif
 
 nodist_ouvrtd_SOURCES = \
 	src/gdbus-generated.h \

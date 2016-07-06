@@ -22,7 +22,9 @@ PKG_CHECK_MODULES(UDEV, libudev)
 PKG_CHECK_MODULES([GLIB], [glib-2.0 gio-unix-2.0])
 PKG_CHECK_MODULES([GST], [gstreamer-1.0])
 PKG_CHECK_MODULES([JSON_GLIB], [json-glib-1.0])
-PKG_CHECK_MODULES([OPENCV], [opencv])
+AC_ARG_WITH([opencv], AS_HELP_STRING([--with-opencv], [Build with OpenCV for Rift DK2 position calculations]))
+AS_IF([test "x$with_opencv" = "xyes"], [PKG_CHECK_MODULES([OPENCV], [opencv])])
+AM_CONDITIONAL([HAVE_OPENCV], [test "x$with_opencv" = "xyes"])
 PKG_CHECK_MODULES([ZLIB], [zlib])
 
 AC_CONFIG_FILES([
