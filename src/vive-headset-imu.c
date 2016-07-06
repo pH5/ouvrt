@@ -50,6 +50,16 @@ static int vive_headset_get_firmware_version(OuvrtViveHeadsetIMU *self)
 	return 0;
 }
 
+static inline int oldest_sequence_index(uint8_t a, uint8_t b, uint8_t c)
+{
+	if (a == (uint8_t)(b + 2))
+		return 1;
+	else if (b == (uint8_t)(c + 2))
+		return 2;
+	else
+		return 0;
+}
+
 /*
  * Decodes the periodic sensor message containing IMU sample(s).
  */
@@ -58,7 +68,6 @@ static void vive_headset_imu_decode_message(OuvrtViveHeadsetIMU *self,
 					    size_t len)
 {
 	uint8_t last_seq = self->priv->sequence;
-	uint8_t seq[3];
 	int i, j;
 
 	(void)len;
@@ -67,31 +76,22 @@ static void vive_headset_imu_decode_message(OuvrtViveHeadsetIMU *self,
 	 * The three samples are updated round-robin. New messages
 	 * can contain already seen samples in any place, but the
 	 * sequence numbers should always be consecutive.
+	 * Start at the sample with the oldest sequence number.
 	 */
-	seq[0] = buf[17];
-	seq[1] = buf[34];
-	seq[2] = buf[51];
-
-	/* Start at the sample with the oldest sequence number */
-	if (seq[0] == (uint8_t)(seq[1] + 2))
-		i = 1;
-	else if (seq[1] == (uint8_t)(seq[2] + 2))
-		i = 2;
-	else
-		i = 0;
-	j = (i + 2) % 3;
+	i = oldest_sequence_index(buf[17], buf[34], buf[51]);
 
 	/* From there, handle all new samples */
-	for (; i != j; i = (i + 1) % 3) {
+	for (j = 3; j; --j, i = (i + 1) % 3) {
 		const unsigned char *sample = buf + 1 + i * 17;
+		uint8_t seq = sample[16];
 		int16_t acc[3];
 		int16_t gyro[3];
 		uint32_t time;
 
 		/* Skip already seen samples */
-		if (seq[i] == last_seq ||
-		    seq[i] == (uint8_t)(last_seq - 1) ||
-		    seq[i] == (uint8_t)(last_seq - 2))
+		if (seq == last_seq ||
+		    seq == (uint8_t)(last_seq - 1) ||
+		    seq == (uint8_t)(last_seq - 2))
 			continue;
 
 		acc[0] = __le16_to_cpup((__le16 *)sample);
@@ -106,7 +106,7 @@ static void vive_headset_imu_decode_message(OuvrtViveHeadsetIMU *self,
 		(void)gyro;
 		(void)time;
 
-		self->priv->sequence = seq[j];
+		self->priv->sequence = seq;
 	}
 }
 
