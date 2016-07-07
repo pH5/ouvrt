@@ -38,6 +38,7 @@
 struct device_match {
 	const char *vid;
 	const char *pid;
+	const char *subsystem;
 	const char *name;
 	int interface;
 	OuvrtDevice *(*new)(const char *devnode);
@@ -47,28 +48,33 @@ static const struct device_match device_matches[NUM_MATCHES] = {
 	{
 		.vid = VID_OCULUSVR,
 		.pid = PID_RIFT_DK2,
+		.subsystem = "hidraw",
 		.name = "Rift DK2",
 		.new = rift_dk2_new,
 	}, {
 		.vid = VID_OCULUSVR,
 		.pid = PID_CAMERA_DK2,
+		.subsystem = "video4linux",
 		.name = "Camera DK2",
 		.new = camera_dk2_new,
 	}, {
 		.vid = VID_VALVE,
 		.pid = PID_VIVE_HEADSET,
+		.subsystem = "hidraw",
 		.name = "Vive Headset IMU",
 		.interface = 0,
 		.new = vive_headset_imu_new,
 	}, {
 		.vid = VID_VALVE,
 		.pid = PID_VIVE_HEADSET,
+		.subsystem = "hidraw",
 		.name = "Vive Headset Lighthouse RX",
 		.interface = 1,
 		.new = vive_headset_lighthouse_new,
 	}, {
 		.vid = VID_VALVE,
 		.pid = PID_VIVE_CONTROLLER,
+		.subsystem = "hidraw",
 		.name = "Vive Wireless Receiver",
 		.new = vive_controller_new,
 	},
@@ -91,10 +97,14 @@ static gint ouvrt_device_cmp_serial(OuvrtDevice *dev, const char *serial)
  */
 static void ouvrtd_device_add(struct udev_device *dev)
 {
-	const char *devnode, *vid, *pid, *serial, *interface;
+	const char *devnode, *vid, *pid, *serial, *subsystem, *interface;
 	struct udev_device *parent;
 	OuvrtDevice *d;
 	int i, iface;
+
+	subsystem = udev_device_get_subsystem(dev);
+	if (!subsystem)
+		return;
 
 	parent = udev_device_get_parent_with_subsystem_devtype(dev,
 						"usb", "usb_interface");
@@ -121,6 +131,7 @@ static void ouvrtd_device_add(struct udev_device *dev)
 	for (i = 0; i < NUM_MATCHES; i++) {
 		if (strcmp(vid, device_matches[i].vid) == 0 &&
 		    strcmp(pid, device_matches[i].pid) == 0 &&
+		    strcmp(subsystem, device_matches[i].subsystem) == 0 &&
 		    device_matches[i].interface == iface)
 			break;
 	}
