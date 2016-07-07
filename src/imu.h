@@ -6,7 +6,20 @@
 #ifndef __IMU_H__
 #define __IMU_H__
 
+#include <stdint.h>
+
 #include "math.h"
+
+/*
+ * Raw IMU sample - a single measurement of acceleration, angular
+ * velocity, and sample time. Units are hardware dependent and may
+ * or may not be calibrated.
+ */
+struct raw_imu_sample {
+	uint64_t time;
+	int32_t acc[3];
+	int32_t gyro[3];
+};
 
 /*
  * Raw IMU sample - a single measurement of acceleration (in m/s²),

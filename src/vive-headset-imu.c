@@ -127,9 +127,7 @@ static void vive_headset_imu_decode_message(OuvrtViveHeadsetIMU *self,
 
 	/* From there, handle all new samples */
 	for (j = 3; j; --j, i = (i + 1) % 3) {
-		int16_t acc[3];
-		int16_t gyro[3];
-		uint32_t time;
+		struct raw_imu_sample raw;
 		uint8_t seq;
 
 		sample = report->sample + i;
@@ -141,17 +139,15 @@ static void vive_headset_imu_decode_message(OuvrtViveHeadsetIMU *self,
 		    seq == (uint8_t)(last_seq - 2))
 			continue;
 
-		acc[0] = __le16_to_cpu(sample->acc[0]);
-		acc[1] = __le16_to_cpu(sample->acc[1]);
-		acc[2] = __le16_to_cpu(sample->acc[2]);
-		gyro[0] = __le16_to_cpu(sample->gyro[0]);
-		gyro[1] = __le16_to_cpu(sample->gyro[1]);
-		gyro[2] = __le16_to_cpu(sample->gyro[2]);
-		time = __le32_to_cpu(sample->time);
+		raw.accel[0] = (int16_t)__le16_to_cpu(sample->acc[0]);
+		raw.acc[1] = (int16_t)__le16_to_cpu(sample->acc[1]);
+		raw.acc[2] = (int16_t)__le16_to_cpu(sample->acc[2]);
+		raw.gyro[0] = (int16_t)__le16_to_cpu(sample->gyro[0]);
+		raw.gyro[1] = (int16_t)__le16_to_cpu(sample->gyro[1]);
+		raw.gyro[2] = (int16_t)__le16_to_cpu(sample->gyro[2]);
+		raw.time = __le32_to_cpu(sample->time);
 
-		(void)acc;
-		(void)gyro;
-		(void)time;
+		(void)raw;
 
 		self->priv->sequence = seq;
 	}
