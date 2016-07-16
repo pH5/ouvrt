@@ -59,6 +59,7 @@ ouvrtd_SOURCES = \
 	src/math.h \
 	src/math.c \
 	src/rift-dk2.h \
+	src/rift-dk2-hid-reports.h \
 	src/rift-dk2.c \
 	src/tracker.c \
 	src/tracker.h \

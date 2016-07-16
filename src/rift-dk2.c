@@ -15,6 +15,7 @@
 #include <math.h>
 
 #include "rift-dk2.h"
+#include "rift-dk2-hid-reports.h"
 #include "debug.h"
 #include "device.h"
 #include "hidraw.h"
@@ -35,33 +36,27 @@ struct _OuvrtRiftDK2Private {
 
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtRiftDK2, ouvrt_rift_dk2, OUVRT_TYPE_DEVICE)
 
-#define RIFT_DK2_CONFIG_USE_CALIBRATION		0x04
-#define RIFT_DK2_CONFIG_AUTO_CALIBRATION	0x08
-#define RIFT_DK2_CONFIG_SENSOR_COORDINATES	0x40
-
 /*
  * Returns the current sensor configuration.
  */
 static int rift_dk2_get_config(OuvrtRiftDK2 *rift)
 {
-	unsigned char buf[7] = { 0x02 };
-	uint8_t flags;
-	uint8_t packet_interval;
+	struct rift_dk2_config_report report = {
+		.id = RIFT_DK2_CONFIG_REPORT_ID,
+	};
 	uint16_t sample_rate;
 	uint16_t report_rate;
 	int ret;
 
-	ret = hid_get_feature_report(rift->dev.fd, buf, sizeof(buf));
+	ret = hid_get_feature_report(rift->dev.fd, &report, sizeof(report));
 	if (ret < 0)
 		return ret;
 
-	flags = buf[3];
-	packet_interval = buf[4];
-	sample_rate = __le16_to_cpup((__le16 *)(buf + 5));
-	report_rate = sample_rate / (packet_interval + 1);
+	sample_rate = __le16_to_cpu(report.sample_rate);
+	report_rate = sample_rate / (report.packet_interval + 1);
 
 	g_print("Rift DK2: Got sample rate %d Hz, report rate %d Hz, flags: 0x%x\n",
-		sample_rate, report_rate, flags);
+		sample_rate, report_rate, report.flags);
 
 	rift->priv->report_rate = report_rate;
 	rift->priv->report_interval = 1000000 / report_rate;
@@ -74,29 +69,29 @@ static int rift_dk2_get_config(OuvrtRiftDK2 *rift)
  */
 static int rift_dk2_set_report_rate(OuvrtRiftDK2 *rift, int report_rate)
 {
-	unsigned char buf[7] = { 0x02 };
-	uint8_t packet_interval;
+	struct rift_dk2_config_report report = {
+		.id = RIFT_DK2_CONFIG_REPORT_ID,
+	};
 	uint16_t sample_rate;
 	int ret;
 
-	ret = hid_get_feature_report(rift->dev.fd, buf, sizeof(buf));
+	ret = hid_get_feature_report(rift->dev.fd, &report, sizeof(report));
 	if (ret < 0)
 		return ret;
 
-	sample_rate = __le16_to_cpup((__le16 *)(buf + 5));
+	sample_rate = __le16_to_cpu(report.sample_rate);
 
 	if (report_rate > sample_rate)
 		report_rate = sample_rate;
 	if (report_rate < 5)
 		report_rate = 5;
 
-	packet_interval = sample_rate / report_rate - 1;
-	buf[4] = packet_interval;
+	report.packet_interval = sample_rate / report_rate - 1;
 
 	g_print("Rift DK2: Set sample rate %d Hz, report rate %d Hz\n",
 		sample_rate, report_rate);
 
-	ret = hid_send_feature_report(rift->dev.fd, buf, sizeof(buf));
+	ret = hid_send_feature_report(rift->dev.fd, &report, sizeof(report));
 	if (ret < 0)
 		return ret;
 
@@ -119,7 +114,9 @@ static int rift_dk2_set_report_rate(OuvrtRiftDK2 *rift, int report_rate)
  */
 static int rift_dk2_get_positions(OuvrtRiftDK2 *rift)
 {
-	unsigned char buf[30] = { 0x0f };
+	struct rift_dk2_position_report report = {
+		.id = RIFT_DK2_POSITION_REPORT_ID,
+	};
 	int fd = rift->dev.fd;
 	uint8_t type;
 	vec3 pos, dir;
@@ -128,33 +125,33 @@ static int rift_dk2_get_positions(OuvrtRiftDK2 *rift)
 	int ret;
 	int i;
 
-	ret = hid_get_feature_report(fd, buf, sizeof(buf));
+	ret = hid_get_feature_report(fd, &report, sizeof(report));
 	if (ret < 0)
 		return ret;
 
-	num = __le16_to_cpup((__le16 *)(buf + 26));
+	num = __le16_to_cpu(report.num);
 	if (num > MAX_POSITIONS)
 		return -1;
 
 	for (i = 0; ; i++) {
-		index = __le16_to_cpup((__le16 *)(buf + 24));
+		index = __le16_to_cpu(report.index);
 		if (index >= num)
 			return -1;
 
-		type = __le16_to_cpup((__le16 *)(buf + 28));
+		type = __le16_to_cpu(report.type);
 
 		/* Position in µm */
-		pos.x = 1e-6f * (int32_t)__le32_to_cpup((__le32 *)(buf + 4));
-		pos.y = 1e-6f * (int32_t)__le32_to_cpup((__le32 *)(buf + 8));
-		pos.z = 1e-6f * (int32_t)__le32_to_cpup((__le32 *)(buf + 12));
+		pos.x = 1e-6f * (int32_t)__le32_to_cpu(report.pos[0]);
+		pos.y = 1e-6f * (int32_t)__le32_to_cpu(report.pos[1]);
+		pos.z = 1e-6f * (int32_t)__le32_to_cpu(report.pos[2]);
 
 		if (type == 0) {
 			rift->leds.positions[index] = pos;
 
 			/* Direction, magnitude in unknown units */
-			dir.x = 1e-6f * (int16_t)__le16_to_cpup((__le16 *)(buf + 16));
-			dir.y = 1e-6f * (int16_t)__le16_to_cpup((__le16 *)(buf + 18));
-			dir.z = 1e-6f * (int16_t)__le16_to_cpup((__le16 *)(buf + 20));
+			dir.x = 1e-6f * (int16_t)__le16_to_cpu(report.dir[0]);
+			dir.y = 1e-6f * (int16_t)__le16_to_cpu(report.dir[1]);
+			dir.z = 1e-6f * (int16_t)__le16_to_cpu(report.dir[2]);
 			rift->leds.directions[index] = dir;
 		} else if (type == 1) {
 			rift->imu.position = pos;
@@ -164,7 +161,7 @@ static int rift_dk2_get_positions(OuvrtRiftDK2 *rift)
 		if (i + 1 == num)
 			break;
 
-		ret = hid_get_feature_report(fd, buf, sizeof(buf));
+		ret = hid_get_feature_report(fd, &report, sizeof(report));
 		if (ret < 0)
 			return ret;
 	}
@@ -179,7 +176,9 @@ static int rift_dk2_get_positions(OuvrtRiftDK2 *rift)
  */
 static int rift_dk2_get_led_patterns(OuvrtRiftDK2 *rift)
 {
-	unsigned char buf[12] = { 0x10 };
+	struct rift_dk2_led_pattern_report report = {
+		.id = RIFT_DK2_LED_PATTERN_REPORT_ID,
+	};
 	int fd = rift->dev.fd;
 	uint8_t pattern_length;
 	uint32_t pattern;
@@ -188,21 +187,21 @@ static int rift_dk2_get_led_patterns(OuvrtRiftDK2 *rift)
 	int ret;
 	int i;
 
-	ret = hid_get_feature_report(fd, buf, sizeof(buf));
+	ret = hid_get_feature_report(fd, &report, sizeof(report));
 	if (ret < 0)
 		return ret;
 
-	num = __le16_to_cpup((__le16 *)(buf + 10));
+	num = __le16_to_cpu(report.num);
 	if (num > MAX_LEDS)
 		return -1;
 
 	for (i = 0; ; i++) {
-		index = __le16_to_cpup((__le16 *)(buf + 8));
+		index = __le16_to_cpu(report.index);
 		if (index >= num)
 			return -1;
 
-		pattern_length = buf[3];
-		pattern = __le32_to_cpup((__le32 *)(buf + 4));
+		pattern_length = report.pattern_length;
+		pattern = __le32_to_cpu(report.pattern);
 
 		/* pattern_length should be 10 */
 		if (pattern_length != 10) {
@@ -238,7 +237,7 @@ static int rift_dk2_get_led_patterns(OuvrtRiftDK2 *rift)
 		if (i + 1 == num)
 			break;
 
-		ret = hid_get_feature_report(fd, buf, sizeof(buf));
+		ret = hid_get_feature_report(fd, &report, sizeof(report));
 		if (ret < 0)
 			return ret;
 	}
@@ -251,51 +250,41 @@ static int rift_dk2_get_led_patterns(OuvrtRiftDK2 *rift)
  */
 static int rift_dk2_send_keepalive(OuvrtRiftDK2 *rift)
 {
-	unsigned char buf[6] = { 0x11 };
-	const uint16_t keepalive_ms = 10000;
+	const struct rift_dk2_keepalive_report report = {
+		.id = RIFT_DK2_KEEPALIVE_REPORT_ID,
+		.type = RIFT_DK2_KEEPALIVE_TYPE,
+		.timeout_ms = __cpu_to_le16(RIFT_DK2_KEEPALIVE_TIMEOUT_MS),
+	};
 
-	buf[3] = 0xb;
-	*(uint16_t *)(buf + 4) = __cpu_to_le16(keepalive_ms);
-
-	return hid_send_feature_report(rift->dev.fd, buf, sizeof(buf));
+	return hid_send_feature_report(rift->dev.fd, &report, sizeof(report));
 }
-
-#define TRACKING_ENABLE		0x01
-#define TRACKING_AUTO_INCREMENT	0x02
-#define TRACKING_USE_CARRIER	0x04
-#define TRACKING_SYNC_INPUT	0x08
-#define TRACKING_VSYNC_LOCK	0x10
-#define TRACKING_CUSTOM_PATTERN	0x20
 
 /*
  * Sends a tracking report to enable the IR tracking LEDs.
  */
 static int rift_dk2_send_tracking(OuvrtRiftDK2 *rift, bool blink)
 {
-	unsigned char buf[13] = { 0x0c };
-	const uint16_t exposure_us = 350;
-	const uint16_t period_us = 16666;
-	const uint16_t vsync_offset = 0;
-	const uint8_t duty_cycle = 0x7f;
+	struct rift_dk2_tracking_report report = {
+		.id = RIFT_DK2_TRACKING_REPORT_ID,
+		.exposure_us = __cpu_to_le16(RIFT_DK2_TRACKING_EXPOSURE_US),
+		.period_us = __cpu_to_le16(RIFT_DK2_TRACKING_PERIOD_US),
+		.vsync_offset = __cpu_to_le16(RIFT_DK2_TRACKING_VSYNC_OFFSET),
+		.duty_cycle = RIFT_DK2_TRACKING_DUTY_CYCLE,
+	};
 
 	if (blink) {
-		buf[3] = 0;
-		buf[4] = TRACKING_ENABLE | TRACKING_USE_CARRIER |
-			 TRACKING_AUTO_INCREMENT;
+		report.pattern = 0;
+		report.flags = RIFT_DK2_TRACKING_ENABLE |
+			       RIFT_DK2_TRACKING_USE_CARRIER |
+			       RIFT_DK2_TRACKING_AUTO_INCREMENT;
 	} else {
-		buf[3] = 0xff; /* pattern ? */
-		buf[4] = TRACKING_ENABLE | TRACKING_USE_CARRIER;
+		report.pattern = 0xff;
+		report.flags = RIFT_DK2_TRACKING_ENABLE |
+			       RIFT_DK2_TRACKING_USE_CARRIER;
 	}
-	*(uint16_t *)(buf + 6) = __cpu_to_le16(exposure_us);
-	*(uint16_t *)(buf + 8) = __cpu_to_le16(period_us);
-	*(uint16_t *)(buf + 10) = __cpu_to_le16(vsync_offset);
-	buf[12] = duty_cycle;
 
-	return hid_send_feature_report(rift->dev.fd, buf, sizeof(buf));
+	return hid_send_feature_report(rift->dev.fd, &report, sizeof(report));
 }
-
-#define DISPLAY_READ_PIXEL	0x04
-#define DISPLAY_DIRECT_PENTILE	0x08
 
 /*
  * Sends a display report to set up low persistence and pixel readback
@@ -304,57 +293,43 @@ static int rift_dk2_send_tracking(OuvrtRiftDK2 *rift, bool blink)
 static int rift_dk2_send_display(OuvrtRiftDK2 *rift, bool low_persistence,
 				 bool pixel_readback)
 {
-	unsigned char buf[16] = { 0x0d };
-	uint8_t brightness;
-	uint8_t flags1;
-	uint8_t flags2;
+	struct rift_dk2_display_report report = {
+		.id = RIFT_DK2_DISPLAY_REPORT_ID,
+	};
 	uint16_t persistence;
-	uint16_t lighting_offset;
-	uint16_t pixel_settle;
 	uint16_t total_rows;
 	int ret;
 
-	ret = hid_get_feature_report(rift->dev.fd, buf, sizeof(buf));
+	ret = hid_get_feature_report(rift->dev.fd, &report, sizeof(report));
 	if (ret < 0)
 		return ret;
 
-	brightness = buf[3];
-	flags1 = buf[4];
-	flags2 = buf[5];
-	persistence = __le16_to_cpup((__le16 *)(buf + 8));
-	lighting_offset = __le16_to_cpup((__le16 *)(buf + 10));
-	pixel_settle = __le16_to_cpup((__le16 *)(buf + 12));
-	total_rows = __le16_to_cpup((__le16 *)(buf + 14));
+	persistence = __le16_to_cpu(report.persistence);
+	total_rows = __le16_to_cpu(report.total_rows);
 
 	if (low_persistence) {
-		brightness = 255;
+		report.brightness = 255;
 		persistence = total_rows * 18 / 100;
 	} else {
-		brightness = 0;
+		report.brightness = 0;
 		persistence = total_rows;
 	}
 	if (pixel_readback)
-		flags2 |= DISPLAY_READ_PIXEL;
+		report.flags2 |= RIFT_DK2_DISPLAY_READ_PIXEL;
 	else
-		flags2 &= ~DISPLAY_READ_PIXEL;
-	flags2 &= ~DISPLAY_DIRECT_PENTILE;
+		report.flags2 &= ~RIFT_DK2_DISPLAY_READ_PIXEL;
+	report.flags2 &= ~RIFT_DK2_DISPLAY_DIRECT_PENTILE;
 
-	buf[3] = brightness;
-	buf[5] = flags2;
-	*(uint16_t *)(buf + 8) = __cpu_to_le16(persistence);
+	report.persistence = __cpu_to_le16(persistence);
 
-	(void)pixel_settle;
-	(void)lighting_offset;
-	(void)flags1;
-
-	return hid_send_feature_report(rift->dev.fd, buf, sizeof(buf));
+	return hid_send_feature_report(rift->dev.fd, &report, sizeof(report));
 }
 
 /*
  * Unpacks three big-endian signed 21-bit values packed into 8 bytes
  * and stores them in a floating point vector after multiplying by 10⁻⁴.
  */
-static void unpack_3x21bit(const unsigned char *buf, vec3 *v)
+static void unpack_3x21bit(__be64 *buf, vec3 *v)
 {
 	uint32_t xy = __be32_to_cpup((__be32 *)buf);
 	uint32_t yz = __be32_to_cpup((__be32 *)(buf + 4));
@@ -384,18 +359,16 @@ static void rift_dk2_decode_sensor_message(OuvrtRiftDK2 *rift,
 					   const unsigned char *buf,
 					   size_t len)
 {
-	/* IMU sample */
+	struct rift_dk2_sensor_message *message = (void *)buf;
 	uint8_t num_samples;
 	uint16_t sample_count;
 	int16_t temperature;
 	uint32_t sample_timestamp;
 	int16_t mag[3];
-	/* HDMI input frames */
 	uint16_t frame_count;
 	uint32_t frame_timestamp;
 	uint8_t frame_id;
 	uint8_t led_pattern_phase;
-	/* LED illumination and exposure sync */
 	uint16_t exposure_count;
 	uint32_t exposure_timestamp;
 
@@ -403,16 +376,16 @@ static void rift_dk2_decode_sensor_message(OuvrtRiftDK2 *rift,
 	int32_t dt;
 	int i;
 
-	if (len < 64)
+	if (len < sizeof(*message))
 		return;
 
-	num_samples = buf[3];
-	sample_count = __le16_to_cpup((__le16 *)(buf + 4));
+	num_samples = message->num_samples;
+	sample_count = __le16_to_cpu(message->sample_count);
 	/* 10⁻²°C */
-	temperature = __le16_to_cpup((__le16 *)(buf + 6));
+	temperature = __le16_to_cpu(message->temperature);
 	state.sample.temperature = 0.01f * temperature;
 
-	sample_timestamp = __le32_to_cpup((__le32 *)(buf + 8));
+	sample_timestamp = __le32_to_cpu(message->timestamp);
 	/* µs, wraps every ~72 min */
 	state.sample.time = 1e-6 * sample_timestamp;
 
@@ -425,26 +398,28 @@ static void rift_dk2_decode_sensor_message(OuvrtRiftDK2 *rift,
 			dt);
 	}
 
-	mag[0] = __le16_to_cpup((__le16 *)(buf + 44));
-	mag[1] = __le16_to_cpup((__le16 *)(buf + 46));
-	mag[2] = __le16_to_cpup((__le16 *)(buf + 48));
+	mag[0] = __le16_to_cpu(message->mag[0]);
+	mag[1] = __le16_to_cpu(message->mag[1]);
+	mag[2] = __le16_to_cpu(message->mag[2]);
 	state.sample.magnetic_field.x = 0.0001f * mag[0];
 	state.sample.magnetic_field.y = 0.0001f * mag[1];
 	state.sample.magnetic_field.z = 0.0001f * mag[2];
 
-	frame_count = __le16_to_cpup((__le16 *)(buf + 50));
-	frame_timestamp = __le32_to_cpup((__le32 *)(buf + 52));
-	frame_id = buf[56];
-	led_pattern_phase = buf[57];
-	exposure_count = __le16_to_cpup((__le16 *)(buf + 58));
-	exposure_timestamp = __le32_to_cpup((__le32 *)(buf + 60));
+	frame_count = __le16_to_cpu(message->frame_count);
+	frame_timestamp = __le32_to_cpu(message->frame_timestamp);
+	frame_id = message->frame_id;
+	led_pattern_phase = message->led_pattern_phase;
+	exposure_count = __le16_to_cpu(message->exposure_count);
+	exposure_timestamp = __le32_to_cpu(message->exposure_timestamp);
 
 	num_samples = num_samples > 1 ? 2 : 1;
 	for (i = 0; i < num_samples; i++) {
 		/* 10⁻⁴ m/s² */
-		unpack_3x21bit(buf + 12 + 16 * i, &state.sample.acceleration);
+		unpack_3x21bit(&message->sample[i].accel,
+			       &state.sample.acceleration);
 		/* 10⁻⁴ rad/s */
-		unpack_3x21bit(buf + 20 + 16 * i, &state.sample.angular_velocity);
+		unpack_3x21bit(&message->sample[i].gyro,
+			       &state.sample.angular_velocity);
 
 		debug_imu_fifo_in(&state, 1);
 	}
@@ -564,16 +539,18 @@ static void rift_dk2_thread(OuvrtDevice *dev)
 static void rift_dk2_stop(OuvrtDevice *dev)
 {
 	OuvrtRiftDK2 *rift = OUVRT_RIFT_DK2(dev);
-	unsigned char tracking[13] = { 0x0c };
+	struct rift_dk2_tracking_report report = {
+		.id = RIFT_DK2_TRACKING_REPORT_ID,
+	};
 	int fd = rift->dev.fd;
 
 	ouvrt_tracker_unregister_leds(rift->tracker, &rift->leds);
 	g_object_unref(rift->tracker);
 	rift->tracker = NULL;
 
-	hid_get_feature_report(fd, tracking, sizeof(tracking));
-	tracking[4] &= ~(1 << 0);
-	hid_send_feature_report(fd, tracking, sizeof(tracking));
+	hid_get_feature_report(fd, &report, sizeof(report));
+	report.flags &= ~RIFT_DK2_TRACKING_ENABLE;
+	hid_send_feature_report(fd, &report, sizeof(report));
 
 	rift_dk2_set_report_rate(rift, 50);
 }
