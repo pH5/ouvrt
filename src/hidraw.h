@@ -8,8 +8,7 @@
 /*
  * Receives a feature report from the HID device.
  */
-static inline int hid_get_feature_report(int fd, const unsigned char *data,
-					 size_t length)
+static inline int hid_get_feature_report(int fd, void *data, size_t length)
 {
 	return ioctl(fd, HIDIOCGFEATURE(length), data);
 }
@@ -17,7 +16,7 @@ static inline int hid_get_feature_report(int fd, const unsigned char *data,
 /*
  * Sends a feature report to the HID device.
  */
-static inline int hid_send_feature_report(int fd, const unsigned char *data,
+static inline int hid_send_feature_report(int fd, const void *data,
 					  size_t length)
 {
 	return ioctl(fd, HIDIOCSFEATURE(length), data);
@@ -27,8 +26,7 @@ static inline int hid_send_feature_report(int fd, const unsigned char *data,
  * Repeatedly tries to receive a feature report from the HID device
  * every millisecond until the timeout in milliseconds expires.
  */
-static inline int hid_get_feature_report_timeout(int fd, unsigned char *buf,
-						 size_t len,
+static inline int hid_get_feature_report_timeout(int fd, void *buf, size_t len,
 						 unsigned int timeout)
 {
 	struct timespec ts = { .tv_sec = 0, .tv_nsec = 1000000 };
