@@ -121,7 +121,18 @@ static void vive_headset_imu_decode_message(OuvrtViveHeadsetIMU *self,
 static int vive_headset_enable_lighthouse(OuvrtViveHeadsetIMU *self)
 {
 	unsigned char buf[5] = { 0x04 };
+	int ret;
 
+	ret = hid_send_feature_report(self->dev.fd, buf, sizeof(buf));
+	if (ret < 0)
+		return ret;
+
+	/*
+	 * Reset Lighthouse Rx registers? Without this, inactive channels are
+	 * not cleared to 0xff.
+	 */
+	buf[0] = 0x07;
+	buf[1] = 0x02;
 	return hid_send_feature_report(self->dev.fd, buf, sizeof(buf));
 }
 
