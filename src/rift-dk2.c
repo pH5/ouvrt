@@ -503,7 +503,7 @@ static void rift_dk2_thread(OuvrtDevice *dev)
 	count = 0;
 
 	while (dev->active) {
-		fds.fd = rift->dev.fd;
+		fds.fd = dev->fd;
 		fds.events = POLLIN;
 		fds.revents = 0;
 
@@ -520,7 +520,11 @@ static void rift_dk2_thread(OuvrtDevice *dev)
 		if (fds.events & (POLLERR | POLLHUP | POLLNVAL))
 			break;
 
-		ret = read(rift->dev.fd, buf, sizeof(buf));
+		ret = read(dev->fd, buf, sizeof(buf));
+		if (ret == -1) {
+			g_print("%s: Read error: %d\n", dev->name, errno);
+			continue;
+		}
 		if (ret < 64) {
 			g_print("%s: Error, invalid %d-byte report 0x%02x\n",
 				dev->name, ret, buf[0]);

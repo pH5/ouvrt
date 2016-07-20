@@ -69,7 +69,7 @@ static int vive_headset_poweron(OuvrtViveHeadsetMainboard *self)
 		.unknown2 = 0x7a,
 	};
 
-	return hid_send_feature_report(self->dev.fd, buf, sizeof(buf));
+	return hid_send_feature_report(self->dev.fd, &report, sizeof(report));
 }
 
 static int vive_headset_poweroff(OuvrtViveHeadsetMainboard *self)
@@ -84,7 +84,7 @@ static int vive_headset_poweroff(OuvrtViveHeadsetMainboard *self)
 		.unknown2 = 0x7c,
 	};
 
-	return hid_send_feature_report(self->dev.fd, buf, sizeof(buf));
+	return hid_send_feature_report(self->dev.fd, &report, sizeof(report));
 }
 
 static int vive_headset_get_device_info(OuvrtViveHeadsetMainboard *self)
