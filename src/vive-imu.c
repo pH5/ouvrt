@@ -10,6 +10,7 @@
 
 #include "vive-imu.h"
 #include "vive-hid-reports.h"
+#include "hidraw.h"
 #include "imu.h"
 
 static inline int oldest_sequence_index(uint8_t a, uint8_t b, uint8_t c)
@@ -20,6 +21,47 @@ static inline int oldest_sequence_index(uint8_t a, uint8_t b, uint8_t c)
 		return 2;
 	else
 		return 0;
+}
+
+int vive_imu_get_range_modes(OuvrtDevice *dev, struct vive_imu *imu)
+{
+	struct vive_imu_range_modes_report report = {
+		.id = VIVE_IMU_RANGE_MODES_REPORT_ID,
+	};
+	int ret;
+	int i;
+
+	ret = hid_get_feature_report(dev->fd, &report, sizeof(report));
+	if (ret < 0)
+		return ret;
+
+	if (!report.gyro_range || !report.accel_range) {
+		ret = hid_get_feature_report(dev->fd, &report, sizeof(report));
+		if (ret < 0)
+			return ret;
+
+		if (!report.gyro_range || !report.accel_range) {
+			g_print("%s: unexpected range mode report: %02x %02x %02x",
+				dev->name, report.id, report.gyro_range,
+				report.accel_range);
+			for (i = 0; i < 61; i++)
+				g_print(" %02x", report.unknown[i]);
+			g_print("\n");
+		}
+	}
+
+	if (report.gyro_range > 4 || report.accel_range > 4)
+		return -EINVAL;
+
+	/*
+	 * Convert MPU-6500 gyro full scale range (+/-250°/s, +/-500°/s,
+	 * +/-1000°/s, or +/-2000°/s) into rad/s, accel full scale range
+	 * (+/-2g, +/-4g, +/-8g, or +/-16g) into m/s².
+	 */
+	imu->gyro_range = M_PI / 180.0 * (250 << report.gyro_range);
+	imu->accel_range = 9.80665 * (2 << report.accel_range);
+
+	return 0;
 }
 
 /*

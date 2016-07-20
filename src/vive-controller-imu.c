@@ -177,6 +177,15 @@ static void vive_controller_imu_thread(OuvrtDevice *dev)
 			continue;
 		}
 
+		if (self->priv->imu.gyro_range == 0.0) {
+			ret = vive_imu_get_range_modes(dev, &self->priv->imu);
+			if (ret < 0) {
+				g_print("%s: Failed to get gyro/accelerometer range modes\n",
+					dev->name);
+				continue;
+			}
+		}
+
 		ret = read(dev->fd, buf, sizeof(buf));
 		if (ret == -1) {
 			g_print("Vive Controller %s: Read error: %d\n",

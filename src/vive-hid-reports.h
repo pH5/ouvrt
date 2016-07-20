@@ -40,6 +40,15 @@ struct vive_controller_button_report {
 	__u8 unknown6;
 } __attribute__((packed));
 
+#define VIVE_IMU_RANGE_MODES_REPORT_ID			0x01
+
+struct vive_imu_range_modes_report {
+	__u8 id;
+	__u8 gyro_range;
+	__u8 accel_range;
+	__u8 unknown[61];
+} __attribute__((packed));
+
 #define VIVE_MAINBOARD_STATUS_REPORT_ID			0x03
 
 struct vive_mainboard_status_report {
