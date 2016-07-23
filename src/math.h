@@ -26,5 +26,6 @@ typedef struct {
 
 float f16_to_float(uint16_t f16);
 void dquat_from_axis_angle(dquat *quat, dvec3 *axis, double angle);
+void vec3_normalize(vec3 *v);
 
 #endif /* __MATH_H__ */

@@ -61,3 +61,12 @@ void dquat_from_axis_angle(dquat *q, dvec3 *axis, double angle)
 	q->y = sin_half_angle * axis->y;
 	q->z = sin_half_angle * axis->z;
 }
+
+void vec3_normalize(vec3 *v)
+{
+	float scale = 1.0f / sqrt(v->x * v->x + v->y * v->y + v->z * v->z);
+
+	v->x *= scale;
+	v->y *= scale;
+	v->z *= scale;
+}
