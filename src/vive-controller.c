@@ -16,6 +16,7 @@
 
 #include "vive-controller.h"
 #include "vive-config.h"
+#include "vive-hid-reports.h"
 #include "device.h"
 #include "hidraw.h"
 #include "math.h"
@@ -34,12 +35,14 @@ G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveController, ouvrt_vive_controller, \
  */
 static int vive_controller_get_firmware_version(OuvrtViveController *self)
 {
+	struct vive_firmware_version_report report = {
+		.id = VIVE_FIRMWARE_VERSION_REPORT_ID,
+	};
 	uint32_t firmware_version;
-	unsigned char buf[64];
 	int ret;
 
-	buf[0] = 0x05;
-	ret = hid_get_feature_report_timeout(self->dev.fd, buf, sizeof(buf), 100);
+	ret = hid_get_feature_report_timeout(self->dev.fd, &report,
+					     sizeof(report), 100);
 	if (ret < 0) {
 		if (errno != EPIPE) {
 			g_print("%s: Read error 0x05: %d\n", self->dev.name,
@@ -48,13 +51,16 @@ static int vive_controller_get_firmware_version(OuvrtViveController *self)
 		return ret;
 	}
 
-	firmware_version = __le32_to_cpup((__le32 *)(buf + 1));
+	firmware_version = __le32_to_cpu(report.firmware_version);
 
 	g_print("%s: Controller firmware version %u %s@%s FPGA %u.%u\n",
-		self->dev.name, firmware_version, buf + 9, buf + 25, buf[50],
-		buf[49]);
+		self->dev.name, firmware_version, report.string1,
+		report.string2, report.fpga_version_major,
+		report.fpga_version_minor);
 	g_print("%s: Hardware revision: %d rev %d.%d.%d\n",
-		self->dev.name, buf[44], buf[43], buf[42], buf[41]);
+		self->dev.name, report.hardware_revision,
+		report.hardware_version_major, report.hardware_version_minor,
+		report.hardware_version_micro);
 
 	return 0;
 }
@@ -89,168 +95,140 @@ static int vive_controller_get_config(OuvrtViveController *self)
 
 static int vive_controller_poweroff(OuvrtViveController *self)
 {
-	unsigned char buf[7] = {
-		0xff, 0x9f, 0x04, 'o', 'f', 'f', '!',
+	const struct vive_controller_poweroff_report report = {
+		.id = VIVE_CONTROLLER_COMMAND_REPORT_ID,
+		.command = VIVE_CONTROLLER_POWEROFF_COMMAND,
+		.len = 4,
+		.magic = { 'o', 'f', 'f', '!' },
 	};
 
-	return hid_send_feature_report(self->dev.fd, buf, sizeof(buf));
+	return hid_send_feature_report(self->dev.fd, &report, sizeof(report));
 }
 
-static void vive_controller_decode_squeeze_message(OuvrtViveController *self,
-						   const unsigned char *buf)
+static void
+vive_controller_decode_squeeze_message(OuvrtViveController *self,
+				       const struct vive_controller_message *msg)
 {
-	uint32_t time;
-	uint8_t squeeze;
-
-	(void)self;
-
 	/* Time in 48 MHz ticks, missing the lower 16 bits */
-	time = (buf[1] << 24) | (buf[3] << 16);
-	squeeze = buf[5];
-	/* buf[5-9] unknown */
+	uint32_t time = (msg->timestamp_hi << 24) |
+			(msg->timestamp_lo << 16);
 
+	(void)self;
 	(void)time;
-	(void)squeeze;
 }
 
-#define BUTTON_TRIGGER	0x01
-#define BUTTON_TOUCH	0x02
-#define BUTTON_THUMB	0x04
-#define BUTTON_SYSTEM	0x08
-#define BUTTON_GRIP	0x10
-#define BUTTON_MENU	0x20
-
-static void vive_controller_decode_button_message(OuvrtViveController *self,
-						  const unsigned char *buf)
+static void
+vive_controller_decode_button_message(OuvrtViveController *self,
+				      const struct vive_controller_message *msg)
 {
-	uint8_t buttons;
+	uint8_t buttons = msg->button.buttons;
 
 	(void)self;
-
-	buttons = buf[5];
-	/* buf[5-9] unknown */
-
-	(void) buttons;
+	(void)buttons;
 }
 
-static void vive_controller_decode_touch_move_message(OuvrtViveController *self,
-						      const unsigned char *buf)
+static void
+vive_controller_decode_touch_move_message(OuvrtViveController *self,
+					  const struct vive_controller_message *msg)
 {
-	int16_t pos[2];
+	int16_t pos[2] = {
+		__le16_to_cpu(msg->touchpad_move.pos[0]),
+		__le16_to_cpu(msg->touchpad_move.pos[1]),
+	};
 
 	(void)self;
-
-	pos[0] = __le16_to_cpup((__le16 *)(buf + 5));
-	pos[1] = __le16_to_cpup((__le16 *)(buf + 7));
-	/* buf[9-12] unknown */
-
 	(void)pos;
 }
 
 static void
 vive_controller_decode_touch_updown_message(OuvrtViveController *self,
-					    const unsigned char *buf)
+					    const struct vive_controller_message *msg)
 {
-	uint8_t buttons;
-	int16_t pos[2];
+	int16_t pos[2] = {
+		__le16_to_cpu(msg->touchpad_updown.pos[0]),
+		__le16_to_cpu(msg->touchpad_updown.pos[1]),
+	};
 
 	(void)self;
-
-	buttons = buf[5];
-	pos[0] = __le16_to_cpup((__le16 *)(buf + 6));
-	pos[1] = __le16_to_cpup((__le16 *)(buf + 8));
-	/* buf[10-13] unknown */
-
-	(void)buttons;
 	(void)pos;
 }
 
-static void vive_controller_decode_imu_message(OuvrtViveController *self,
-					       const unsigned char *buf)
+static void
+vive_controller_decode_imu_message(OuvrtViveController *self,
+				   const struct vive_controller_message *msg)
 {
-	uint32_t time;
-	int16_t acc[3];
-	int16_t gyro[3];
+	/* Time in 48 MHz ticks, but we are missing the low byte */
+	uint32_t time = (msg->timestamp_hi << 24) | (msg->timestamp_lo << 16) |
+			(msg->imu.timestamp_3 << 8);
+	int16_t acc[3] = {
+		__le16_to_cpu(msg->imu.accel[0]),
+		__le16_to_cpu(msg->imu.accel[1]),
+		__le16_to_cpu(msg->imu.accel[2]),
+	};
+	int16_t gyro[3] = {
+		__le16_to_cpu(msg->imu.gyro[0]),
+		__le16_to_cpu(msg->imu.gyro[1]),
+		__le16_to_cpu(msg->imu.gyro[2]),
+	};
 
 	(void)self;
-
-	/* Time in 48 MHz ticks, but we are missing the low byte */
-	time = (buf[1] << 24) | (buf[3] << 16) | (buf[5] << 8);
-	acc[0] = __le16_to_cpup((__le16 *)(buf + 6));
-	acc[1] = __le16_to_cpup((__le16 *)(buf + 8));
-	acc[2] = __le16_to_cpup((__le16 *)(buf + 10));
-	gyro[0] = __le16_to_cpup((__le16 *)(buf + 12));
-	gyro[1] = __le16_to_cpup((__le16 *)(buf + 14));
-	gyro[2] = __le16_to_cpup((__le16 *)(buf + 16));
-	/* buf[18-21] unknown */
-
 	(void)time;
 	(void)acc;
 	(void)gyro;
 }
 
-static void vive_controller_decode_ping_message(OuvrtViveController *self,
-						const unsigned char *buf)
+static void
+vive_controller_decode_ping_message(OuvrtViveController *self,
+				    const struct vive_controller_message *msg)
 {
-	uint8_t charge;
-	int16_t acc[3];
-	int16_t gyro[3];
+	uint8_t charge_percent = msg->ping.charge & 0x7f;
+	gboolean charging = msg->ping.charge & 0x80;
+	int16_t acc[3] = {
+		__le16_to_cpu(msg->ping.accel[0]),
+		__le16_to_cpu(msg->ping.accel[1]),
+		__le16_to_cpu(msg->ping.accel[2]),
+	};
+	int16_t gyro[3] = {
+		__le16_to_cpu(msg->ping.gyro[0]),
+		__le16_to_cpu(msg->ping.gyro[1]),
+		__le16_to_cpu(msg->ping.gyro[2]),
+	};
 
 	(void)self;
-
-	charge = buf[5];
-	/* buf[6-7] unknown */
-	acc[0] = __le16_to_cpup((__le16 *)(buf + 8));
-	acc[1] = __le16_to_cpup((__le16 *)(buf + 10));
-	acc[2] = __le16_to_cpup((__le16 *)(buf + 12));
-	gyro[0] = __le16_to_cpup((__le16 *)(buf + 14));
-	gyro[1] = __le16_to_cpup((__le16 *)(buf + 16));
-	gyro[2] = __le16_to_cpup((__le16 *)(buf + 18));
-	/* buf[20-24] unknown */
-
-	(void)charge;
+	(void)charge_percent;
+	(void)charging;
 	(void)acc;
 	(void)gyro;
 }
 
 /*
- * Decodes the periodic sensor message containing IMU sample(s) and
- * frame timing data.
+ * Decodes multiplexed Wireless Receiver messages.
  */
-static void vive_controller_decode_message(OuvrtViveController *self,
-					   const unsigned char *buf,
-					   size_t len)
+static void
+vive_controller_decode_message(OuvrtViveController *self,
+			       struct vive_controller_message *message)
 {
-	uint32_t time;
-	uint16_t type;
-
-	(void)self;
-	(void)len;
-
-	time = (buf[1] << 16) | (buf[3] << 8);
-	type = (buf[2] << 8) | buf[4];
-
-	(void)time;
+	uint16_t type = (message->type_hi << 8) | message->type_lo;
 
 	switch (type) {
 	case 0x03f4: /* analog trigger */
-		vive_controller_decode_squeeze_message(self, buf);
+		vive_controller_decode_squeeze_message(self, message);
 		break;
 	case 0x03f1: /* button */
 	case 0x04f5: /* trigger switch */
-		vive_controller_decode_button_message(self, buf);
+		vive_controller_decode_button_message(self, message);
 		break;
 	case 0x06f2: /* touchpad movement */
-		vive_controller_decode_touch_move_message(self, buf);
+		vive_controller_decode_touch_move_message(self, message);
 		break;
 	case 0x07f3: /* touchpad touchdown/liftoff */
-		vive_controller_decode_touch_updown_message(self, buf);
+		vive_controller_decode_touch_updown_message(self, message);
 		break;
 	case 0x0fe8: /* IMU */
-		vive_controller_decode_imu_message(self, buf);
+		vive_controller_decode_imu_message(self, message);
 		break;
 	case 0x11e1: /* Ping */
-		vive_controller_decode_ping_message(self, buf);
+		vive_controller_decode_ping_message(self, message);
 		break;
 	}
 }
@@ -342,12 +320,20 @@ static void vive_controller_thread(OuvrtDevice *dev)
 				self->priv->serial, errno);
 			continue;
 		}
-		if (ret == 30 && buf[0] == 0x23) {
-			vive_controller_decode_message(self, buf, 30);
-		} else if (ret == 59 && buf[0] == 0x24) {
-			vive_controller_decode_message(self, buf, 30);
-			vive_controller_decode_message(self, buf + 29, 30);
-		} else if (ret == 2 && buf[0] == 0x26 && buf[1] == 0x01) {
+		if (ret == 30 && buf[0] == VIVE_CONTROLLER_REPORT1_ID) {
+			struct vive_controller_report1 *report = (void *)buf;
+
+			vive_controller_decode_message(self, &report->message);
+		} else if (ret == 59 && buf[0] == VIVE_CONTROLLER_REPORT2_ID) {
+			struct vive_controller_report2 *report = (void *)buf;
+
+			vive_controller_decode_message(self,
+						       &report->message[0]);
+			vive_controller_decode_message(self,
+						       &report->message[1]);
+		} else if (ret == 2 &&
+			   buf[0] == VIVE_CONTROLLER_DISCONNECT_REPORT_ID &&
+			   buf[1] == 0x01) {
 			g_print("Vive Wireless Receiver %s: Controller %s disconnected\n",
 				dev->serial, self->priv->serial);
 			self->priv->connected = FALSE;

@@ -15,6 +15,7 @@
 #include <math.h>
 
 #include "vive-headset-lighthouse.h"
+#include "vive-hid-reports.h"
 #include "device.h"
 
 struct _OuvrtViveHeadsetLighthousePrivate {
@@ -30,26 +31,26 @@ G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveHeadsetLighthouse, ouvrt_vive_headset_lighth
  * timing measurements.
  */
 static void
-vive_headset_lighthouse_decode_pulse_message(OuvrtViveHeadsetLighthouse *self,
-					     const unsigned char *buf,
-					     size_t len)
+vive_headset_lighthouse_decode_pulse_report(OuvrtViveHeadsetLighthouse *self,
+					    const void *buf)
 {
+	const struct vive_headset_lighthouse_pulse_report *report = buf;
 	int i;
 
-	(void)len;
-
 	for (i = 0; i < 7; i++) {
-		const unsigned char *pulse = buf + 1 + i * 8;
+		const struct vive_headset_lighthouse_pulse *pulse;
 		uint16_t sensor_id;
 		uint16_t pulse_duration;
 		uint32_t pulse_timestamp;
 
-		sensor_id = __le16_to_cpup((__le16 *)pulse);
+		pulse = &report->pulse[i];
+
+		sensor_id = __le16_to_cpu(pulse->id);
 		if (sensor_id == 0xffff)
 			continue;
 
-		pulse_duration = __le16_to_cpup((__le16 *)(pulse + 2));
-		pulse_timestamp = __le32_to_cpup((__le32 *)(pulse + 4));
+		pulse_duration = __le16_to_cpu(pulse->duration);
+		pulse_timestamp = __le32_to_cpu(pulse->timestamp);
 
 		self->priv->last_timestamp = pulse_timestamp;
 
@@ -128,7 +129,7 @@ static void vive_headset_lighthouse_thread(OuvrtDevice *dev)
 			continue;
 		}
 
-		vive_headset_lighthouse_decode_pulse_message(self, buf, 58);
+		vive_headset_lighthouse_decode_pulse_report(self, buf);
 		count++;
 	}
 }

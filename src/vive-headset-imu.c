@@ -12,8 +12,10 @@
 #include <unistd.h>
 
 #include "vive-headset-imu.h"
+#include "vive-hid-reports.h"
 #include "device.h"
 #include "hidraw.h"
+#include "imu.h"
 
 struct _OuvrtViveHeadsetIMUPrivate {
 	uint8_t sequence;
@@ -27,25 +29,28 @@ G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveHeadsetIMU, ouvrt_vive_headset_imu, \
  */
 static int vive_headset_get_firmware_version(OuvrtViveHeadsetIMU *self)
 {
+	struct vive_firmware_version_report report = {
+		.id = VIVE_FIRMWARE_VERSION_REPORT_ID,
+	};
 	uint32_t firmware_version;
-	unsigned char buf[64];
 	int ret;
 
-	buf[0] = 0x05;
-	ret = hid_get_feature_report(self->dev.fd, buf, sizeof(buf));
+	ret = hid_get_feature_report(self->dev.fd, &report, sizeof(report));
 	if (ret < 0) {
 		g_print("%s: Read error 0x05: %d\n", self->dev.name,
 			errno);
 		return ret;
 	}
 
-	firmware_version = __le32_to_cpup((__le32 *)(buf + 1));
+	firmware_version = __le32_to_cpu(report.firmware_version);
 
 	g_print("%s: Headset firmware version %u %s@%s FPGA %u.%u\n",
-		self->dev.name, firmware_version, buf + 9, buf + 25, buf[50],
-		buf[49]);
-	g_print("%s: Hardware revision: %d rev %d.%d.%d\n",
-		self->dev.name, buf[44], buf[43], buf[42], buf[41]);
+		self->dev.name, firmware_version, report.string1,
+		report.string2, report.fpga_version_major,
+		report.fpga_version_minor);
+	g_print("%s: Hardware revision: %d rev %d.%d.%d\n", self->dev.name,
+		report.hardware_revision, report.hardware_version_major,
+		report.hardware_version_minor, report.hardware_version_micro);
 
 	return 0;
 }
@@ -64,9 +69,10 @@ static inline int oldest_sequence_index(uint8_t a, uint8_t b, uint8_t c)
  * Decodes the periodic sensor message containing IMU sample(s).
  */
 static void vive_headset_imu_decode_message(OuvrtViveHeadsetIMU *self,
-					    const unsigned char *buf,
-					    size_t len)
+					    const void *buf, size_t len)
 {
+	const struct vive_headset_imu_report *report = buf;
+	const struct vive_headset_imu_sample *sample = report->sample;
 	uint8_t last_seq = self->priv->sequence;
 	int i, j;
 
@@ -78,15 +84,17 @@ static void vive_headset_imu_decode_message(OuvrtViveHeadsetIMU *self,
 	 * sequence numbers should always be consecutive.
 	 * Start at the sample with the oldest sequence number.
 	 */
-	i = oldest_sequence_index(buf[17], buf[34], buf[51]);
+	i = oldest_sequence_index(sample[0].seq, sample[1].seq, sample[2].seq);
 
 	/* From there, handle all new samples */
 	for (j = 3; j; --j, i = (i + 1) % 3) {
-		const unsigned char *sample = buf + 1 + i * 17;
-		uint8_t seq = sample[16];
 		int16_t acc[3];
 		int16_t gyro[3];
 		uint32_t time;
+		uint8_t seq;
+
+		sample = report->sample + i;
+		seq = sample->seq;
 
 		/* Skip already seen samples */
 		if (seq == last_seq ||
@@ -94,13 +102,13 @@ static void vive_headset_imu_decode_message(OuvrtViveHeadsetIMU *self,
 		    seq == (uint8_t)(last_seq - 2))
 			continue;
 
-		acc[0] = __le16_to_cpup((__le16 *)sample);
-		acc[1] = __le16_to_cpup((__le16 *)(sample + 2));
-		acc[2] = __le16_to_cpup((__le16 *)(sample + 4));
-		gyro[0] = __le16_to_cpup((__le16 *)(sample + 6));
-		gyro[1] = __le16_to_cpup((__le16 *)(sample + 8));
-		gyro[2] = __le16_to_cpup((__le16 *)(sample + 10));
-		time = __le32_to_cpup((__le32 *)(sample + 12));
+		acc[0] = __le16_to_cpu(sample->acc[0]);
+		acc[1] = __le16_to_cpu(sample->acc[1]);
+		acc[2] = __le16_to_cpu(sample->acc[2]);
+		gyro[0] = __le16_to_cpu(sample->gyro[0]);
+		gyro[1] = __le16_to_cpu(sample->gyro[1]);
+		gyro[2] = __le16_to_cpu(sample->gyro[2]);
+		time = __le32_to_cpu(sample->time);
 
 		(void)acc;
 		(void)gyro;
@@ -186,7 +194,7 @@ static void vive_headset_imu_thread(OuvrtDevice *dev)
 			g_print("%s: Read error: %d\n", dev->name, errno);
 			continue;
 		}
-		if (ret != 52 || buf[0] != 0x20) {
+		if (ret != 52 || buf[0] != VIVE_HEADSET_IMU_REPORT_ID) {
 			g_print("%s: Error, invalid %d-byte report 0x%02x\n",
 				dev->name, ret, buf[0]);
 			continue;
