@@ -86,17 +86,17 @@ struct vive_headset_imu_report {
 	struct vive_headset_imu_sample sample[3];
 } __attribute__((packed));
 
-#define VIVE_HEADSET_LIGHTHOUSE_PULSE_REPORT_ID		0x21
+#define VIVE_HEADSET_LIGHTHOUSE_PULSE_REPORT1_ID	0x21
 
-struct vive_headset_lighthouse_pulse {
+struct vive_headset_lighthouse_pulse1 {
 	__le16 id;
 	__le16 duration;
 	__le32 timestamp;
 } __attribute__((packed));
 
-struct vive_headset_lighthouse_pulse_report {
+struct vive_headset_lighthouse_pulse_report1 {
 	__u8 id;
-	struct vive_headset_lighthouse_pulse pulse[7];
+	struct vive_headset_lighthouse_pulse1 pulse[7];
 	__u8 reserved;
 } __attribute__((packed));
 
@@ -171,6 +171,19 @@ struct vive_controller_report1 {
 struct vive_controller_report2 {
 	__u8 id;
 	struct vive_controller_message message[2];
+} __attribute__((packed));
+
+#define VIVE_HEADSET_LIGHTHOUSE_PULSE_REPORT2_ID	0x25
+
+struct vive_headset_lighthouse_pulse2 {
+	__u8 id;
+	__le16 duration;
+	__le32 timestamp;
+} __attribute__((packed));
+
+struct vive_headset_lighthouse_pulse_report2 {
+	__u8 id;
+	struct vive_headset_lighthouse_pulse2 pulse[9];
 } __attribute__((packed));
 
 #define VIVE_CONTROLLER_DISCONNECT_REPORT_ID		0x26
