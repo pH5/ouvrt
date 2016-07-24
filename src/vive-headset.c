@@ -100,11 +100,14 @@ static int vive_headset_get_config(OuvrtViveHeadset *self)
 	return 0;
 }
 
-static int vive_headset_enable_lighthouse(OuvrtViveHeadset *self)
+static int vive_headset_enable_lighthouse(OuvrtViveHeadset *self,
+					  gboolean enable_sensors)
 {
 	unsigned char buf[5] = { 0x04 };
 	int ret;
 
+	/* Enable vsync timestamps, enable/disable sensor reports */
+	buf[1] = enable_sensors ? 0x00 : 0x01;
 	ret = hid_send_feature_report(self->dev.fd, buf, sizeof(buf));
 	if (ret < 0)
 		return ret;
@@ -182,7 +185,7 @@ static int vive_headset_start(OuvrtDevice *dev)
 		return ret;
 	}
 
-	ret = vive_headset_enable_lighthouse(self);
+	ret = vive_headset_enable_lighthouse(self, TRUE);
 	if (ret < 0) {
 		g_print("%s: Failed to enable Lighthouse Receiver\n",
 			dev->name);
