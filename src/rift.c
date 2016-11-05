@@ -463,7 +463,8 @@ static int rift_start(OuvrtDevice *dev)
 		g_print("Rift: Error reading IR LED blinking patterns\n");
 		return ret;
 	}
-	if (rift->leds.num != 40)
+	if ((rift->type == RIFT_DK2 && rift->leds.num != 40) ||
+	    (rift->type == RIFT_CV1 && rift->leds.num != 44))
 		g_print("Rift: Reported %d IR LEDs\n", rift->leds.num);
 
 	ret = rift_get_config(rift);
@@ -590,9 +591,9 @@ static void ouvrt_rift_init(OuvrtRift *self)
  * Allocates and initializes the device structure and opens the HID device
  * file descriptor.
  *
- * Returns the newly allocated Rift DK2 device.
+ * Returns the newly allocated Rift device.
  */
-OuvrtDevice *rift_dk2_new(const char *devnode)
+OuvrtDevice *rift_new(const char *devnode, enum rift_type type)
 {
 	OuvrtRift *rift;
 
@@ -602,9 +603,19 @@ OuvrtDevice *rift_dk2_new(const char *devnode)
 
 	rift->dev.devnode = g_strdup(devnode);
 	rift->tracker = ouvrt_tracker_new();
-	rift->type = RIFT_DK2;
+	rift->type = type;
 
 	return &rift->dev;
+}
+
+OuvrtDevice *rift_dk2_new(const char *devnode)
+{
+	return rift_new(devnode, RIFT_DK2);
+}
+
+OuvrtDevice *rift_cv1_new(const char *devnode)
+{
+	return rift_new(devnode, RIFT_CV1);
 }
 
 void ouvrt_rift_set_flicker(OuvrtRift *rift, gboolean flicker)

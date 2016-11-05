@@ -31,13 +31,14 @@
 
 #define VID_OCULUSVR		"2833"
 #define PID_RIFT_DK2		"0021"
+#define PID_RIFT_CV1		"0031"
 #define PID_CAMERA_DK2		"0201"
 
 #define VID_VALVE		"28de"
 #define PID_VIVE_HEADSET	"2000"
 #define PID_VIVE_CONTROLLER	"2101"
 
-#define NUM_MATCHES	6
+#define NUM_MATCHES	7
 
 struct device_match {
 	const char *vid;
@@ -50,6 +51,12 @@ struct device_match {
 
 static const struct device_match device_matches[NUM_MATCHES] = {
 	{
+		.vid = VID_OCULUSVR,
+		.pid = PID_RIFT_CV1,
+		.subsystem = "hidraw",
+		.name = "Rift CV1",
+		.new = rift_cv1_new,
+	}, {
 		.vid = VID_OCULUSVR,
 		.pid = PID_RIFT_DK2,
 		.subsystem = "hidraw",

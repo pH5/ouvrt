@@ -32,6 +32,7 @@
 
 enum rift_type {
 	RIFT_DK2,
+	RIFT_CV1,
 };
 
 struct imu {
@@ -62,6 +63,7 @@ struct _OuvrtRiftClass {
 GType ouvrt_rift_get_type(void);
 
 OuvrtDevice *rift_dk2_new(const char *devnode);
+OuvrtDevice *rift_cv1_new(const char *devnode);
 
 void ouvrt_rift_set_flicker(OuvrtRift *camera, gboolean flicker);
 
