@@ -10,7 +10,8 @@
 
 #include "math.h"
 
-#define MAX_LEDS 40
+/* DK2: 40, CV1: 44 */
+#define MAX_LEDS 44
 
 struct leds {
 	int num;
