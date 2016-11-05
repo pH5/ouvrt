@@ -22,43 +22,6 @@ struct rift_config_report {
 	__le16 sample_rate;
 } __attribute__((packed));
 
-#define RIFT_POSITION_REPORT_ID			0x0f
-
-struct rift_position_report {
-	__u8 id;
-	__u16 echo;
-	__u8 reserved_1;
-	__le32 pos[3];
-	__le16 dir[3];
-	__le16 reserved_2;
-	__le16 index;
-	__le16 num;
-	__le16 type;
-} __attribute__((packed));
-
-#define RIFT_LED_PATTERN_REPORT_ID		0x10
-
-struct rift_led_pattern_report {
-	__u8 id;
-	__u16 echo;
-	__u8 pattern_length;
-	__le32 pattern;
-	__le16 index;
-	__le16 num;
-} __attribute__((packed));
-
-#define RIFT_KEEPALIVE_REPORT_ID		0x11
-
-#define RIFT_KEEPALIVE_TYPE			0x0b
-#define RIFT_KEEPALIVE_TIMEOUT_MS		10000
-
-struct rift_keepalive_report {
-	__u8 id;
-	__le16 echo;
-	__u8 type;
-	__le16 timeout_ms;
-} __attribute__((packed));
-
 #define RIFT_TRACKING_REPORT_ID			0x0c
 
 #define RIFT_TRACKING_ENABLE			0x01
@@ -101,6 +64,43 @@ struct rift_display_report {
 	__le16 lighting_offset;
 	__le16 pixel_settle;
 	__le16 total_rows;
+} __attribute__((packed));
+
+#define RIFT_POSITION_REPORT_ID			0x0f
+
+struct rift_position_report {
+	__u8 id;
+	__u16 echo;
+	__u8 reserved_1;
+	__le32 pos[3];
+	__le16 dir[3];
+	__le16 reserved_2;
+	__le16 index;
+	__le16 num;
+	__le16 type;
+} __attribute__((packed));
+
+#define RIFT_LED_PATTERN_REPORT_ID		0x10
+
+struct rift_led_pattern_report {
+	__u8 id;
+	__u16 echo;
+	__u8 pattern_length;
+	__le32 pattern;
+	__le16 index;
+	__le16 num;
+} __attribute__((packed));
+
+#define RIFT_KEEPALIVE_REPORT_ID		0x11
+
+#define RIFT_KEEPALIVE_TYPE			0x0b
+#define RIFT_KEEPALIVE_TIMEOUT_MS		10000
+
+struct rift_keepalive_report {
+	__u8 id;
+	__le16 echo;
+	__u8 type;
+	__le16 timeout_ms;
 } __attribute__((packed));
 
 #define RIFT_SENSOR_MESSAGE_ID			0x0b
