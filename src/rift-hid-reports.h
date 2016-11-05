@@ -103,6 +103,18 @@ struct rift_keepalive_report {
 	__le16 timeout_ms;
 } __attribute__((packed));
 
+#define RIFT_CV1_POWER_REPORT_ID		0x1d
+
+#define RIFT_CV1_POWER_DISPLAY			0x01
+#define RIFT_CV1_POWER_AUDIO			0x02
+#define RIFT_CV1_POWER_LEDS			0x04
+
+struct rift_cv1_power_report {
+	__u8 id;
+	__u16 echo;
+	__u8 components;
+} __attribute__((packed));
+
 #define RIFT_SENSOR_MESSAGE_ID			0x0b
 
 struct rift_imu_sample {

@@ -326,6 +326,44 @@ static int rift_send_display(OuvrtRift *rift, bool low_persistence,
 }
 
 /*
+ * Powers up components of the Rift CV1.
+ */
+static int rift_cv1_power_up(OuvrtRift *rift, uint8_t components)
+{
+	struct rift_cv1_power_report report = {
+		.id = RIFT_CV1_POWER_REPORT_ID,
+	};
+	int ret;
+
+	ret = hid_get_feature_report(rift->dev.fd, &report, sizeof(report));
+	if (ret < 0)
+		return ret;
+
+	report.components |= components;
+
+	return hid_send_feature_report(rift->dev.fd, &report, sizeof(report));
+}
+
+/*
+ * Powers down components of the Rift CV1.
+ */
+static int rift_cv1_power_down(OuvrtRift *rift, uint8_t components)
+{
+	struct rift_cv1_power_report report = {
+		.id = RIFT_CV1_POWER_REPORT_ID,
+	};
+	int ret;
+
+	ret = hid_get_feature_report(rift->dev.fd, &report, sizeof(report));
+	if (ret < 0)
+		return ret;
+
+	report.components &= ~components;
+
+	return hid_send_feature_report(rift->dev.fd, &report, sizeof(report));
+}
+
+/*
  * Unpacks three signed 21-bit values packed into a big-endian 64-bit value
  * and stores them in a floating point vector after multiplying by 10⁻⁴.
  */
