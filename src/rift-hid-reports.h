@@ -115,6 +115,34 @@ struct rift_cv1_power_report {
 	__u8 components;
 } __attribute__((packed));
 
+#define RIFT_CV1_SENSOR_REPORT_ID		0x1f
+
+struct rift_cv1_sensor_report {
+	__u8 id;
+	__u16 echo;
+	__u8 zero_padding;
+	__le16 proximity;
+	__le16 lens_separation;
+	__le16 unknown[4];
+	__u8 unknown_zeros[4];
+};
+
+#define RIFT_CV1_LIFETIME_REPORT_ID		0x22
+
+struct rift_cv1_lifetime_report {
+	__u8 id;
+	__u16 echo;
+	__u8 zero_padding;
+	__le32 runtime_s;
+	__le16 proximity_count;
+	__le16 poweron_count;
+	__le32 display_runtime_s;
+	__le32 display_poweron_count;
+	__le32 lens_separation_travel;
+	__le16 lens_separation_change_count;
+	__u8 unknown_zeros[38];
+} __attribute__((packed));
+
 #define RIFT_SENSOR_MESSAGE_ID			0x0b
 
 struct rift_imu_sample {
