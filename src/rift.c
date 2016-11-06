@@ -428,8 +428,8 @@ static void rift_decode_sensor_message(OuvrtRift *rift,
 
 	dt = sample_timestamp - rift->priv->last_sample_timestamp;
 	rift->priv->last_sample_timestamp = sample_timestamp;
-	if ((dt < rift->priv->report_interval - 1) ||
-	    (dt > rift->priv->report_interval + 1) ||
+	if ((dt < rift->priv->report_interval - 60) ||
+	    (dt > rift->priv->report_interval + 60) ||
 	    (1000 * num_samples != rift->priv->report_interval)) {
 		g_print("Rift: got %d samples after %d µs\n", num_samples,
 			dt);
