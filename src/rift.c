@@ -520,6 +520,14 @@ static int rift_start(OuvrtDevice *dev)
 	if (ret < 0)
 		return ret;
 
+	if (rift->type == RIFT_CV1) {
+		ret = rift_cv1_power_up(rift, RIFT_CV1_POWER_DISPLAY |
+					      RIFT_CV1_POWER_AUDIO |
+					      RIFT_CV1_POWER_LEDS);
+		if (ret < 0)
+			return ret;
+	}
+
 	ouvrt_tracker_register_leds(rift->tracker, &rift->leds);
 
 	return 0;
@@ -589,6 +597,12 @@ static void rift_stop(OuvrtDevice *dev)
 	ouvrt_tracker_unregister_leds(rift->tracker, &rift->leds);
 	g_object_unref(rift->tracker);
 	rift->tracker = NULL;
+
+	if (rift->type == RIFT_CV1) {
+		rift_cv1_power_down(rift, RIFT_CV1_POWER_DISPLAY |
+					  RIFT_CV1_POWER_AUDIO |
+					  RIFT_CV1_POWER_LEDS);
+	}
 
 	hid_get_feature_report(fd, &report, sizeof(report));
 	report.flags &= ~RIFT_TRACKING_ENABLE;
