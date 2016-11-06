@@ -9,6 +9,7 @@
 #include <asm/byteorder.h>
 
 #define RIFT_CONFIG_REPORT_ID			0x02
+#define RIFT_CONFIG_REPORT_SIZE			7
 
 #define RIFT_CONFIG_USE_CALIBRATION		0x04
 #define RIFT_CONFIG_AUTO_CALIBRATION		0x08
@@ -23,6 +24,7 @@ struct rift_config_report {
 } __attribute__((packed));
 
 #define RIFT_RANGE_REPORT_ID			0x04
+#define RIFT_RANGE_REPORT_SIZE			8
 
 struct rift_range_report {
 	__u8 id;
@@ -33,6 +35,7 @@ struct rift_range_report {
 } __attribute__((packed));
 
 #define RIFT_UNKNOWN_REPORT_6_ID		0x06
+#define RIFT_UNKNOWN_REPORT_6_SIZE		4
 
 struct rift_unknown_report_6 {
 	__u8 id;
@@ -41,6 +44,7 @@ struct rift_unknown_report_6 {
 } __attribute__((packed));
 
 #define RIFT_TRACKING_REPORT_ID			0x0c
+#define RIFT_TRACKING_REPORT_SIZE		13
 
 #define RIFT_TRACKING_ENABLE			0x01
 #define RIFT_TRACKING_AUTO_INCREMENT		0x02
@@ -67,6 +71,7 @@ struct rift_tracking_report {
 } __attribute__((packed));
 
 #define RIFT_DISPLAY_REPORT_ID			0x0d
+#define RIFT_DISPLAY_REPORT_SIZE		16
 
 #define RIFT_DISPLAY_READ_PIXEL			0x04
 #define RIFT_DISPLAY_DIRECT_PENTILE		0x08
@@ -85,6 +90,7 @@ struct rift_display_report {
 } __attribute__((packed));
 
 #define RIFT_POSITION_REPORT_ID			0x0f
+#define RIFT_POSITION_REPORT_SIZE		30
 
 struct rift_position_report {
 	__u8 id;
@@ -99,6 +105,7 @@ struct rift_position_report {
 } __attribute__((packed));
 
 #define RIFT_LED_PATTERN_REPORT_ID		0x10
+#define RIFT_LED_PATTERN_REPORT_SIZE		12
 
 struct rift_led_pattern_report {
 	__u8 id;
@@ -110,6 +117,7 @@ struct rift_led_pattern_report {
 } __attribute__((packed));
 
 #define RIFT_KEEPALIVE_REPORT_ID		0x11
+#define RIFT_KEEPALIVE_REPORT_SIZE		6
 
 #define RIFT_KEEPALIVE_TYPE			0x0b
 #define RIFT_KEEPALIVE_TIMEOUT_MS		10000
@@ -122,6 +130,7 @@ struct rift_keepalive_report {
 } __attribute__((packed));
 
 #define RIFT_RADIO_CONTROL_REPORT_ID		0x1a
+#define RIFT_RADIO_CONTROL_REPORT_SIZE		6
 
 #define RIFT_RADIO_SERIAL_NUMBER_CONTROL	0x88
 #define RIFT_RADIO_FIRMWARE_VERSION_CONTROL	0x82
@@ -133,6 +142,7 @@ struct rift_radio_control_report {
 } __attribute__((packed));
 
 #define RIFT_RADIO_DATA_REPORT_ID		0x1b
+#define RIFT_RADIO_DATA_REPORT_SIZE		31
 
 struct rift_radio_serial_number_report {
 	__u8 unknown[9];
@@ -158,6 +168,7 @@ struct rift_radio_data_report {
 } __attribute__((packed));
 
 #define RIFT_CV1_POWER_REPORT_ID		0x1d
+#define RIFT_CV1_POWER_REPORT_SIZE		4
 
 #define RIFT_CV1_POWER_DISPLAY			0x01
 #define RIFT_CV1_POWER_AUDIO			0x02
@@ -170,6 +181,7 @@ struct rift_cv1_power_report {
 } __attribute__((packed));
 
 #define RIFT_CV1_SENSOR_REPORT_ID		0x1f
+#define RIFT_CV1_SENSOR_REPORT_SIZE		20
 
 struct rift_cv1_sensor_report {
 	__u8 id;
@@ -182,6 +194,7 @@ struct rift_cv1_sensor_report {
 } __attribute__((packed));
 
 #define RIFT_CV1_READ_FLASH_REPORT_ID		0x21
+#define RIFT_CV1_READ_FLASH_REPORT_SIZE		69
 
 struct rift_cv1_read_flash_report {
 	__u8 id;
@@ -192,6 +205,7 @@ struct rift_cv1_read_flash_report {
 } __attribute__((packed));
 
 #define RIFT_CV1_LIFETIME_REPORT_ID		0x22
+#define RIFT_CV1_LIFETIME_REPORT_SIZE		64
 
 struct rift_cv1_lifetime_report {
 	__u8 id;
@@ -208,6 +222,7 @@ struct rift_cv1_lifetime_report {
 } __attribute__((packed));
 
 #define RIFT_SENSOR_MESSAGE_ID			0x0b
+#define RIFT_SENSOR_MESSAGE_SIZE		64
 
 struct rift_imu_sample {
 	__be64 accel;				/* packed, 10⁻⁴ m/s² */
@@ -233,6 +248,7 @@ struct rift_sensor_message {
 } __attribute__((packed));
 
 #define RIFT_RADIO_MESSAGE_ID			0x0c
+#define RIFT_RADIO_MESSAGE_SIZE			64
 
 #define RIFT_REMOTE_BUTTON_UP			0x001
 #define RIFT_REMOTE_BUTTON_DOWN			0x002
@@ -291,5 +307,26 @@ struct rift_radio_message {
 
 /* This message is sent in a 250 ms interval and contains all zeros */
 #define RIFT_RADIO_UNKNOWN_MESSAGE_ID		0x0d
+
+#define ASSERT_SIZE(report,size) \
+	_Static_assert((sizeof(struct report) == size), \
+		       "incorrect size: " #report)
+
+ASSERT_SIZE(rift_config_report, RIFT_CONFIG_REPORT_SIZE);
+ASSERT_SIZE(rift_range_report, RIFT_RANGE_REPORT_SIZE);
+ASSERT_SIZE(rift_unknown_report_6, RIFT_UNKNOWN_REPORT_6_SIZE);
+ASSERT_SIZE(rift_tracking_report, RIFT_TRACKING_REPORT_SIZE);
+ASSERT_SIZE(rift_display_report, RIFT_DISPLAY_REPORT_SIZE);
+ASSERT_SIZE(rift_position_report, RIFT_POSITION_REPORT_SIZE);
+ASSERT_SIZE(rift_led_pattern_report, RIFT_LED_PATTERN_REPORT_SIZE);
+ASSERT_SIZE(rift_keepalive_report, RIFT_KEEPALIVE_REPORT_SIZE);
+ASSERT_SIZE(rift_radio_control_report, RIFT_RADIO_CONTROL_REPORT_SIZE);
+ASSERT_SIZE(rift_radio_data_report, RIFT_RADIO_DATA_REPORT_SIZE);
+ASSERT_SIZE(rift_cv1_power_report, RIFT_CV1_POWER_REPORT_SIZE);
+ASSERT_SIZE(rift_cv1_sensor_report, RIFT_CV1_SENSOR_REPORT_SIZE);
+ASSERT_SIZE(rift_cv1_read_flash_report, RIFT_CV1_READ_FLASH_REPORT_SIZE);
+ASSERT_SIZE(rift_cv1_lifetime_report, RIFT_CV1_LIFETIME_REPORT_SIZE);
+ASSERT_SIZE(rift_sensor_message, RIFT_SENSOR_MESSAGE_SIZE);
+ASSERT_SIZE(rift_radio_message, RIFT_RADIO_MESSAGE_SIZE);
 
 #endif /* __RIFT_HID_REPORTS__ */
