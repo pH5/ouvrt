@@ -71,6 +71,8 @@ ouvrtd_sources = [
   'rift-hid-reports.h',
   'rift-radio.c',
   'rift-radio.h',
+  'rift-sensor.c',
+  'rift-sensor.h',
   'telemetry.c',
   'telemetry.h',
   'tracker.c',

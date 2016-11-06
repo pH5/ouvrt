@@ -23,6 +23,7 @@
 #define PID_RIFT_DK2		0x0021
 #define PID_RIFT_CV1		0x0031
 #define PID_CAMERA_DK2		0x0201
+#define PID_RIFT_SENSOR		0x0211
 
 #define VID_VALVE		0x28de
 #define PID_VIVE_HEADSET	0x2000

@@ -21,6 +21,7 @@
 #include "usb-ids.h"
 #include "psvr.h"
 #include "rift.h"
+#include "rift-sensor.h"
 #include "camera-dk2.h"
 #include "hololens-camera.h"
 #include "hololens-imu.h"
@@ -32,7 +33,7 @@
 #include "vive-controller.h"
 #include "vive-controller-usb.h"
 
-#define NUM_MATCHES	12
+#define NUM_MATCHES	13
 
 struct interface_match {
 	int iface;
@@ -75,6 +76,12 @@ static const struct device_match device_matches[NUM_MATCHES] = {
 		.subsystem = "hidraw",
 		.name = "Rift DK2",
 		.new = rift_dk2_new,
+	}, {
+		.vid = VID_OCULUSVR,
+		.pid = PID_RIFT_SENSOR,
+		.subsystem = "usb",
+		.name = "Rift Sensor",
+		.new = rift_sensor_new,
 	}, {
 		.vid = VID_OCULUSVR,
 		.pid = PID_CAMERA_DK2,
