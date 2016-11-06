@@ -38,7 +38,7 @@ struct rift_config_report {
 
 struct rift_tracking_report {
 	__u8 id;
-	__le16 echo;
+	__u16 echo;
 	__u8 pattern;
 	__u8 flags;
 	__u8 reserved;
