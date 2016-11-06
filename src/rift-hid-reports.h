@@ -22,6 +22,16 @@ struct rift_config_report {
 	__le16 sample_rate;
 } __attribute__((packed));
 
+#define RIFT_RANGE_REPORT_ID			0x04
+
+struct rift_range_report {
+	__u8 id;
+	__u16 echo;
+	__u8 gyro_range;
+	__le16 accel_range;
+	__le16 mag_range;
+} __attribute__((packed));
+
 #define RIFT_UNKNOWN_REPORT_6_ID		0x06
 
 struct rift_unknown_report_6 {

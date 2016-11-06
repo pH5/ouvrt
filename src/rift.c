@@ -99,6 +99,31 @@ static int rift_set_report_rate(OuvrtRift *rift, int report_rate)
 }
 
 /*
+ * Reads the gyro, accelerometer, and magnetometer ranges
+ */
+static int rift_get_ranges(OuvrtRift *rift)
+{
+	struct rift_range_report report = {
+		.id = RIFT_RANGE_REPORT_ID,
+	};
+	int ret;
+
+	ret = hid_get_feature_report(rift->dev.fd, &report, sizeof(report));
+	if (ret < 0)
+		return ret;
+
+	if (report.gyro_range != 4)
+		g_print("Rift: unexpected gyro range %u\n", report.gyro_range);
+	if (report.accel_range != 2000)
+		g_print("Rift: unexpected accel range %u\n", report.accel_range);
+	if ((rift->type == RIFT_DK2 && report.mag_range != 4000) ||
+	    (rift->type == RIFT_CV1 && report.mag_range != 1300))
+		g_print("Rift: unexpected mag range %u\n", report.mag_range);
+
+	return 0;
+}
+
+/*
  * Obtains the factory calibrated position data of IR LEDs and IMU
  * from the Rift. Values are stored with µm accuracy in the Rift's
  * local reference frame: the positive x axis points left, the y
@@ -531,6 +556,10 @@ static int rift_start(OuvrtDevice *dev)
 
 	if (rift->type == RIFT_CV1)
 		rift_get_firmware_version(dev->fds[0]);
+
+	ret = rift_get_ranges(rift);
+	if (ret < 0)
+		return ret;
 
 	ret = rift_get_positions(rift);
 	if (ret < 0) {
