@@ -602,6 +602,7 @@ OuvrtDevice *rift_dk2_new(const char *devnode)
 
 	rift->dev.devnode = g_strdup(devnode);
 	rift->tracker = ouvrt_tracker_new();
+	rift->type = RIFT_DK2;
 
 	return &rift->dev;
 }

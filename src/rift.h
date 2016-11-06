@@ -30,6 +30,10 @@
 
 #define MAX_POSITIONS	(MAX_LEDS + 1)
 
+enum rift_type {
+	RIFT_DK2,
+};
+
 struct imu {
 	vec3 position;
 };
@@ -44,6 +48,7 @@ struct _OuvrtRift {
 	OuvrtDevice dev;
 	OuvrtTracker *tracker;
 
+	enum rift_type type;
 	struct leds leds;
 	struct imu imu;
 
