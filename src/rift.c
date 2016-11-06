@@ -326,17 +326,16 @@ static int rift_send_display(OuvrtRift *rift, bool low_persistence,
 }
 
 /*
- * Unpacks three big-endian signed 21-bit values packed into 8 bytes
+ * Unpacks three signed 21-bit values packed into a big-endian 64-bit value
  * and stores them in a floating point vector after multiplying by 10⁻⁴.
  */
 static void unpack_3x21bit(__be64 *buf, vec3 *v)
 {
-	uint32_t xy = __be32_to_cpup((__be32 *)buf);
-	uint32_t yz = __be32_to_cpup((__be32 *)(buf + 4));
+	uint64_t xyz = __be64_to_cpup(buf);
 
-	v->x = 0.0001f * ((int32_t)xy >> 11);
-	v->y = 0.0001f * ((int32_t)((xy << 21) | (yz >> 11)) >> 11);
-	v->z = 0.0001f * ((int32_t)(yz << 10) >> 11);
+	v->x = 0.0001f * ((int64_t)xyz >> 43);
+	v->y = 0.0001f * ((int64_t)(xyz << 21) >> 43);
+	v->z = 0.0001f * ((int64_t)(xyz << 42) >> 43);
 }
 
 /*
