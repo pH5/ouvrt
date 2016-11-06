@@ -19,7 +19,7 @@
 #include "debug.h"
 #include "device.h"
 #include "gdbus-generated.h"
-#include "rift-dk2.h"
+#include "rift.h"
 #include "camera-dk2.h"
 #include "vive-headset-imu.h"
 #include "vive-headset-mainboard.h"
@@ -168,20 +168,20 @@ static void ouvrtd_device_add(struct udev_device *dev)
 		link = g_list_find_custom(device_list, d->serial,
 					  (GCompareFunc)ouvrt_device_cmp_serial);
 		if (link) {
-			OuvrtRiftDK2 *rift = NULL;
+			OuvrtRift *rift = NULL;
 			OuvrtCameraDK2 *camera = NULL;
 
-			if (OUVRT_IS_RIFT_DK2(d) &&
+			if (OUVRT_IS_RIFT(d) &&
 			    OUVRT_IS_CAMERA_DK2(link->data)) {
 				g_print("Associate %s and %s\n", d->devnode,
 					OUVRT_DEVICE(link->data)->devnode);
-				rift = OUVRT_RIFT_DK2(d);
+				rift = OUVRT_RIFT(d);
 				camera = OUVRT_CAMERA_DK2(link->data);
 			}
 			if (OUVRT_IS_CAMERA_DK2(d) &&
-			    OUVRT_IS_RIFT_DK2(link->data)) {
+			    OUVRT_IS_RIFT(link->data)) {
 				camera = OUVRT_CAMERA_DK2(d);
-				rift = OUVRT_RIFT_DK2(link->data);
+				rift = OUVRT_RIFT(link->data);
 			}
 			if (rift && camera) {
 				g_print("Associate %s and %s\n", d->devnode,

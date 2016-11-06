@@ -16,7 +16,7 @@
 struct leds;
 
 /* temporary global */
-extern int rift_dk2_flicker;
+extern int rift_flicker;
 
 #include <stdio.h>
 
@@ -336,7 +336,7 @@ void blobwatch_process(struct blobwatch *bw, uint8_t *frame,
 		}
 	}
 
-	if (rift_dk2_flicker) {
+	if (rift_flicker) {
 		/* Identify blobs by their blinking pattern */
 		flicker_process(bw->fl, ob->blobs, ob->num_blobs, skipped,
 				leds);

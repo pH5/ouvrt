@@ -1,20 +1,20 @@
 /*
- * Oculus Rift DK2 HMD USB HID reports
+ * Oculus Rift HMD USB HID reports
  * Copyright 2015-2016 Philipp Zabel
  * SPDX-License-Identifier:	LGPL-2.0+ or BSL-1.0
  */
-#ifndef __RIFT_DK2_HID_REPORTS__
-#define __RIFT_DK2_HID_REPORTS__
+#ifndef __RIFT_HID_REPORTS__
+#define __RIFT_HID_REPORTS__
 
 #include <asm/byteorder.h>
 
-#define RIFT_DK2_CONFIG_REPORT_ID		0x02
+#define RIFT_CONFIG_REPORT_ID			0x02
 
-#define RIFT_DK2_CONFIG_USE_CALIBRATION		0x04
-#define RIFT_DK2_CONFIG_AUTO_CALIBRATION	0x08
-#define RIFT_DK2_CONFIG_SENSOR_COORDINATES	0x40
+#define RIFT_CONFIG_USE_CALIBRATION		0x04
+#define RIFT_CONFIG_AUTO_CALIBRATION		0x08
+#define RIFT_CONFIG_SENSOR_COORDINATES		0x40
 
-struct rift_dk2_config_report {
+struct rift_config_report {
 	__u8 id;
 	__u16 echo;
 	__u8 flags;
@@ -22,9 +22,9 @@ struct rift_dk2_config_report {
 	__le16 sample_rate;
 } __attribute__((packed));
 
-#define RIFT_DK2_POSITION_REPORT_ID		0x0f
+#define RIFT_POSITION_REPORT_ID			0x0f
 
-struct rift_dk2_position_report {
+struct rift_position_report {
 	__u8 id;
 	__u16 echo;
 	__u8 reserved_1;
@@ -36,9 +36,9 @@ struct rift_dk2_position_report {
 	__le16 type;
 } __attribute__((packed));
 
-#define RIFT_DK2_LED_PATTERN_REPORT_ID		0x10
+#define RIFT_LED_PATTERN_REPORT_ID		0x10
 
-struct rift_dk2_led_pattern_report {
+struct rift_led_pattern_report {
 	__u8 id;
 	__u16 echo;
 	__u8 pattern_length;
@@ -47,33 +47,33 @@ struct rift_dk2_led_pattern_report {
 	__le16 num;
 } __attribute__((packed));
 
-#define RIFT_DK2_KEEPALIVE_REPORT_ID		0x11
+#define RIFT_KEEPALIVE_REPORT_ID		0x11
 
-#define RIFT_DK2_KEEPALIVE_TYPE			0x0b
-#define RIFT_DK2_KEEPALIVE_TIMEOUT_MS		10000
+#define RIFT_KEEPALIVE_TYPE			0x0b
+#define RIFT_KEEPALIVE_TIMEOUT_MS		10000
 
-struct rift_dk2_keepalive_report {
+struct rift_keepalive_report {
 	__u8 id;
 	__le16 echo;
 	__u8 type;
 	__le16 timeout_ms;
 } __attribute__((packed));
 
-#define RIFT_DK2_TRACKING_REPORT_ID		0x0c
+#define RIFT_TRACKING_REPORT_ID			0x0c
 
-#define RIFT_DK2_TRACKING_ENABLE		0x01
-#define RIFT_DK2_TRACKING_AUTO_INCREMENT	0x02
-#define RIFT_DK2_TRACKING_USE_CARRIER		0x04
-#define RIFT_DK2_TRACKING_SYNC_INPUT		0x08
-#define RIFT_DK2_TRACKING_VSYNC_LOCK		0x10
-#define RIFT_DK2_TRACKING_CUSTOM_PATTERN	0x20
+#define RIFT_TRACKING_ENABLE			0x01
+#define RIFT_TRACKING_AUTO_INCREMENT		0x02
+#define RIFT_TRACKING_USE_CARRIER		0x04
+#define RIFT_TRACKING_SYNC_INPUT		0x08
+#define RIFT_TRACKING_VSYNC_LOCK		0x10
+#define RIFT_TRACKING_CUSTOM_PATTERN		0x20
 
-#define RIFT_DK2_TRACKING_EXPOSURE_US		350
-#define RIFT_DK2_TRACKING_PERIOD_US		16666
-#define RIFT_DK2_TRACKING_VSYNC_OFFSET		0
-#define RIFT_DK2_TRACKING_DUTY_CYCLE		0x7f
+#define RIFT_TRACKING_EXPOSURE_US		350
+#define RIFT_TRACKING_PERIOD_US			16666
+#define RIFT_TRACKING_VSYNC_OFFSET		0
+#define RIFT_TRACKING_DUTY_CYCLE		0x7f
 
-struct rift_dk2_tracking_report {
+struct rift_tracking_report {
 	__u8 id;
 	__le16 echo;
 	__u8 pattern;
@@ -85,12 +85,12 @@ struct rift_dk2_tracking_report {
 	__u8 duty_cycle;
 } __attribute__((packed));
 
-#define RIFT_DK2_DISPLAY_REPORT_ID		0x0d
+#define RIFT_DISPLAY_REPORT_ID			0x0d
 
-#define RIFT_DK2_DISPLAY_READ_PIXEL		0x04
-#define RIFT_DK2_DISPLAY_DIRECT_PENTILE		0x08
+#define RIFT_DISPLAY_READ_PIXEL			0x04
+#define RIFT_DISPLAY_DIRECT_PENTILE		0x08
 
-struct rift_dk2_display_report {
+struct rift_display_report {
 	__u8 id;
 	__u16 echo;
 	__u8 brightness;
@@ -103,21 +103,21 @@ struct rift_dk2_display_report {
 	__le16 total_rows;
 } __attribute__((packed));
 
-#define RIFT_DK2_SENSOR_MESSAGE_ID		0x0b
+#define RIFT_SENSOR_MESSAGE_ID			0x0b
 
-struct rift_dk2_imu_sample {
+struct rift_imu_sample {
 	__be64 accel;				/* packed, 10⁻⁴ m/s² */
 	__be64 gyro;				/* packed, 10⁻⁴ rad/s */
 } __attribute__((packed));
 
-struct rift_dk2_sensor_message {
+struct rift_sensor_message {
 	__u8 id;
 	__le16 echo;
 	__u8 num_samples;
 	__le16 sample_count;
 	__le16 temperature;			/* 10⁻² °C */
 	__le32 timestamp;			/* µs, wraps every ~72 min */
-	struct rift_dk2_imu_sample sample[2];
+	struct rift_imu_sample sample[2];
 	__le16 mag[3];
 	__le16 frame_count;			/* HDMI input frame count */
 	__le32 frame_timestamp;			/* HDMI vsync timestamp */
@@ -128,4 +128,4 @@ struct rift_dk2_sensor_message {
 	__le16 reserved;
 } __attribute__((packed));
 
-#endif /* __RIFT_DK2_HID_REPORTS__ */
+#endif /* __RIFT_HID_REPORTS__ */

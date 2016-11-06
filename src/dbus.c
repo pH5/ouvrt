@@ -12,7 +12,7 @@
 #include "device.h"
 #include "gdbus-generated.h"
 #include "ouvrtd.h"
-#include "rift-dk2.h"
+#include "rift.h"
 
 static GDBusObjectManagerServer *manager = NULL;
 
@@ -138,7 +138,7 @@ static void ouvrt_tracker1_on_flicker_changed(GObject *object,
 	OuvrtDevice *dev = user_data;
 	gboolean flicker;
 
-	if (!OUVRT_IS_RIFT_DK2(dev))
+	if (!OUVRT_IS_RIFT(dev))
 		return;
 
 	if (g_strcmp0(g_param_spec_get_name(spec), "flicker") != 0)
@@ -146,7 +146,7 @@ static void ouvrt_tracker1_on_flicker_changed(GObject *object,
 
 	flicker = ouvrt_tracker1_get_flicker(tracker);
 
-	ouvrt_rift_dk2_set_flicker(OUVRT_RIFT_DK2(dev), flicker);
+	ouvrt_rift_set_flicker(OUVRT_RIFT(dev), flicker);
 	if (flicker) {
 		g_print("Flicker enabled\n");
 	} else {

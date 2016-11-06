@@ -1,5 +1,5 @@
 /*
- * Oculus Rift DK2 HMD
+ * Oculus Rift HMDs
  * Copyright 2015-2016 Philipp Zabel
  * SPDX-License-Identifier:	LGPL-2.0+ or BSL-1.0
  */
@@ -14,8 +14,8 @@
 #include <unistd.h>
 #include <math.h>
 
-#include "rift-dk2.h"
-#include "rift-dk2-hid-reports.h"
+#include "rift.h"
+#include "rift-hid-reports.h"
 #include "debug.h"
 #include "device.h"
 #include "hidraw.h"
@@ -25,24 +25,24 @@
 #include "tracker.h"
 
 /* temporary global */
-gboolean rift_dk2_flicker = false;
+gboolean rift_flicker = false;
 
-struct _OuvrtRiftDK2Private {
+struct _OuvrtRiftPrivate {
 	int report_rate;
 	int report_interval;
 	gboolean flicker;
 	uint32_t last_sample_timestamp;
 };
 
-G_DEFINE_TYPE_WITH_PRIVATE(OuvrtRiftDK2, ouvrt_rift_dk2, OUVRT_TYPE_DEVICE)
+G_DEFINE_TYPE_WITH_PRIVATE(OuvrtRift, ouvrt_rift, OUVRT_TYPE_DEVICE)
 
 /*
  * Returns the current sensor configuration.
  */
-static int rift_dk2_get_config(OuvrtRiftDK2 *rift)
+static int rift_get_config(OuvrtRift *rift)
 {
-	struct rift_dk2_config_report report = {
-		.id = RIFT_DK2_CONFIG_REPORT_ID,
+	struct rift_config_report report = {
+		.id = RIFT_CONFIG_REPORT_ID,
 	};
 	uint16_t sample_rate;
 	uint16_t report_rate;
@@ -55,7 +55,7 @@ static int rift_dk2_get_config(OuvrtRiftDK2 *rift)
 	sample_rate = __le16_to_cpu(report.sample_rate);
 	report_rate = sample_rate / (report.packet_interval + 1);
 
-	g_print("Rift DK2: Got sample rate %d Hz, report rate %d Hz, flags: 0x%x\n",
+	g_print("Rift: Got sample rate %d Hz, report rate %d Hz, flags: 0x%x\n",
 		sample_rate, report_rate, report.flags);
 
 	rift->priv->report_rate = report_rate;
@@ -67,10 +67,10 @@ static int rift_dk2_get_config(OuvrtRiftDK2 *rift)
 /*
  * Configures the sensor report rate
  */
-static int rift_dk2_set_report_rate(OuvrtRiftDK2 *rift, int report_rate)
+static int rift_set_report_rate(OuvrtRift *rift, int report_rate)
 {
-	struct rift_dk2_config_report report = {
-		.id = RIFT_DK2_CONFIG_REPORT_ID,
+	struct rift_config_report report = {
+		.id = RIFT_CONFIG_REPORT_ID,
 	};
 	uint16_t sample_rate;
 	int ret;
@@ -88,7 +88,7 @@ static int rift_dk2_set_report_rate(OuvrtRiftDK2 *rift, int report_rate)
 
 	report.packet_interval = sample_rate / report_rate - 1;
 
-	g_print("Rift DK2: Set sample rate %d Hz, report rate %d Hz\n",
+	g_print("Rift: Set sample rate %d Hz, report rate %d Hz\n",
 		sample_rate, report_rate);
 
 	ret = hid_send_feature_report(rift->dev.fd, &report, sizeof(report));
@@ -103,19 +103,19 @@ static int rift_dk2_set_report_rate(OuvrtRiftDK2 *rift, int report_rate)
 
 /*
  * Obtains the factory calibrated position data of IR LEDs and IMU
- * from the Rift DK2. Values are stored with µm accuracy in the
- * Rift's local reference frame: the positive x axis points left,
- * the y axis points upward, and z forward:
+ * from the Rift. Values are stored with µm accuracy in the Rift's
+ * local reference frame: the positive x axis points left, the y
+ * axis points upward, and z forward:
  *
  *      up
  *       y z forward
  * left  |/
  *    x--+
  */
-static int rift_dk2_get_positions(OuvrtRiftDK2 *rift)
+static int rift_get_positions(OuvrtRift *rift)
 {
-	struct rift_dk2_position_report report = {
-		.id = RIFT_DK2_POSITION_REPORT_ID,
+	struct rift_position_report report = {
+		.id = RIFT_POSITION_REPORT_ID,
 	};
 	int fd = rift->dev.fd;
 	uint8_t type;
@@ -172,12 +172,12 @@ static int rift_dk2_get_positions(OuvrtRiftDK2 *rift)
 }
 
 /*
- * Obtains the blinking patterns of the 40 IR LEDs from the Rift DK2.
+ * Obtains the blinking patterns of the IR LEDs from the Rift.
  */
-static int rift_dk2_get_led_patterns(OuvrtRiftDK2 *rift)
+static int rift_get_led_patterns(OuvrtRift *rift)
 {
-	struct rift_dk2_led_pattern_report report = {
-		.id = RIFT_DK2_LED_PATTERN_REPORT_ID,
+	struct rift_led_pattern_report report = {
+		.id = RIFT_LED_PATTERN_REPORT_ID,
 	};
 	int fd = rift->dev.fd;
 	uint8_t pattern_length;
@@ -205,7 +205,7 @@ static int rift_dk2_get_led_patterns(OuvrtRiftDK2 *rift)
 
 		/* pattern_length should be 10 */
 		if (pattern_length != 10) {
-			g_print("Rift DK2: Unexpected pattern length: %d\n",
+			g_print("Rift: Unexpected pattern length: %d\n",
 				pattern_length);
 			return -1;
 		}
@@ -215,7 +215,7 @@ static int rift_dk2_get_led_patterns(OuvrtRiftDK2 *rift)
 		 * 1 (dark) or 3 (bright).
 		 */
 		if ((pattern & ~0xaaaaa) != 0x55555) {
-			g_print("Rift DK2: Unexpected pattern: 0x%x\n",
+			g_print("Rift: Unexpected pattern: 0x%x\n",
 				pattern);
 			return -1;
 		}
@@ -248,12 +248,12 @@ static int rift_dk2_get_led_patterns(OuvrtRiftDK2 *rift)
 /*
  * Sends a keepalive report to keep the device active for 10 seconds.
  */
-static int rift_dk2_send_keepalive(OuvrtRiftDK2 *rift)
+static int rift_send_keepalive(OuvrtRift *rift)
 {
-	const struct rift_dk2_keepalive_report report = {
-		.id = RIFT_DK2_KEEPALIVE_REPORT_ID,
-		.type = RIFT_DK2_KEEPALIVE_TYPE,
-		.timeout_ms = __cpu_to_le16(RIFT_DK2_KEEPALIVE_TIMEOUT_MS),
+	const struct rift_keepalive_report report = {
+		.id = RIFT_KEEPALIVE_REPORT_ID,
+		.type = RIFT_KEEPALIVE_TYPE,
+		.timeout_ms = __cpu_to_le16(RIFT_KEEPALIVE_TIMEOUT_MS),
 	};
 
 	return hid_send_feature_report(rift->dev.fd, &report, sizeof(report));
@@ -262,25 +262,25 @@ static int rift_dk2_send_keepalive(OuvrtRiftDK2 *rift)
 /*
  * Sends a tracking report to enable the IR tracking LEDs.
  */
-static int rift_dk2_send_tracking(OuvrtRiftDK2 *rift, bool blink)
+static int rift_send_tracking(OuvrtRift *rift, bool blink)
 {
-	struct rift_dk2_tracking_report report = {
-		.id = RIFT_DK2_TRACKING_REPORT_ID,
-		.exposure_us = __cpu_to_le16(RIFT_DK2_TRACKING_EXPOSURE_US),
-		.period_us = __cpu_to_le16(RIFT_DK2_TRACKING_PERIOD_US),
-		.vsync_offset = __cpu_to_le16(RIFT_DK2_TRACKING_VSYNC_OFFSET),
-		.duty_cycle = RIFT_DK2_TRACKING_DUTY_CYCLE,
+	struct rift_tracking_report report = {
+		.id = RIFT_TRACKING_REPORT_ID,
+		.exposure_us = __cpu_to_le16(RIFT_TRACKING_EXPOSURE_US),
+		.period_us = __cpu_to_le16(RIFT_TRACKING_PERIOD_US),
+		.vsync_offset = __cpu_to_le16(RIFT_TRACKING_VSYNC_OFFSET),
+		.duty_cycle = RIFT_TRACKING_DUTY_CYCLE,
 	};
 
 	if (blink) {
 		report.pattern = 0;
-		report.flags = RIFT_DK2_TRACKING_ENABLE |
-			       RIFT_DK2_TRACKING_USE_CARRIER |
-			       RIFT_DK2_TRACKING_AUTO_INCREMENT;
+		report.flags = RIFT_TRACKING_ENABLE |
+			       RIFT_TRACKING_USE_CARRIER |
+			       RIFT_TRACKING_AUTO_INCREMENT;
 	} else {
 		report.pattern = 0xff;
-		report.flags = RIFT_DK2_TRACKING_ENABLE |
-			       RIFT_DK2_TRACKING_USE_CARRIER;
+		report.flags = RIFT_TRACKING_ENABLE |
+			       RIFT_TRACKING_USE_CARRIER;
 	}
 
 	return hid_send_feature_report(rift->dev.fd, &report, sizeof(report));
@@ -290,11 +290,11 @@ static int rift_dk2_send_tracking(OuvrtRiftDK2 *rift, bool blink)
  * Sends a display report to set up low persistence and pixel readback
  * for latency measurement.
  */
-static int rift_dk2_send_display(OuvrtRiftDK2 *rift, bool low_persistence,
-				 bool pixel_readback)
+static int rift_send_display(OuvrtRift *rift, bool low_persistence,
+			     bool pixel_readback)
 {
-	struct rift_dk2_display_report report = {
-		.id = RIFT_DK2_DISPLAY_REPORT_ID,
+	struct rift_display_report report = {
+		.id = RIFT_DISPLAY_REPORT_ID,
 	};
 	uint16_t persistence;
 	uint16_t total_rows;
@@ -315,10 +315,10 @@ static int rift_dk2_send_display(OuvrtRiftDK2 *rift, bool low_persistence,
 		persistence = total_rows;
 	}
 	if (pixel_readback)
-		report.flags2 |= RIFT_DK2_DISPLAY_READ_PIXEL;
+		report.flags2 |= RIFT_DISPLAY_READ_PIXEL;
 	else
-		report.flags2 &= ~RIFT_DK2_DISPLAY_READ_PIXEL;
-	report.flags2 &= ~RIFT_DK2_DISPLAY_DIRECT_PENTILE;
+		report.flags2 &= ~RIFT_DISPLAY_READ_PIXEL;
+	report.flags2 &= ~RIFT_DISPLAY_DIRECT_PENTILE;
 
 	report.persistence = __cpu_to_le16(persistence);
 
@@ -355,11 +355,11 @@ static void unpack_3x21bit(__be64 *buf, vec3 *v)
  *    |               x--+
  *    z down
  */
-static void rift_dk2_decode_sensor_message(OuvrtRiftDK2 *rift,
-					   const unsigned char *buf,
-					   size_t len)
+static void rift_decode_sensor_message(OuvrtRift *rift,
+				       const unsigned char *buf,
+				       size_t len)
 {
-	struct rift_dk2_sensor_message *message = (void *)buf;
+	struct rift_sensor_message *message = (void *)buf;
 	uint8_t num_samples;
 	uint16_t sample_count;
 	int16_t temperature;
@@ -394,7 +394,7 @@ static void rift_dk2_decode_sensor_message(OuvrtRiftDK2 *rift,
 	if ((dt < rift->priv->report_interval - 1) ||
 	    (dt > rift->priv->report_interval + 1) ||
 	    (1000 * num_samples != rift->priv->report_interval)) {
-		g_print("Rift DK2: got %d samples after %d µs\n", num_samples,
+		g_print("Rift: got %d samples after %d µs\n", num_samples,
 			dt);
 	}
 
@@ -436,49 +436,49 @@ static void rift_dk2_decode_sensor_message(OuvrtRiftDK2 *rift,
 /*
  * Enables the IR tracking LEDs and registers them with the tracker.
  */
-static int rift_dk2_start(OuvrtDevice *dev)
+static int rift_start(OuvrtDevice *dev)
 {
-	OuvrtRiftDK2 *rift = OUVRT_RIFT_DK2(dev);
+	OuvrtRift *rift = OUVRT_RIFT(dev);
 	int fd = rift->dev.fd;
 	int ret;
 
 	if (fd == -1) {
 		fd = open(rift->dev.devnode, O_RDWR);
 		if (fd == -1) {
-			g_print("Rift DK2: Failed to open '%s': %d\n",
+			g_print("Rift: Failed to open '%s': %d\n",
 				rift->dev.devnode, errno);
 			return -1;
 		}
 		rift->dev.fd = fd;
 	}
 
-	ret = rift_dk2_get_positions(rift);
+	ret = rift_get_positions(rift);
 	if (ret < 0) {
-		g_print("Rift DK2: Error reading factory calibrated positions\n");
+		g_print("Rift: Error reading factory calibrated positions\n");
 		return ret;
 	}
 
-	ret = rift_dk2_get_led_patterns(rift);
+	ret = rift_get_led_patterns(rift);
 	if (ret < 0) {
-		g_print("Rift DK2: Error reading IR LED blinking patterns\n");
+		g_print("Rift: Error reading IR LED blinking patterns\n");
 		return ret;
 	}
 	if (rift->leds.num != 40)
-		g_print("Rift DK2: Reported %d IR LEDs\n", rift->leds.num);
+		g_print("Rift: Reported %d IR LEDs\n", rift->leds.num);
 
-	ret = rift_dk2_get_config(rift);
+	ret = rift_get_config(rift);
 	if (ret < 0)
 		return ret;
 
-	ret = rift_dk2_set_report_rate(rift, 500);
+	ret = rift_set_report_rate(rift, 500);
 	if (ret < 0)
 		return ret;
 
-	ret = rift_dk2_send_tracking(rift, TRUE);
+	ret = rift_send_tracking(rift, TRUE);
 	if (ret < 0)
 		return ret;
 
-	ret = rift_dk2_send_display(rift, TRUE, TRUE);
+	ret = rift_send_display(rift, TRUE, TRUE);
 	if (ret < 0)
 		return ret;
 
@@ -490,16 +490,16 @@ static int rift_dk2_start(OuvrtDevice *dev)
 /*
  * Keeps the Rift active.
  */
-static void rift_dk2_thread(OuvrtDevice *dev)
+static void rift_thread(OuvrtDevice *dev)
 {
-	OuvrtRiftDK2 *rift = OUVRT_RIFT_DK2(dev);
+	OuvrtRift *rift = OUVRT_RIFT(dev);
 	unsigned char buf[64];
 	struct pollfd fds;
 	int count;
 	int ret;
 
-	g_print("Rift DK2: Sending keepalive\n");
-	rift_dk2_send_keepalive(rift);
+	g_print("Rift: Sending keepalive\n");
+	rift_send_keepalive(rift);
 	count = 0;
 
 	while (dev->active) {
@@ -511,8 +511,8 @@ static void rift_dk2_thread(OuvrtDevice *dev)
 		if (ret == -1 || ret == 0 ||
 		    count > 9 * rift->priv->report_rate) {
 			if (ret == -1 || ret == 0)
-				g_print("Rift DK2: Resending keepalive\n");
-			rift_dk2_send_keepalive(rift);
+				g_print("Rift: Resending keepalive\n");
+			rift_send_keepalive(rift);
 			count = 0;
 			continue;
 		}
@@ -531,7 +531,7 @@ static void rift_dk2_thread(OuvrtDevice *dev)
 			continue;
 		}
 
-		rift_dk2_decode_sensor_message(rift, buf, sizeof(buf));
+		rift_decode_sensor_message(rift, buf, sizeof(buf));
 		count++;
 	}
 }
@@ -540,11 +540,11 @@ static void rift_dk2_thread(OuvrtDevice *dev)
  * Disables the IR tracking LEDs and unregisters model from the
  * tracker.
  */
-static void rift_dk2_stop(OuvrtDevice *dev)
+static void rift_stop(OuvrtDevice *dev)
 {
-	OuvrtRiftDK2 *rift = OUVRT_RIFT_DK2(dev);
-	struct rift_dk2_tracking_report report = {
-		.id = RIFT_DK2_TRACKING_REPORT_ID,
+	OuvrtRift *rift = OUVRT_RIFT(dev);
+	struct rift_tracking_report report = {
+		.id = RIFT_TRACKING_REPORT_ID,
 	};
 	int fd = rift->dev.fd;
 
@@ -553,35 +553,35 @@ static void rift_dk2_stop(OuvrtDevice *dev)
 	rift->tracker = NULL;
 
 	hid_get_feature_report(fd, &report, sizeof(report));
-	report.flags &= ~RIFT_DK2_TRACKING_ENABLE;
+	report.flags &= ~RIFT_TRACKING_ENABLE;
 	hid_send_feature_report(fd, &report, sizeof(report));
 
-	rift_dk2_set_report_rate(rift, 50);
+	rift_set_report_rate(rift, 50);
 }
 
 /*
  * Frees the device structure and its contents.
  */
-static void ouvrt_rift_dk2_finalize(GObject *object)
+static void ouvrt_rift_finalize(GObject *object)
 {
-	OuvrtRiftDK2 *rift = OUVRT_RIFT_DK2(object);
+	OuvrtRift *rift = OUVRT_RIFT(object);
 
 	g_object_unref(rift->tracker);
-	G_OBJECT_CLASS(ouvrt_rift_dk2_parent_class)->finalize(object);
+	G_OBJECT_CLASS(ouvrt_rift_parent_class)->finalize(object);
 }
 
-static void ouvrt_rift_dk2_class_init(OuvrtRiftDK2Class *klass)
+static void ouvrt_rift_class_init(OuvrtRiftClass *klass)
 {
-	G_OBJECT_CLASS(klass)->finalize = ouvrt_rift_dk2_finalize;
-	OUVRT_DEVICE_CLASS(klass)->start = rift_dk2_start;
-	OUVRT_DEVICE_CLASS(klass)->thread = rift_dk2_thread;
-	OUVRT_DEVICE_CLASS(klass)->stop = rift_dk2_stop;
+	G_OBJECT_CLASS(klass)->finalize = ouvrt_rift_finalize;
+	OUVRT_DEVICE_CLASS(klass)->start = rift_start;
+	OUVRT_DEVICE_CLASS(klass)->thread = rift_thread;
+	OUVRT_DEVICE_CLASS(klass)->stop = rift_stop;
 }
 
-static void ouvrt_rift_dk2_init(OuvrtRiftDK2 *self)
+static void ouvrt_rift_init(OuvrtRift *self)
 {
 	self->dev.type = DEVICE_TYPE_HMD;
-	self->priv = ouvrt_rift_dk2_get_instance_private(self);
+	self->priv = ouvrt_rift_get_instance_private(self);
 	self->priv->flicker = false;
 	self->priv->last_sample_timestamp = 0;
 }
@@ -594,9 +594,9 @@ static void ouvrt_rift_dk2_init(OuvrtRiftDK2 *self)
  */
 OuvrtDevice *rift_dk2_new(const char *devnode)
 {
-	OuvrtRiftDK2 *rift;
+	OuvrtRift *rift;
 
-	rift = g_object_new(OUVRT_TYPE_RIFT_DK2, NULL);
+	rift = g_object_new(OUVRT_TYPE_RIFT, NULL);
 	if (rift == NULL)
 		return NULL;
 
@@ -606,14 +606,14 @@ OuvrtDevice *rift_dk2_new(const char *devnode)
 	return &rift->dev;
 }
 
-void ouvrt_rift_dk2_set_flicker(OuvrtRiftDK2 *rift, gboolean flicker)
+void ouvrt_rift_set_flicker(OuvrtRift *rift, gboolean flicker)
 {
 	if (rift->priv->flicker == flicker)
 		return;
 
 	rift->priv->flicker = flicker;
-	rift_dk2_flicker = flicker;
+	rift_flicker = flicker;
 
 	if (rift->dev.active)
-		rift_dk2_send_tracking(rift, flicker);
+		rift_send_tracking(rift, flicker);
 }

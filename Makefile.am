@@ -58,9 +58,9 @@ ouvrtd_SOURCES = \
 	src/leds.h \
 	src/math.h \
 	src/math.c \
-	src/rift-dk2.h \
-	src/rift-dk2-hid-reports.h \
-	src/rift-dk2.c \
+	src/rift.h \
+	src/rift-hid-reports.h \
+	src/rift.c \
 	src/tracker.c \
 	src/tracker.h \
 	src/ouvrtd.c \
