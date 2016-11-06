@@ -47,6 +47,20 @@ struct rift_range_report {
 	__le16 mag_range;
 } __attribute__((packed));
 
+#define RIFT_REGISTER_REPORT_ID			0x05
+#define RIFT_REGISTER_REPORT_SIZE		6
+
+#define RIFT_DEVICE_MPU6000			1
+#define RIFT_DEVICE_HMC5983			2
+
+struct rift_register_report {
+	__u8 id;
+	__u16 echo;
+	__u8 device;
+	__u8 address;
+	__u8 payload;
+} __attribute__((packed));
+
 #define RIFT_BOOTLOAD_REPORT_ID			0x06
 #define RIFT_BOOTLOAD_REPORT_SIZE		4
 
@@ -58,6 +72,49 @@ struct rift_bootload_report {
 	__u8 id;
 	__u16 echo;
 	__u8 bootload;
+} __attribute__((packed));
+
+#define RIFT_GPIO_REPORT_ID			0x07
+#define RIFT_GPIO_REPORT_SIZE			5
+
+struct rift_gpio_report {
+	__u8 id;
+	__u16 echo;
+	__u8 direction;
+	__u8 value;
+} __attribute__((packed));
+
+#define RIFT_DK1_KEEPALIVE_REPORT_ID		0x08
+#define RIFT_DK1_KEEPALIVE_REPORT_SIZE		5
+
+struct rift_dk1_keepalive_report {
+	__u8 id;
+	__u16 echo;
+	__le16 timeout_ms;
+} __attribute__((packed));
+
+#define RIFT_DISPLAY_INFO_REPORT_ID		0x09
+#define RIFT_DISPLAY_INFO_REPORT_SIZE		56
+
+struct rift_display_info_report {
+	__u8 id;
+	__u16 echo;
+	__u8 distortion_type;
+	__le16 resolution[2];		/* pixel */
+	__le32 display_size[2];		/* µm */
+	__le32 vertical_center;		/* µm */
+	__le32 lens_separation;		/* µm */
+	__le32 lens_distance[2];	/* µm */
+	__le32 distortion_k[6];		/* floating point */
+} __attribute__((packed));
+
+#define RIFT_SERIAL_REPORT_ID			0x0a
+#define RIFT_SERIAL_REPORT_SIZE			15
+
+struct rift_serial_report {
+	__u8 id;
+	__u16 echo;
+	__u8 serial[12];
 } __attribute__((packed));
 
 #define RIFT_TRACKING_REPORT_ID			0x0c
@@ -369,6 +426,8 @@ ASSERT_SIZE(rift_config_report, RIFT_CONFIG_REPORT_SIZE);
 ASSERT_SIZE(rift_imu_calibration_report, RIFT_IMU_CALIBRATION_REPORT_SIZE);
 ASSERT_SIZE(rift_range_report, RIFT_RANGE_REPORT_SIZE);
 ASSERT_SIZE(rift_bootload_report, RIFT_BOOTLOAD_REPORT_SIZE);
+ASSERT_SIZE(rift_dk1_keepalive_report, RIFT_DK1_KEEPALIVE_REPORT_SIZE);
+ASSERT_SIZE(rift_display_info_report, RIFT_DISPLAY_INFO_REPORT_SIZE);
 ASSERT_SIZE(rift_tracking_report, RIFT_TRACKING_REPORT_SIZE);
 ASSERT_SIZE(rift_display_report, RIFT_DISPLAY_REPORT_SIZE);
 ASSERT_SIZE(rift_position_report, RIFT_POSITION_REPORT_SIZE);
