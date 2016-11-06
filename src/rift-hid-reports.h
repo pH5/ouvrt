@@ -274,6 +274,15 @@ struct rift_cv1_power_report {
 	__u8 components;
 } __attribute__((packed));
 
+#define RIFT_CV1_SERIAL_REPORT_ID		0x1e
+#define RIFT_CV1_SERIAL_REPORT_SIZE		19
+
+struct rift_cv1_serial_report {
+	__u8 id;
+	__u16 echo;
+	__u8 serial[16];
+} __attribute__((packed));
+
 #define RIFT_CV1_SENSOR_REPORT_ID		0x1f
 #define RIFT_CV1_SENSOR_REPORT_SIZE		20
 
@@ -437,6 +446,7 @@ ASSERT_SIZE(rift_uuid_report, RIFT_UUID_REPORT_SIZE);
 ASSERT_SIZE(rift_radio_control_report, RIFT_RADIO_CONTROL_REPORT_SIZE);
 ASSERT_SIZE(rift_radio_data_report, RIFT_RADIO_DATA_REPORT_SIZE);
 ASSERT_SIZE(rift_cv1_power_report, RIFT_CV1_POWER_REPORT_SIZE);
+ASSERT_SIZE(rift_cv1_serial_report, RIFT_CV1_SERIAL_REPORT_SIZE);
 ASSERT_SIZE(rift_cv1_sensor_report, RIFT_CV1_SENSOR_REPORT_SIZE);
 ASSERT_SIZE(rift_cv1_read_flash_report, RIFT_CV1_READ_FLASH_REPORT_SIZE);
 ASSERT_SIZE(rift_cv1_lifetime_report, RIFT_CV1_LIFETIME_REPORT_SIZE);
