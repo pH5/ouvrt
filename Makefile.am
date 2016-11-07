@@ -65,6 +65,8 @@ ouvrtd_SOURCES = \
 	src/rift.h \
 	src/rift-hid-reports.h \
 	src/rift.c \
+	src/rift-radio.h \
+	src/rift-radio.c \
 	src/tracker.c \
 	src/tracker.h \
 	src/tracking-model.c \

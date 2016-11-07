@@ -76,6 +76,8 @@ ouvrtd_sources = [
 	'src/rift.c',
 	'src/rift.h',
 	'src/rift-hid-reports.h',
+	'src/rift-radio.c',
+	'src/rift-radio.h',
 	'src/tracker.c',
 	'src/tracker.h',
 	'src/tracking-model.c',

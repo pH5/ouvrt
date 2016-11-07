@@ -168,4 +168,56 @@ struct rift_sensor_message {
 	__le16 reserved;
 } __attribute__((packed));
 
+#define RIFT_RADIO_MESSAGE_ID			0x0c
+
+#define RIFT_REMOTE_BUTTON_UP			0x001
+#define RIFT_REMOTE_BUTTON_DOWN			0x002
+#define RIFT_REMOTE_BUTTON_LEFT			0x004
+#define RIFT_REMOTE_BUTTON_RIGHT		0x008
+#define RIFT_REMOTE_BUTTON_OK			0x010
+#define RIFT_REMOTE_BUTTON_PLUS			0x020
+#define RIFT_REMOTE_BUTTON_MINUS		0x040
+#define RIFT_REMOTE_BUTTON_OCULUS		0x080
+#define RIFT_REMOTE_BUTTON_BACK			0x100
+
+struct rift_remote_message {
+	__le16 buttons;
+	__u8 unknown[56];
+} __attribute__((packed));
+
+#define RIFT_TOUCH_CONTROLLER_BUTTON_A		0x01
+#define RIFT_TOUCH_CONTROLLER_BUTTON_X		0x01
+#define RIFT_TOUCH_CONTROLLER_BUTTON_B		0x02
+#define RIFT_TOUCH_CONTROLLER_BUTTON_Y		0x02
+#define RIFT_TOUCH_CONTROLLER_BUTTON_MENU	0x04
+#define RIFT_TOUCH_CONTROLLER_BUTTON_OCULUS	0x04
+#define RIFT_TOUCH_CONTROLLER_BUTTON_STICK	0x08
+
+struct rift_touch_message {
+	__le32 timestamp;
+	__le16 accel[3];
+	__le16 gyro[3];
+	__u8 buttons;
+	__u8 trigger_grip_stick[5];
+	__u8 unknown[36];
+} __attribute__((packed));
+
+#define RIFT_REMOTE				5
+#define RIFT_TOUCH_CONTROLLER_LEFT		2
+#define RIFT_TOUCH_CONTROLLER_RIGHT		3
+
+struct rift_radio_message {
+	__u8 id;
+	__u16 echo;
+	__u8 unknown[2];
+	__u8 device_type;
+	union {
+		struct rift_remote_message remote;
+		struct rift_touch_message touch;
+	};
+} __attribute__((packed));
+
+/* This message is sent in a 250 ms interval and contains all zeros */
+#define RIFT_RADIO_UNKNOWN_MESSAGE_ID		0x0d
+
 #endif /* __RIFT_HID_REPORTS__ */

@@ -20,6 +20,7 @@
 #include "device.h"
 #include "gdbus-generated.h"
 #include "rift.h"
+#include "rift-radio.h"
 #include "camera-dk2.h"
 #include "vive-headset-imu.h"
 #include "vive-headset-mainboard.h"
@@ -42,7 +43,7 @@
 #define PID_VIVE_CONTROLLER_USB	"2012"
 #define PID_VIVE_CONTROLLER	"2101"
 
-#define NUM_MATCHES	10
+#define NUM_MATCHES	11
 
 struct device_match {
 	const char *vid;
@@ -59,7 +60,15 @@ static const struct device_match device_matches[NUM_MATCHES] = {
 		.pid = PID_RIFT_CV1,
 		.subsystem = "hidraw",
 		.name = "Rift CV1",
+		.interface = 0,
 		.new = rift_cv1_new,
+	}, {
+		.vid = VID_OCULUSVR,
+		.pid = PID_RIFT_CV1,
+		.subsystem = "hidraw",
+		.name = "Rift CV1 Radio",
+		.interface = 1,
+		.new = rift_cv1_radio_new,
 	}, {
 		.vid = VID_OCULUSVR,
 		.pid = PID_RIFT_DK2,
