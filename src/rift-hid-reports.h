@@ -168,13 +168,21 @@ struct rift_display_report {
 #define RIFT_POSITION_REPORT_ID			0x0f
 #define RIFT_POSITION_REPORT_SIZE		30
 
+#define RIFT_POSITION_NONE			0
+#define RIFT_POSITION_DEFAULT			1
+#define RIFT_POSITION_FACTORY_CALIBRATED	2
+#define RIFT_POSITION_USER_CALIBRATED		3
+
+#define RIFT_POSITION_LED			0
+#define RIFT_POSITION_IMU			1
+
 struct rift_position_report {
 	__u8 id;
 	__u16 echo;
-	__u8 reserved_1;
+	__u8 version;
 	__le32 pos[3];
 	__le16 dir[3];
-	__le16 reserved_2;
+	__le16 angle;
 	__le16 index;
 	__le16 num;
 	__le16 type;

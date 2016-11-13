@@ -246,7 +246,7 @@ static int rift_get_positions(OuvrtRift *rift)
 		pos.y = 1e-6f * (int32_t)__le32_to_cpu(report.pos[1]);
 		pos.z = 1e-6f * (int32_t)__le32_to_cpu(report.pos[2]);
 
-		if (type == 0) {
+		if (type == RIFT_POSITION_LED) {
 			rift->leds.model.points[index] = pos;
 
 			/* Direction, magnitude in unknown units */
@@ -255,8 +255,13 @@ static int rift_get_positions(OuvrtRift *rift)
 			dir.z = (int16_t)__le16_to_cpu(report.dir[2]);
 			vec3_normalize(&dir);
 			rift->leds.model.normals[index] = dir;
-		} else if (type == 1) {
+		} else if (type == RIFT_POSITION_IMU) {
 			rift->imu_position = pos;
+			/*
+			 * Rotation direction and angle are stored as all zeros
+			 * on DK2 and CV1, as IMU orientation can be determined
+			 * from the IMU calibration report.
+			 */
 		}
 
 		/* Break out before reading the first report again */
