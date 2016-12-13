@@ -76,6 +76,48 @@ static int rift_get_config(OuvrtRift *rift)
 }
 
 /*
+ * Reads the IMU factory calibration
+ */
+static int rift_get_imu_calibration(OuvrtRift *rift)
+{
+	struct rift_imu_calibration_report report = {
+		.id = RIFT_IMU_CALIBRATION_REPORT_ID,
+	};
+	int ret;
+	vec3 accel_offset;
+	vec3 gyro_offset;
+	float accel_matrix[3][3];
+	float gyro_matrix[3][3];
+	float temperature;
+	float scale = 1.0f / ((1 << 20) - 1);
+	int i;
+
+	ret = hid_get_feature_report(rift->dev.fd, &report, sizeof(report));
+	if (ret < 0)
+		return ret;
+
+	/* 10⁻⁴ m/s² */
+	unpack_3x21bit(1e-4f, &report.accel_offset, &accel_offset);
+	/* 10⁻⁴ rad/s */
+	unpack_3x21bit(1e-4f, &report.gyro_offset, &gyro_offset);
+
+	for (i = 0; i < 3; i++) {
+		unpack_3x21bit(scale, &report.accel_matrix[i],
+			       (vec3 *)&accel_matrix[i]);
+		accel_matrix[i][i] += 1.0f;
+		unpack_3x21bit(scale, &report.gyro_matrix[i],
+			       (vec3 *)&gyro_matrix[i]);
+		gyro_matrix[i][i] += 1.0f;
+	}
+
+	temperature = 0.01f * __le16_to_cpu(report.temperature);
+
+	(void)temperature;
+
+	return 0;
+}
+
+/*
  * Configures the sensor report rate
  */
 static int rift_set_report_rate(OuvrtRift *rift, int report_rate)
@@ -585,6 +627,10 @@ static int rift_start(OuvrtDevice *dev)
 		rift_get_firmware_version(dev->fds[0]);
 
 	ret = rift_get_ranges(rift);
+	if (ret < 0)
+		return ret;
+
+	ret = rift_get_imu_calibration(rift);
 	if (ret < 0)
 		return ret;
 

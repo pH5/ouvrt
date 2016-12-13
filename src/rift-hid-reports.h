@@ -23,6 +23,19 @@ struct rift_config_report {
 	__le16 sample_rate;
 } __attribute__((packed));
 
+#define RIFT_IMU_CALIBRATION_REPORT_ID		0x03
+#define RIFT_IMU_CALIBRATION_REPORT_SIZE	69
+
+struct rift_imu_calibration_report {
+	__u8 id;
+	__u16 echo;
+	__le64 accel_offset;
+	__le64 gyro_offset;
+	__le64 accel_matrix[3];
+	__le64 gyro_matrix[3];
+	__le16 temperature;
+} __attribute__((packed));
+
 #define RIFT_RANGE_REPORT_ID			0x04
 #define RIFT_RANGE_REPORT_SIZE			8
 
@@ -322,6 +335,7 @@ struct rift_radio_message {
 		       "incorrect size: " #report)
 
 ASSERT_SIZE(rift_config_report, RIFT_CONFIG_REPORT_SIZE);
+ASSERT_SIZE(rift_imu_calibration_report, RIFT_IMU_CALIBRATION_REPORT_SIZE);
 ASSERT_SIZE(rift_range_report, RIFT_RANGE_REPORT_SIZE);
 ASSERT_SIZE(rift_unknown_report_6, RIFT_UNKNOWN_REPORT_6_SIZE);
 ASSERT_SIZE(rift_tracking_report, RIFT_TRACKING_REPORT_SIZE);
