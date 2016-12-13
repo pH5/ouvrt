@@ -72,18 +72,18 @@ struct vive_firmware_version_report {
 	__u8 reserved[13];
 } __attribute__((packed));
 
-#define VIVE_HEADSET_IMU_REPORT_ID			0x20
+#define VIVE_IMU_REPORT_ID				0x20
 
-struct vive_headset_imu_sample {
+struct vive_imu_sample {
 	__le16 acc[3];
 	__le16 gyro[3];
 	__le32 time;
 	__u8 seq;
 } __attribute__((packed));
 
-struct vive_headset_imu_report {
+struct vive_imu_report {
 	__u8 id;
-	struct vive_headset_imu_sample sample[3];
+	struct vive_imu_sample sample[3];
 } __attribute__((packed));
 
 #define VIVE_HEADSET_LIGHTHOUSE_PULSE_REPORT1_ID	0x21

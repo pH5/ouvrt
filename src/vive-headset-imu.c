@@ -15,6 +15,7 @@
 #include "vive-headset-imu.h"
 #include "vive-hid-reports.h"
 #include "vive-config.h"
+#include "vive-imu.h"
 #include "device.h"
 #include "hidraw.h"
 #include "imu.h"
@@ -23,11 +24,7 @@
 
 struct _OuvrtViveHeadsetIMUPrivate {
 	JsonNode *config;
-	uint8_t sequence;
-	vec3 acc_bias;
-	vec3 acc_scale;
-	vec3 gyro_bias;
-	vec3 gyro_scale;
+	struct vive_imu imu;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveHeadsetIMU, ouvrt_vive_headset_imu, \
@@ -40,6 +37,7 @@ static int vive_headset_imu_get_config(OuvrtViveHeadsetIMU *self)
 {
 	char *config_json;
 	JsonObject *object;
+	struct vive_imu *imu = &self->priv->imu;
 
 	config_json = ouvrt_vive_get_config(&self->dev);
 	if (!config_json)
@@ -55,10 +53,10 @@ static int vive_headset_imu_get_config(OuvrtViveHeadsetIMU *self)
 
 	object = json_node_get_object(self->priv->config);
 
-	json_object_get_vec3_member(object, "acc_bias", &self->priv->acc_bias);
-	json_object_get_vec3_member(object, "acc_scale", &self->priv->acc_scale);
-	json_object_get_vec3_member(object, "gyro_bias", &self->priv->gyro_bias);
-	json_object_get_vec3_member(object, "gyro_scale", &self->priv->gyro_scale);
+	json_object_get_vec3_member(object, "acc_bias", &imu->acc_bias);
+	json_object_get_vec3_member(object, "acc_scale", &imu->acc_scale);
+	json_object_get_vec3_member(object, "gyro_bias", &imu->gyro_bias);
+	json_object_get_vec3_member(object, "gyro_scale", &imu->gyro_scale);
 
 	return 0;
 }
@@ -92,65 +90,6 @@ static int vive_headset_get_firmware_version(OuvrtViveHeadsetIMU *self)
 		report.hardware_version_minor, report.hardware_version_micro);
 
 	return 0;
-}
-
-static inline int oldest_sequence_index(uint8_t a, uint8_t b, uint8_t c)
-{
-	if (a == (uint8_t)(b + 2))
-		return 1;
-	else if (b == (uint8_t)(c + 2))
-		return 2;
-	else
-		return 0;
-}
-
-/*
- * Decodes the periodic sensor message containing IMU sample(s).
- */
-static void vive_headset_imu_decode_message(OuvrtViveHeadsetIMU *self,
-					    const void *buf, size_t len)
-{
-	const struct vive_headset_imu_report *report = buf;
-	const struct vive_headset_imu_sample *sample = report->sample;
-	uint8_t last_seq = self->priv->sequence;
-	int i, j;
-
-	(void)len;
-
-	/*
-	 * The three samples are updated round-robin. New messages
-	 * can contain already seen samples in any place, but the
-	 * sequence numbers should always be consecutive.
-	 * Start at the sample with the oldest sequence number.
-	 */
-	i = oldest_sequence_index(sample[0].seq, sample[1].seq, sample[2].seq);
-
-	/* From there, handle all new samples */
-	for (j = 3; j; --j, i = (i + 1) % 3) {
-		struct raw_imu_sample raw;
-		uint8_t seq;
-
-		sample = report->sample + i;
-		seq = sample->seq;
-
-		/* Skip already seen samples */
-		if (seq == last_seq ||
-		    seq == (uint8_t)(last_seq - 1) ||
-		    seq == (uint8_t)(last_seq - 2))
-			continue;
-
-		raw.accel[0] = (int16_t)__le16_to_cpu(sample->acc[0]);
-		raw.acc[1] = (int16_t)__le16_to_cpu(sample->acc[1]);
-		raw.acc[2] = (int16_t)__le16_to_cpu(sample->acc[2]);
-		raw.gyro[0] = (int16_t)__le16_to_cpu(sample->gyro[0]);
-		raw.gyro[1] = (int16_t)__le16_to_cpu(sample->gyro[1]);
-		raw.gyro[2] = (int16_t)__le16_to_cpu(sample->gyro[2]);
-		raw.time = __le32_to_cpu(sample->time);
-
-		(void)raw;
-
-		self->priv->sequence = seq;
-	}
 }
 
 static int vive_headset_enable_lighthouse(OuvrtViveHeadsetIMU *self)
@@ -247,13 +186,13 @@ static void vive_headset_imu_thread(OuvrtDevice *dev)
 			g_print("%s: Read error: %d\n", dev->name, errno);
 			continue;
 		}
-		if (ret != 52 || buf[0] != VIVE_HEADSET_IMU_REPORT_ID) {
+		if (ret != 52 || buf[0] != VIVE_IMU_REPORT_ID) {
 			g_print("%s: Error, invalid %d-byte report 0x%02x\n",
 				dev->name, ret, buf[0]);
 			continue;
 		}
 
-		vive_headset_imu_decode_message(self, buf, 52);
+		vive_imu_decode_message(&self->priv->imu, buf, 52);
 	}
 }
 
@@ -285,6 +224,8 @@ static void ouvrt_vive_headset_imu_init(OuvrtViveHeadsetIMU *self)
 {
 	self->dev.type = DEVICE_TYPE_HMD;
 	self->priv = ouvrt_vive_headset_imu_get_instance_private(self);
+	self->priv->imu.sequence = 0;
+	self->priv->imu.time = 0;
 }
 
 /*
