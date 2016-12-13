@@ -8,6 +8,38 @@
 
 #include <asm/byteorder.h>
 
+#define VIVE_CONTROLLER_BUTTON_REPORT_ID		0x01
+
+#define VIVE_CONTROLLER_USB_BUTTON_TRIGGER		(1 << 0)
+#define VIVE_CONTROLLER_USB_BUTTON_GRIP			(1 << 2)
+#define VIVE_CONTROLLER_USB_BUTTON_MENU			(1 << 12)
+#define VIVE_CONTROLLER_USB_BUTTON_SYSTEM		(1 << 13)
+#define VIVE_CONTROLLER_USB_BUTTON_THUMB		(1 << 18)
+#define VIVE_CONTROLLER_USB_BUTTON_TOUCH		(1 << 20)
+
+struct vive_controller_button_report {
+	__u8 id;
+	__u8 unknown1;
+	__le16 maybe_type;
+	__le32 sequence;
+	__le32 buttons;
+	union {
+		__le16 trigger;
+		__le16 battery_voltage;
+	};
+	__u8 battery;
+	__u8 unknown2;
+	__le32 hardware_id;
+	__le16 touch[2];
+	__le16 unknown3;
+	__le16 trigger_hires;
+	__u8 unknown4[24];
+	__le16 trigger_raw;
+	__u8 unknown5[8];
+	__u8 maybe_bitfield;
+	__u8 unknown6;
+} __attribute__((packed));
+
 #define VIVE_MAINBOARD_STATUS_REPORT_ID			0x03
 
 struct vive_mainboard_status_report {
