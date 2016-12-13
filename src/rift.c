@@ -35,6 +35,19 @@ struct _OuvrtRiftPrivate {
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtRift, ouvrt_rift, OUVRT_TYPE_DEVICE)
 
 /*
+ * Unpacks three signed 21-bit values packed into a big-endian 64-bit value
+ * and stores them in a floating point vector after multiplying by scale.
+ */
+static void unpack_3x21bit(float scale, __be64 *buf, vec3 *v)
+{
+	uint64_t xyz = __be64_to_cpup(buf);
+
+	v->x = scale * ((int64_t)xyz >> 43);
+	v->y = scale * ((int64_t)(xyz << 21) >> 43);
+	v->z = scale * ((int64_t)(xyz << 42) >> 43);
+}
+
+/*
  * Returns the current sensor configuration.
  */
 static int rift_get_config(OuvrtRift *rift)
@@ -407,19 +420,6 @@ static int rift_cv1_power_down(OuvrtRift *rift, uint8_t components)
 }
 
 /*
- * Unpacks three signed 21-bit values packed into a big-endian 64-bit value
- * and stores them in a floating point vector after multiplying by 10⁻⁴.
- */
-static void unpack_3x21bit(__be64 *buf, vec3 *v)
-{
-	uint64_t xyz = __be64_to_cpup(buf);
-
-	v->x = 0.0001f * ((int64_t)xyz >> 43);
-	v->y = 0.0001f * ((int64_t)(xyz << 21) >> 43);
-	v->z = 0.0001f * ((int64_t)(xyz << 42) >> 43);
-}
-
-/*
  * Decodes the periodic sensor message containing IMU sample(s) and
  * frame timing data.
  * Without calibration, the accelerometer reports acceleration in units
@@ -495,10 +495,10 @@ static void rift_decode_sensor_message(OuvrtRift *rift,
 	num_samples = num_samples > 1 ? 2 : 1;
 	for (i = 0; i < num_samples; i++) {
 		/* 10⁻⁴ m/s² */
-		unpack_3x21bit(&message->sample[i].accel,
+		unpack_3x21bit(1e-4f, &message->sample[i].accel,
 			       &state.sample.acceleration);
 		/* 10⁻⁴ rad/s */
-		unpack_3x21bit(&message->sample[i].gyro,
+		unpack_3x21bit(1e-4f, &message->sample[i].gyro,
 			       &state.sample.angular_velocity);
 
 		debug_imu_fifo_in(&state, 1);
