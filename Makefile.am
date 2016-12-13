@@ -56,6 +56,8 @@ ouvrtd_SOURCES = \
 	src/imu.h \
 	src/leds.c \
 	src/leds.h \
+	src/lighthouse.c \
+	src/lighthouse.h \
 	src/math.h \
 	src/math.c \
 	src/rift.h \

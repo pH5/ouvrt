@@ -238,6 +238,7 @@ vive_controller_decode_message(OuvrtViveController *self,
  */
 static int vive_controller_start(OuvrtDevice *dev)
 {
+	OuvrtViveController *self = OUVRT_VIVE_CONTROLLER(dev);
 	int fd = dev->fd;
 
 	if (fd == -1) {
@@ -249,6 +250,8 @@ static int vive_controller_start(OuvrtDevice *dev)
 		}
 		dev->fd = fd;
 	}
+
+	self->priv->watchman.name = self->dev.name;
 
 	return 0;
 }
