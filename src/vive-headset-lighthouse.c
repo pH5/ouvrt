@@ -225,12 +225,7 @@ static void ouvrt_vive_headset_lighthouse_init(OuvrtViveHeadsetLighthouse *self)
 	self->dev.type = DEVICE_TYPE_HMD;
 	self->priv = ouvrt_vive_headset_lighthouse_get_instance_private(self);
 
-	self->priv->watchman.name = self->dev.name;
-	self->priv->watchman.mode = SWEEP;
-	self->priv->watchman.seen_by = 0;
-	self->priv->watchman.last_timestamp = 0;
-	self->priv->watchman.last_sync.timestamp = 0;
-	self->priv->watchman.last_sync.duration = 0;
+	lighthouse_watchman_init(&self->priv->watchman);
 }
 
 /*

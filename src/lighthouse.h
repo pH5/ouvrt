@@ -14,11 +14,6 @@
 
 #include "math.h"
 
-enum pulse_mode {
-	SYNC,
-	SWEEP
-};
-
 struct lighthouse_rotor_calibration {
 	float tilt;
 	float phase;
@@ -44,11 +39,15 @@ struct lighthouse_base {
 	char channel;
 	int model_id;
 	int reset_count;
+
+	uint32_t last_sync_timestamp;
+	int active_rotor;
 };
 
 struct lighthouse_pulse {
 	uint32_t timestamp;
 	uint16_t duration;
+	uint8_t id;
 };
 
 struct lighthouse_sensor {
@@ -60,16 +59,17 @@ struct lighthouse_watchman {
 	const gchar *name;
 	gboolean base_visible;
 	struct lighthouse_base base[2];
-	enum pulse_mode mode;
+	struct lighthouse_base *active_base;
 	uint32_t seen_by;
 	uint32_t last_timestamp;
-	uint16_t duration;
 	struct lighthouse_sensor sensor[32];
 	struct lighthouse_pulse last_sync;
+	gboolean sync_lock;
 };
 
-void lighthouse_watchman_handle_pulse(struct lighthouse_watchman *priv,
+void lighthouse_watchman_handle_pulse(struct lighthouse_watchman *watchman,
 				      uint8_t id, uint16_t duration,
 				      uint32_t timestamp);
+void lighthouse_watchman_init(struct lighthouse_watchman *watchman);
 
 #endif

@@ -14,24 +14,6 @@
 #include "lighthouse.h"
 #include "math.h"
 
-struct lighthouse_sync_pulse {
-	uint16_t duration;
-	gboolean skip;
-	gboolean rotor;
-	gboolean data;
-};
-
-static struct lighthouse_sync_pulse pulse_table[8] = {
-	{ 3000, 0, 0, 0 },
-	{ 3500, 0, 1, 0 },
-	{ 4000, 0, 0, 1 },
-	{ 4500, 0, 1, 1 },
-	{ 5000, 1, 0, 0 },
-	{ 5500, 1, 1, 0 },
-	{ 6000, 1, 0, 1 },
-	{ 6500, 1, 1, 1 },
-};
-
 struct lighthouse_ootx_report {
 	__le16 version;
 	__le32 serial;
@@ -48,6 +30,35 @@ struct lighthouse_ootx_report {
 static inline float __le16_to_float(__le16 le16)
 {
 	return f16_to_float(__le16_to_cpu(le16));
+}
+
+static inline gboolean pulse_in_this_sync_window(int32_t dt, uint16_t duration)
+{
+	return dt > -duration && (dt + duration) < (6500 + 250);
+}
+
+static inline gboolean pulse_in_next_sync_window(int32_t dt, uint16_t duration)
+{
+	int32_t dt_end = dt + duration;
+
+	/*
+	 * Allow 2000 pulses (40 µs) deviation from the expected interval
+	 * between bases, and 1000 pulses (20 µs) for a single base.
+	 */
+	return (dt > (20000 - 2000) && (dt_end) < (20000 + 6500 + 2000)) ||
+	       (dt > (380000 - 2000) && (dt_end) < (380000 + 6500 + 2000)) ||
+	       (dt > (400000 - 1000) && (dt_end) < (400000 + 6500 + 1000));
+}
+
+static inline gboolean pulse_in_sweep_window(int32_t dt, uint16_t duration)
+{
+	/*
+	 * The J axis (horizontal) sweep starts 71111 ticks after the sync
+	 * pulse start (32°) and ends at 346667 ticks (156°).
+	 * The K axis (vertical) sweep starts at 55555 ticks (23°) and ends
+	 * at 331111 ticks (149°).
+	 */
+	return dt > (55555 - 1000) && (dt + duration) < (346667 + 1000);
 }
 
 static void lighthouse_base_handle_ootx_frame(struct lighthouse_base *base)
@@ -176,21 +187,17 @@ lighthouse_base_handle_ootx_data_word(struct lighthouse_watchman *watchman,
 }
 
 static void
-lighthouse_base_handle_sync_pulse(struct lighthouse_watchman *watchman,
-				  struct lighthouse_sync_pulse *pulse,
-				  char channel)
+lighthouse_base_handle_ootx_data_bit(struct lighthouse_watchman *watchman,
+				     struct lighthouse_base *base,
+				     gboolean data)
 {
-	struct lighthouse_base *base = &watchman->base[channel == 'C'];
-
-	base->channel = channel;
-
-	if (base->data_word >= (int)sizeof(base->ootx) / 2)
+	if (base->data_word >= (int)sizeof(base->ootx) / 2) {
 		base->data_word = -1;
-	if (base->data_word >= 0) {
+	} else if (base->data_word >= 0) {
 		if (base->data_bit == 16) {
 			/* Sync bit */
 			base->data_bit = 0;
-			if (pulse->data) {
+			if (data) {
 				base->data_word++;
 				lighthouse_base_handle_ootx_data_word(watchman,
 								      base);
@@ -200,76 +207,161 @@ lighthouse_base_handle_sync_pulse(struct lighthouse_watchman *watchman,
 				/* Missing sync bit, restart */
 				base->data_word = -1;
 			}
-		} else if (base->data_bit < 8) {
-			base->ootx[2 * base->data_word] |=
-					pulse->data << (7 - base->data_bit);
-			base->data_bit++;
 		} else if (base->data_bit < 16) {
-			base->ootx[2 * base->data_word + 1] |=
-					pulse->data << (15 - base->data_bit);
+			/*
+			 * Each 16-bit payload word contains two bytes,
+			 * transmitted MSB-first.
+			 */
+			if (data) {
+				int idx = 2 * base->data_word +
+					  (base->data_bit >> 3);
+
+				base->ootx[idx] |= 0x80 >> (base->data_bit % 8);
+			}
 			base->data_bit++;
 		}
 	}
 
 	/* Preamble detection */
-	if (base->data_sync > 16 && pulse->data == 1) {
-		memset(base->ootx, 0, sizeof(base->ootx));
-		base->data_word = 0;
-		base->data_bit = 0;
-	}
-	if (pulse->data)
+	if (data) {
+		if (base->data_sync > 16) {
+			/* Preamble detected, restart bit capture */
+			memset(base->ootx, 0, sizeof(base->ootx));
+			base->data_word = 0;
+			base->data_bit = 0;
+		}
 		base->data_sync = 0;
-	else
+	} else {
 		base->data_sync++;
+	}
 }
+
+/*
+ * The pulse length encodes three bits. The skip bit indicates whether the
+ * emitting base will enable the sweeping laser in the next sweep window.
+ * The data bit is collected to eventually assemble the OOTX frame. The rotor
+ * bit indicates whether the next sweep will be horizontal (0) or vertical (1):
+ *
+ * duration  3000 3500 4000 4500 5000 5500 6000 6500 (in 48 MHz ticks)
+ * skip         0    0    0    0    1    1    1    1
+ * data         0    0    1    1    0    0    1    1
+ * rotor        0    1    0    1    0    1    0    1
+ */
+#define SKIP_BIT	4
+#define DATA_BIT	2
+#define ROTOR_BIT	1
 
 static void lighthouse_handle_sync_pulse(struct lighthouse_watchman *watchman,
 					 struct lighthouse_pulse *sync)
 {
-	struct lighthouse_sync_pulse *pulse;
+	struct lighthouse_base *base;
+	unsigned char channel;
 	int32_t dt;
-	int i;
+	unsigned int code;
 
 	if (!sync->duration)
 		return;
 
-	for (i = 0, pulse = pulse_table; i < 8; i++, pulse++) {
-		if (sync->duration > (pulse->duration - 250) &&
-		    sync->duration < (pulse->duration + 250)) {
-			break;
-		}
-	}
-	if (i == 8) {
+	if (sync->duration < 2750 || sync->duration > 6750) {
 		g_print("%s: Unknown pulse length: %d\n", watchman->name,
 			sync->duration);
 		return;
 	}
+	code = (sync->duration - 2750) / 500;
 
 	dt = sync->timestamp - watchman->last_timestamp;
 
 	/* 48 MHz / 120 Hz = 400000 cycles per sync pulse */
-	if (dt > (400000 - 4000) && dt < (400000 + 4000)) {
-		/* Observing a single base station, channel A */
-		lighthouse_base_handle_sync_pulse(watchman, pulse, 'A');
-	} else if (dt > (380000 - 4000) && dt < (380000 + 4000)) {
+	if (dt > (400000 - 1000) && dt < (400000 + 1000)) {
+		/* Observing a single base station, channel A (or B, actually) */
+		channel = 'A';
+	} else if (dt > (380000 - 1000) && dt < (380000 + 1000)) {
 		/* Observing two base stations, this is channel B */
-		lighthouse_base_handle_sync_pulse(watchman, pulse, 'B');
-	} else if (dt > (20000 - 4000) && dt < (20000 + 4000)) {
+		channel = 'B';
+	} else if (dt > (20000 - 1000) && dt < (20000 + 1000)) {
 		/* Observing two base stations, this is channel C */
-		lighthouse_base_handle_sync_pulse(watchman, pulse, 'C');
-	} else if (dt > -1000 && dt < 1000) {
-		/* Ignore */
+		channel = 'C';
 	} else {
-		/* Irregular sync pulse */
-		if (watchman->last_timestamp)
-			g_print("%s: Irregular sync pulse: %u -> %u (%+d)\n",
-				watchman->name, watchman->last_timestamp,
-				sync->timestamp, dt);
-		lighthouse_base_reset(&watchman->base[0]);
-		lighthouse_base_reset(&watchman->base[1]);
+		if (dt > -1000 && dt < 1000) {
+			/*
+			 * Ignore, this means we prematurely finished
+			 * assembling the last sync pulse.
+			 */
+		} else {
+			/* Irregular sync pulse */
+			if (watchman->last_timestamp)
+				g_print("%s: Irregular sync pulse: %08x -> %08x (%+d)\n",
+					watchman->name, watchman->last_timestamp,
+					sync->timestamp, dt);
+			lighthouse_base_reset(&watchman->base[0]);
+			lighthouse_base_reset(&watchman->base[1]);
+		}
+
+		watchman->last_timestamp = sync->timestamp;
+		return;
+	}
+
+	base = &watchman->base[channel == 'C'];
+	base->channel = channel;
+	base->last_sync_timestamp = sync->timestamp;
+	base->active_rotor = (code & ROTOR_BIT);
+	lighthouse_base_handle_ootx_data_bit(watchman, base, (code & DATA_BIT));
+
+	if (!(code & SKIP_BIT)) {
+		watchman->active_base = base;
 	}
 
 	watchman->last_timestamp = sync->timestamp;
+}
+
+static void lighthouse_handle_sweep_pulse(struct lighthouse_watchman *watchman,
+					  uint8_t id, uint32_t timestamp,
+					  uint16_t duration)
+{
+	struct lighthouse_base *base = watchman->active_base;
+	int32_t offset;
+
+	(void)id;
+
+	if (!base) {
+		g_print("%s: sweep without sync\n", watchman->name);
+		return;
+	}
+
+	offset = timestamp - base->last_sync_timestamp;
+
+	/* Ignore short sync pulses or sweeps without a corresponding sync */
+	if (offset > 379000)
+		return;
+
+	if (!pulse_in_sweep_window(offset, duration)) {
+		g_print("%s: sweep offset out of range: rotor %u offset %u duration %u\n",
+			watchman->name, base->active_rotor, offset, duration);
+		return;
+	}
+}
+
+static void accumulate_sync_pulse(struct lighthouse_watchman *watchman,
+				  uint8_t id, uint32_t timestamp,
+				  uint16_t duration)
+{
+	int32_t dt = timestamp - watchman->last_sync.timestamp;
+
+	if (dt > watchman->last_sync.duration || watchman->last_sync.duration == 0) {
+		watchman->seen_by = 1 << id;
+		watchman->last_sync.timestamp = timestamp;
+		watchman->last_sync.duration = duration;
+		watchman->last_sync.id = id;
+	} else {
+		watchman->seen_by |= 1 << id;
+		if (timestamp < watchman->last_sync.timestamp) {
+			watchman->last_sync.duration += watchman->last_sync.timestamp - timestamp;
+			watchman->last_sync.timestamp = timestamp;
+		}
+		if (duration > watchman->last_sync.duration)
+			watchman->last_sync.duration = duration;
+		watchman->last_sync.duration = duration;
+	}
 }
 
 void lighthouse_watchman_handle_pulse(struct lighthouse_watchman *watchman,
@@ -280,28 +372,68 @@ void lighthouse_watchman_handle_pulse(struct lighthouse_watchman *watchman,
 
 	dt = timestamp - watchman->last_sync.timestamp;
 
-	if (watchman->mode == SYNC && watchman->seen_by && dt > watchman->last_sync.duration) {
-		lighthouse_handle_sync_pulse(watchman, &watchman->last_sync);
-		watchman->seen_by = 0;
-	}
-
-	if (duration >= 2750) {
-		if (dt > watchman->last_sync.duration || watchman->last_sync.duration == 0) {
-			watchman->seen_by = 1 << id;
-			watchman->last_sync.timestamp = timestamp;
-			watchman->last_sync.duration = duration;
-		} else {
-			watchman->seen_by |= 1 << id;
-			if (timestamp < watchman->last_sync.timestamp) {
-				watchman->last_sync.duration += watchman->last_sync.timestamp - timestamp;
-				watchman->last_sync.timestamp = timestamp;
-			}
-			if (duration > watchman->last_sync.duration)
-				watchman->last_sync.duration = duration;
-			watchman->last_sync.duration = duration;
+	if (watchman->sync_lock) {
+		if (watchman->seen_by && dt > watchman->last_sync.duration) {
+			lighthouse_handle_sync_pulse(watchman, &watchman->last_sync);
+			watchman->seen_by = 0;
 		}
-		watchman->mode = SYNC;
+
+		if (pulse_in_this_sync_window(dt, duration) ||
+		    pulse_in_next_sync_window(dt, duration)) {
+			accumulate_sync_pulse(watchman, id, timestamp, duration);
+		} else if (pulse_in_sweep_window(dt, duration)) {
+			lighthouse_handle_sweep_pulse(watchman, id, timestamp,
+						      duration);
+		} else {
+			/*
+			 * Spurious pulse - this could be due to a reflection or
+			 * misdetected sync. If dt > period, drop the sync lock.
+			 * Maybe we should ignore a single missed sync.
+			 */
+			if (dt > 407500) {
+				watchman->sync_lock = FALSE;
+				g_print("%s: late pulse, lost sync\n",
+					watchman->name);
+			} else {
+				g_print("%s: spurious pulse: %08x (%02x %d %u)\n",
+					watchman->name, timestamp, id, dt,
+					duration);
+			}
+			watchman->seen_by = 0;
+		}
 	} else {
-		watchman->mode = SWEEP;
+		/*
+		 * If we've not locked onto the periodic sync signals, try to
+		 * treat all pulses within the right duration range as potential
+		 * sync pulses.
+		 * This is still a bit naive. If the sensors are moved too
+		 * close to the lighthouse base station, sweep pulse durations
+		 * may fall into this range and sweeps may be misdetected as
+		 * sync floods.
+		 */
+		if (duration >= 2750 && duration <= 6750) {
+			/*
+			 * Decide we've locked on if the pulse falls into any
+			 * of the expected time windows from the last
+			 * accumulated sync pulse.
+			 */
+			if (pulse_in_next_sync_window(dt, duration)) {
+				g_print("%s: sync locked\n", watchman->name);
+				watchman->sync_lock = TRUE;
+			}
+
+			accumulate_sync_pulse(watchman, id, timestamp, duration);
+		} else {
+			/* Assume this is a sweep, ignore it until we lock */
+		}
 	}
+}
+
+void lighthouse_watchman_init(struct lighthouse_watchman *watchman)
+{
+	watchman->name = NULL;
+	watchman->seen_by = 0;
+	watchman->last_timestamp = 0;
+	watchman->last_sync.timestamp = 0;
+	watchman->last_sync.duration = 0;
 }
