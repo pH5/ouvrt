@@ -6,10 +6,8 @@
 #include <asm/byteorder.h>
 #include <errno.h>
 #include <poll.h>
-#include <pthread.h>
 #include <string.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <sys/fcntl.h>
 #include <unistd.h>
 #include <json-glib/json-glib.h>

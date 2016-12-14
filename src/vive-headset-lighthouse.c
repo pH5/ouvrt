@@ -6,14 +6,11 @@
 #include <asm/byteorder.h>
 #include <errno.h>
 #include <poll.h>
-#include <pthread.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/fcntl.h>
 #include <unistd.h>
-#include <math.h>
-#include <zlib.h>
 
 #include "vive-headset-lighthouse.h"
 #include "vive-hid-reports.h"

@@ -4,7 +4,6 @@
  * SPDX-License-Identifier:	LGPL-2.0+
  */
 #include <errno.h>
-#include <json-glib/json-glib.h>
 #include <string.h>
 #include <zlib.h>
 
