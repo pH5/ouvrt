@@ -123,6 +123,7 @@ static const struct device_match device_matches[NUM_MATCHES] = {
 	},
 };
 
+GMainLoop *loop = NULL;
 GList *device_list = NULL;
 static int num_devices;
 
@@ -393,7 +394,7 @@ static void ouvrtd_signal_handler(int sig)
 	g_list_foreach(device_list, (GFunc)ouvrt_device_stop,
 		       NULL); /* user_data */
 
-	exit(0);
+	g_main_loop_quit(loop);
 }
 
 static void ouvrtd_usage(void)
@@ -415,7 +416,6 @@ static const struct option ouvrtd_options[] = {
 int main(int argc, char *argv[])
 {
 	struct udev *udev;
-	GMainLoop *loop;
 	guint owner_id;
 	int longind;
 	int ret;
@@ -450,7 +450,8 @@ int main(int argc, char *argv[])
 
 	g_bus_unown_name(owner_id);
 	udev_unref(udev);
-	g_object_unref(loop);
+	g_main_loop_unref(loop);
+	gst_deinit();
 
 	return 0;
 }
