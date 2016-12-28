@@ -70,7 +70,6 @@ extern "C" void estimate_initial_pose(struct blob *blobs, int num_blobs,
 			   use_extrinsic_guess, iterationsCount, reprojectionError,
 			   confidence, inliers, flags);
 
-	dquat q;
 	dvec3 v;
 	double angle = sqrt(rvec.dot(rvec));
 	double inorm = 1.0f / angle;
