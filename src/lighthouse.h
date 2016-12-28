@@ -69,6 +69,7 @@ struct lighthouse_sensor {
 };
 
 struct lighthouse_watchman {
+	unsigned int id;
 	const gchar *name;
 	gboolean base_visible;
 	struct lighthouse_base base[2];

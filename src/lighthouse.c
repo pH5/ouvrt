@@ -27,6 +27,8 @@ struct lighthouse_ootx_report {
 	__le16 gibmag[2];
 } __attribute__((packed));
 
+static unsigned int watchman_id;
+
 static inline float __le16_to_float(__le16 le16)
 {
 	return f16_to_float(__le16_to_cpu(le16));
@@ -464,6 +466,7 @@ void lighthouse_watchman_handle_pulse(struct lighthouse_watchman *watchman,
 
 void lighthouse_watchman_init(struct lighthouse_watchman *watchman)
 {
+	watchman->id = watchman_id++;
 	watchman->name = NULL;
 	watchman->seen_by = 0;
 	watchman->last_timestamp = 0;
