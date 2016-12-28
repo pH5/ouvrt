@@ -23,10 +23,10 @@ struct _OuvrtViveHeadsetMainboardPrivate {
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveHeadsetMainboard, \
 			   ouvrt_vive_headset_mainboard, OUVRT_TYPE_DEVICE)
 
-#define BUTTON_SYSTEM	1
+#define VIVE_HEADSET_BUTTON_SYSTEM	1
 
-#define PROXIMITY_DEC	1
-#define PROXIMITY_INC	2
+#define VIVE_HEADSET_PROXIMITY_DEC	1
+#define VIVE_HEADSET_PROXIMITY_INC	2
 
 /*
  * Decodes the periodic message containing button state, lens separation
