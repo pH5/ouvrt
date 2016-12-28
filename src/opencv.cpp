@@ -52,7 +52,7 @@ extern "C" void estimate_initial_pose(struct blob *blobs, int num_blobs,
 	std::vector<cv::Point2f> list_points2d(num_leds);
 
 	taken = 0;
-	for (i = 0, j = 0; i < num_blobs, j < num_leds; i++) {
+	for (i = 0, j = 0; i < num_blobs && j < num_leds; i++) {
 		if (blobs[i].led_id < 0)
 			continue;
 		if (taken & (1ULL << blobs[i].led_id))
