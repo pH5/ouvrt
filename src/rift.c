@@ -24,9 +24,6 @@
 #include "leds.h"
 #include "tracker.h"
 
-/* temporary global */
-gboolean rift_flicker = false;
-
 struct _OuvrtRiftPrivate {
 	int report_rate;
 	int report_interval;
@@ -675,7 +672,7 @@ void ouvrt_rift_set_flicker(OuvrtRift *rift, gboolean flicker)
 		return;
 
 	rift->priv->flicker = flicker;
-	rift_flicker = flicker;
+	blobwatch_set_flicker(flicker);
 
 	if (rift->dev.active)
 		rift_send_tracking(rift, flicker);

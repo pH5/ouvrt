@@ -65,5 +65,6 @@ void blobwatch_process(struct blobwatch *bw, uint8_t *frame,
 		       int width, int height, int skipped,
 		       struct leds *leds,
 		       struct blobservation **output);
+void blobwatch_set_flicker(bool enable);
 
 #endif /* __BLOBWATCH_H__*/

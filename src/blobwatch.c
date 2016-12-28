@@ -15,9 +15,6 @@
 
 struct leds;
 
-/* temporary global */
-extern int rift_flicker;
-
 #include <stdio.h>
 
 #define THRESHOLD 0x9f
@@ -40,6 +37,14 @@ struct blobwatch {
 	bool debug;
 	struct flicker *fl;
 };
+
+/* temporary global */
+bool rift_flicker;
+
+void blobwatch_set_flicker(bool enable)
+{
+	rift_flicker = enable;
+}
 
 /*
  * Allocates and initializes blobwatch structure.
