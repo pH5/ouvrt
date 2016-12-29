@@ -27,6 +27,7 @@ struct _OuvrtViveControllerPrivate {
 	JsonNode *config;
 	const gchar *serial;
 	gboolean connected;
+	struct lighthouse_watchman watchman;
 	vec3 acc_bias;
 	vec3 acc_scale;
 	vec3 gyro_bias;
@@ -338,6 +339,10 @@ vive_controller_decode_message(OuvrtViveController *self,
 		timestamp = (abs(ts1 - ref) < abs(ts2 - ref)) ? ts1 :
 			    (abs(ts2 - ref) < abs(ts3 - ref)) ? ts2 :
 								ts3;
+
+		lighthouse_watchman_handle_pulse(&self->priv->watchman,
+						 buf[i] >> 3, duration[i],
+						 timestamp);
 	}
 }
 
@@ -346,6 +351,7 @@ vive_controller_decode_message(OuvrtViveController *self,
  */
 static int vive_controller_start(OuvrtDevice *dev)
 {
+	OuvrtViveController *self = OUVRT_VIVE_CONTROLLER(dev);
 	int fd = dev->fd;
 
 	if (fd == -1) {
@@ -357,6 +363,8 @@ static int vive_controller_start(OuvrtDevice *dev)
 		}
 		dev->fd = fd;
 	}
+
+	self->priv->watchman.name = self->dev.name;
 
 	return 0;
 }
@@ -485,6 +493,7 @@ static void ouvrt_vive_controller_init(OuvrtViveController *self)
 
 	self->priv->config = NULL;
 	self->priv->connected = FALSE;
+	lighthouse_watchman_init(&self->priv->watchman);
 }
 
 /*
