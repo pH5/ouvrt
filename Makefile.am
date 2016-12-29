@@ -67,6 +67,8 @@ ouvrtd_SOURCES = \
 	src/rift.c \
 	src/tracker.c \
 	src/tracker.h \
+	src/tracking-model.c \
+	src/tracking-model.h \
 	src/ouvrtd.c \
 	src/opencv.h \
 	src/vive-controller.h \

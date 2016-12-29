@@ -78,6 +78,8 @@ ouvrtd_sources = [
 	'src/rift-hid-reports.h',
 	'src/tracker.c',
 	'src/tracker.h',
+	'src/tracking-model.c',
+	'src/tracking-model.h',
 	'src/vive-config.c',
 	'src/vive-config.h',
 	'src/vive-controller-buttons.c',

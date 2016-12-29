@@ -130,6 +130,8 @@ static int rift_get_positions(OuvrtRift *rift)
 	if (num > MAX_POSITIONS)
 		return -1;
 
+	leds_init(&rift->leds, num - 1);
+
 	for (i = 0; ; i++) {
 		index = __le16_to_cpu(report.index);
 		if (index >= num)
@@ -143,13 +145,13 @@ static int rift_get_positions(OuvrtRift *rift)
 		pos.z = 1e-6f * (int32_t)__le32_to_cpu(report.pos[2]);
 
 		if (type == 0) {
-			rift->leds.positions[index] = pos;
+			rift->leds.model.points[index] = pos;
 
 			/* Direction, magnitude in unknown units */
 			dir.x = 1e-6f * (int16_t)__le16_to_cpu(report.dir[0]);
 			dir.y = 1e-6f * (int16_t)__le16_to_cpu(report.dir[1]);
 			dir.z = 1e-6f * (int16_t)__le16_to_cpu(report.dir[2]);
-			rift->leds.directions[index] = dir;
+			rift->leds.model.normals[index] = dir;
 		} else if (type == 1) {
 			rift->imu.position = pos;
 		}
@@ -162,8 +164,6 @@ static int rift_get_positions(OuvrtRift *rift)
 		if (ret < 0)
 			return ret;
 	}
-
-	rift->leds.num = num - 1;
 
 	return 0;
 }
@@ -189,7 +189,7 @@ static int rift_get_led_patterns(OuvrtRift *rift)
 		return ret;
 
 	num = __le16_to_cpu(report.num);
-	if (num > MAX_LEDS)
+	if (num > rift->leds.model.num_points)
 		return -1;
 
 	for (i = 0; ; i++) {
@@ -497,9 +497,11 @@ static int rift_start(OuvrtDevice *dev)
 		g_print("Rift: Error reading IR LED blinking patterns\n");
 		return ret;
 	}
-	if ((rift->type == RIFT_DK2 && rift->leds.num != 40) ||
-	    (rift->type == RIFT_CV1 && rift->leds.num != 44))
-		g_print("Rift: Reported %d IR LEDs\n", rift->leds.num);
+	if ((rift->type == RIFT_DK2 && rift->leds.model.num_points != 40) ||
+	    (rift->type == RIFT_CV1 && rift->leds.model.num_points != 44)) {
+		g_print("Rift: Reported %d IR LEDs\n",
+			rift->leds.model.num_points);
+	}
 
 	ret = rift_get_config(rift);
 	if (ret < 0)

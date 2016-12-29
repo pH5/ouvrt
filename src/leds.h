@@ -8,19 +8,16 @@
 
 #include <stdint.h>
 
-#include "math.h"
-
-/* DK2: 40, CV1: 44 */
-#define MAX_LEDS 44
+#include "tracking-model.h"
 
 struct leds {
-	int num;
-	vec3 positions[MAX_LEDS];
-	vec3 directions[MAX_LEDS];
-	uint16_t patterns[MAX_LEDS];
+	struct tracking_model model;
+	uint16_t *patterns;
 };
 
+void leds_init(struct leds *leds, int num_leds);
+void leds_fini(struct leds *leds);
+
 void leds_dump_obj(struct leds *leds);
-void leds_dump_struct(struct leds *leds);
 
 #endif /* __LEDS_H__ */

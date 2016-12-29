@@ -59,7 +59,11 @@ void ouvrt_tracker_process_blobs(OuvrtTracker *tracker,
 	if (leds == NULL)
 		return;
 
-	estimate_initial_pose(blobs, num_blobs, leds->positions, leds->num,
+	/*
+	 * Estimate initial pose without previously known [rot|trans].
+	 */
+	estimate_initial_pose(blobs, num_blobs, leds->model.points,
+			      leds->model.num_points,
 			      camera_matrix, dist_coeffs, rot, trans,
 			      true);
 }

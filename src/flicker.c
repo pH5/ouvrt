@@ -150,7 +150,8 @@ void flicker_process(struct flicker *fl, struct blob *blobs, int num_blobs,
 		pattern = ((pattern >> (10 - phase)) | (pattern << phase)) &
 			  0x3ff;
 
-		success += pattern_find_id(leds->patterns, leds->num, pattern,
+		success += pattern_find_id(leds->patterns,
+					   leds->model.num_points, pattern,
 					   &b->led_id);
 	}
 
@@ -161,7 +162,8 @@ void flicker_process(struct flicker *fl, struct blob *blobs, int num_blobs,
 		int i;
 
 		for (b = blobs; b < blobs + num_blobs; b++) {
-			int phase = pattern_get_phase(leds->patterns, leds->num,
+			int phase = pattern_get_phase(leds->patterns,
+						      leds->model.num_points,
 						      b->pattern);
 			if (phase >= 0)
 				phase_error[phase]++;

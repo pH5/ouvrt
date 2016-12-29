@@ -28,7 +28,9 @@
 					 OUVRT_TYPE_RIFT, \
 					 OuvrtRiftClass))
 
-#define MAX_POSITIONS	(MAX_LEDS + 1)
+
+/* 44 LEDs + 1 IMU on CV1 */
+#define MAX_POSITIONS	45
 
 enum rift_type {
 	RIFT_DK2,
