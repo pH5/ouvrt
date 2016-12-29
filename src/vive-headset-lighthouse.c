@@ -113,16 +113,24 @@ static void vive_headset_lighthouse_thread(OuvrtDevice *dev)
 			continue;
 		}
 
-		if (fds.revents & (POLLERR | POLLHUP | POLLNVAL))
-			break;
-
-		if (!(fds.revents & POLLIN)) {
+		if (ret == 0) {
 			/* No Lighthouse base station visible */
 			if (self->priv->watchman.base_visible) {
 				g_print("%s: Lost base station visibility\n",
 					dev->name);
 				self->priv->watchman.base_visible = FALSE;
 			}
+			continue;
+		}
+
+		if (fds.revents & (POLLERR | POLLHUP | POLLNVAL)) {
+			dev->active = FALSE;
+			break;
+		}
+
+		if (!(fds.revents & POLLIN)) {
+			g_print("%s: Unhandled poll event: 0x%x\n", dev->name,
+				fds.revents);
 			continue;
 		}
 

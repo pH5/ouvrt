@@ -172,12 +172,20 @@ static void vive_headset_mainboard_thread(OuvrtDevice *dev)
 			continue;
 		}
 
-		if (fds.events & (POLLERR | POLLHUP | POLLNVAL))
-			break;
-
-		if (!(fds.revents & POLLIN)) {
+		if (ret == 0) {
 			if (count++ > 3)
 				g_print("%s: Poll timeout: %d\n", dev->name, count);
+			continue;
+		}
+
+		if (fds.revents & (POLLERR | POLLHUP | POLLNVAL)) {
+			dev->active = FALSE;
+			break;
+		}
+
+		if (!(fds.revents & POLLIN)) {
+			g_print("%s: Unhandled poll event: 0x%x\n", dev->name,
+				fds.revents);
 			continue;
 		}
 

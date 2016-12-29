@@ -402,15 +402,21 @@ static void vive_controller_thread(OuvrtDevice *dev)
 			continue;
 		}
 
+		if (ret == 0) {
+			if (self->priv->connected) {
+				g_print("Vive Wireless Receiver %s: Poll timeout\n",
+					dev->serial);
+			}
+			continue;
+		}
+
 		if (fds.revents & (POLLERR | POLLHUP | POLLNVAL))
 			break;
 
 		if (!(fds.revents & POLLIN)) {
-			if (self->priv->connected) {
-				g_print("Vive Wireless Receiver %s: Poll timeout\n",
-					dev->serial);
-				continue;
-			}
+			g_print("Vive Wireless Receiver %s: Unhandled poll event: 0x%x\n",
+				dev->serial, fds.revents);
+			continue;
 		}
 
 		if (!self->priv->connected) {
