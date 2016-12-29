@@ -54,6 +54,8 @@ ouvrtd_SOURCES = \
 	src/device.h \
 	src/device.c \
 	src/imu.h \
+	src/json.c \
+	src/json.h \
 	src/leds.c \
 	src/leds.h \
 	src/lighthouse.c \
