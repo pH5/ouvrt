@@ -229,9 +229,10 @@ static int rift_get_positions(OuvrtRift *rift)
 			rift->leds.model.points[index] = pos;
 
 			/* Direction, magnitude in unknown units */
-			dir.x = 1e-6f * (int16_t)__le16_to_cpu(report.dir[0]);
-			dir.y = 1e-6f * (int16_t)__le16_to_cpu(report.dir[1]);
-			dir.z = 1e-6f * (int16_t)__le16_to_cpu(report.dir[2]);
+			dir.x = (int16_t)__le16_to_cpu(report.dir[0]);
+			dir.y = (int16_t)__le16_to_cpu(report.dir[1]);
+			dir.z = (int16_t)__le16_to_cpu(report.dir[2]);
+			vec3_normalize(&dir);
 			rift->leds.model.normals[index] = dir;
 		} else if (type == 1) {
 			rift->imu.position = pos;
