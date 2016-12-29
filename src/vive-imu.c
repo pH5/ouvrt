@@ -88,7 +88,9 @@ void vive_imu_decode_message(struct vive_imu *imu, const void *buf, size_t len)
 	/* From there, handle all new samples */
 	for (j = 3; j; --j, i = (i + 1) % 3) {
 		struct raw_imu_sample raw;
+		struct imu_sample s;
 		uint32_t time;
+		double scale;
 		uint8_t seq;
 
 		sample = report->sample + i;
@@ -112,6 +114,20 @@ void vive_imu_decode_message(struct vive_imu *imu, const void *buf, size_t len)
 		if (time < (imu->time & 0xffffffff))
 			raw.time += 0x100000000;
 		raw.time |= time;
+
+		scale = imu->accel_range / 32768.0;
+		s.acceleration.x = scale * raw.acc[0];
+		s.acceleration.y = scale * raw.acc[1];
+		s.acceleration.z = scale * raw.acc[2];
+
+		scale = imu->gyro_range / 32768.0;
+		s.angular_velocity.x = scale * raw.gyro[0];
+		s.angular_velocity.y = scale * raw.gyro[1];
+		s.angular_velocity.z = scale * raw.gyro[2];
+
+		s.time = (double)raw.time / 48e6;
+
+		(void)s;
 
 		imu->sequence = seq;
 		imu->time = raw.time;
