@@ -263,7 +263,7 @@ static void ouvrt_dbus_export_device_interface(gpointer data,
 {
 	OuvrtDevice *dev = OUVRT_DEVICE(data);
 
-	g_print("TODO: register %s with DBus\n", dev->devnode);
+	g_debug("TODO: register %s with DBus\n", dev->devnode);
 
 	if (dev->type == DEVICE_TYPE_HMD) {
 		/* Export a Tracker1 interface */
