@@ -1,6 +1,7 @@
 #ifndef __HIDRAW_H__
 #define __HIDRAW_H__
 
+#include <errno.h>
 #include <linux/hidraw.h>
 #include <sys/ioctl.h>
 #include <time.h>
