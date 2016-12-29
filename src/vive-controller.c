@@ -17,6 +17,7 @@
 #include "vive-controller.h"
 #include "vive-config.h"
 #include "vive-hid-reports.h"
+#include "lighthouse.h"
 #include "device.h"
 #include "hidraw.h"
 #include "json.h"
@@ -30,6 +31,12 @@ struct _OuvrtViveControllerPrivate {
 	vec3 acc_scale;
 	vec3 gyro_bias;
 	vec3 gyro_scale;
+
+	uint32_t timestamp;
+	uint8_t battery;
+	uint8_t buttons;
+	int16_t touch_pos[2];
+	uint8_t squeeze;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveController, ouvrt_vive_controller, \
@@ -116,100 +123,85 @@ static int vive_controller_poweroff(OuvrtViveController *self)
 	return hid_send_feature_report(self->dev.fd, &report, sizeof(report));
 }
 
-static void
-vive_controller_decode_squeeze_message(OuvrtViveController *self,
-				       const struct vive_controller_message *msg)
+static void vive_controller_handle_battery(OuvrtViveController *self,
+					   uint8_t battery)
 {
-	/* Time in 48 MHz ticks, missing the lower 16 bits */
-	uint32_t time = (msg->timestamp_hi << 24) |
-			(msg->timestamp_lo << 16);
+	uint8_t charge_percent = battery & VIVE_CONTROLLER_BATTERY_CHARGE_MASK;
+	gboolean charging = battery & VIVE_CONTROLLER_BATTERY_CHARGING;
 
-	(void)self;
-	(void)time;
-}
+	if (battery != self->priv->battery)
+		self->priv->battery = battery;
 
-static void
-vive_controller_decode_button_message(OuvrtViveController *self,
-				      const struct vive_controller_message *msg)
-{
-	uint8_t buttons = msg->button.buttons;
-
-	(void)self;
-	(void)buttons;
-}
-
-static void
-vive_controller_decode_touch_move_message(OuvrtViveController *self,
-					  const struct vive_controller_message *msg)
-{
-	int16_t pos[2] = {
-		__le16_to_cpu(msg->touchpad_move.pos[0]),
-		__le16_to_cpu(msg->touchpad_move.pos[1]),
-	};
-
-	(void)self;
-	(void)pos;
-}
-
-static void
-vive_controller_decode_touch_updown_message(OuvrtViveController *self,
-					    const struct vive_controller_message *msg)
-{
-	int16_t pos[2] = {
-		__le16_to_cpu(msg->touchpad_updown.pos[0]),
-		__le16_to_cpu(msg->touchpad_updown.pos[1]),
-	};
-
-	(void)self;
-	(void)pos;
-}
-
-static void
-vive_controller_decode_imu_message(OuvrtViveController *self,
-				   const struct vive_controller_message *msg)
-{
-	/* Time in 48 MHz ticks, but we are missing the low byte */
-	uint32_t time = (msg->timestamp_hi << 24) | (msg->timestamp_lo << 16) |
-			(msg->imu.timestamp_3 << 8);
-	int16_t acc[3] = {
-		__le16_to_cpu(msg->imu.accel[0]),
-		__le16_to_cpu(msg->imu.accel[1]),
-		__le16_to_cpu(msg->imu.accel[2]),
-	};
-	int16_t gyro[3] = {
-		__le16_to_cpu(msg->imu.gyro[0]),
-		__le16_to_cpu(msg->imu.gyro[1]),
-		__le16_to_cpu(msg->imu.gyro[2]),
-	};
-
-	(void)self;
-	(void)time;
-	(void)acc;
-	(void)gyro;
-}
-
-static void
-vive_controller_decode_ping_message(OuvrtViveController *self,
-				    const struct vive_controller_message *msg)
-{
-	uint8_t charge_percent = msg->ping.charge & 0x7f;
-	gboolean charging = msg->ping.charge & 0x80;
-	int16_t acc[3] = {
-		__le16_to_cpu(msg->ping.accel[0]),
-		__le16_to_cpu(msg->ping.accel[1]),
-		__le16_to_cpu(msg->ping.accel[2]),
-	};
-	int16_t gyro[3] = {
-		__le16_to_cpu(msg->ping.gyro[0]),
-		__le16_to_cpu(msg->ping.gyro[1]),
-		__le16_to_cpu(msg->ping.gyro[2]),
-	};
-
-	(void)self;
 	(void)charge_percent;
 	(void)charging;
-	(void)acc;
+}
+
+static void vive_controller_handle_buttons(OuvrtViveController *self,
+					   uint8_t buttons)
+{
+	if (buttons != self->priv->buttons)
+		self->priv->buttons = buttons;
+}
+
+static void vive_controller_handle_touch_position(OuvrtViveController *self,
+						  uint8_t *buf)
+{
+	int16_t x = __le16_to_cpup((__le16 *)buf);
+	int16_t y = __le16_to_cpup((__le16 *)(buf + 2));
+
+	if (x != self->priv->touch_pos[0] ||
+	    y != self->priv->touch_pos[1]) {
+		self->priv->touch_pos[0] = x;
+		self->priv->touch_pos[1] = y;
+	}
+}
+
+static void vive_controller_handle_analog_trigger(OuvrtViveController *self,
+						  uint8_t squeeze)
+{
+	if (squeeze != self->priv->squeeze)
+		self->priv->squeeze = squeeze;
+}
+
+static void vive_controller_handle_imu_sample(OuvrtViveController *self,
+					      uint8_t *buf)
+{
+	/* Time in 48 MHz ticks, but we are missing the low byte */
+	uint32_t timestamp = self->priv->timestamp | *buf;
+	int16_t accel[3] = {
+		__le16_to_cpup((__le16 *)(buf + 1)),
+		__le16_to_cpup((__le16 *)(buf + 3)),
+		__le16_to_cpup((__le16 *)(buf + 5)),
+	};
+	int16_t gyro[3] = {
+		__le16_to_cpup((__le16 *)(buf + 7)),
+		__le16_to_cpup((__le16 *)(buf + 9)),
+		__le16_to_cpup((__le16 *)(buf + 11)),
+	};
+
+	(void)timestamp;
+	(void)accel;
 	(void)gyro;
+}
+
+/*
+ * Dumps the raw controller message into the standard output.
+ */
+static void
+vive_controller_dump_message(OuvrtViveController *self,
+			     const struct vive_controller_message *msg)
+{
+	unsigned char *buf = (unsigned char *)msg;
+	unsigned int len = 2 + msg->len;
+	unsigned int i;
+
+	if (len > sizeof(*msg))
+		len = sizeof(*msg);
+
+	g_print("%s:", self->dev.name);
+	for (i = 0; i < len; i++)
+		g_print(" %02x", buf[i]);
+	g_print("\n");
 }
 
 /*
@@ -219,28 +211,133 @@ static void
 vive_controller_decode_message(OuvrtViveController *self,
 			       struct vive_controller_message *message)
 {
-	uint16_t type = (message->type_hi << 8) | message->type_lo;
+	unsigned char *buf = message->payload;
+	unsigned char *end = message->payload + message->len - 1;
+	gboolean silent = TRUE;
+	int i;
 
-	switch (type) {
-	case 0x03f4: /* analog trigger */
-		vive_controller_decode_squeeze_message(self, message);
-		break;
-	case 0x03f1: /* button */
-	case 0x04f5: /* trigger switch */
-		vive_controller_decode_button_message(self, message);
-		break;
-	case 0x06f2: /* touchpad movement */
-		vive_controller_decode_touch_move_message(self, message);
-		break;
-	case 0x07f3: /* touchpad touchdown/liftoff */
-		vive_controller_decode_touch_updown_message(self, message);
-		break;
-	case 0x0fe8: /* IMU */
-		vive_controller_decode_imu_message(self, message);
-		break;
-	case 0x11e1: /* Ping */
-		vive_controller_decode_ping_message(self, message);
-		break;
+	self->priv->timestamp = (message->timestamp_hi << 24) |
+				(message->timestamp_lo << 16);
+
+	/*
+	 * Handle button, touch, and IMU events. The first byte of each event
+	 * has the three most significant bits set.
+	 */
+	while ((buf < end) && ((*buf >> 5) == 7)) {
+		uint8_t type = *buf++;
+
+		if (type & 0x10) {
+			if (type & 1)
+				vive_controller_handle_buttons(self, *buf++);
+			if (type & 2) {
+				vive_controller_handle_touch_position(self,
+								      buf);
+				buf += 4;
+			}
+			if (type & 4) {
+				vive_controller_handle_analog_trigger(self,
+								      *buf++);
+			}
+		} else {
+			if (type & 1)
+				vive_controller_handle_battery(self, *buf++);
+			if (type & 2) {
+				/* unknown, does ever happen? */
+				silent = FALSE;
+				buf++;
+			}
+		}
+		if (type & 8) {
+			vive_controller_handle_imu_sample(self, buf);
+			buf += 13;
+		}
+	}
+
+	if (buf > end)
+		g_print("overshoot: %ld\n", buf - end);
+	if (!silent || buf > end)
+		vive_controller_dump_message(self, message);
+	if (buf >= end)
+		return;
+
+	/*
+	 * The remainder of the message contains encoded light pulse messages
+	 * from up to 32 sensors. A differential encoding is used to keep the
+	 * amount of data sent over the wireless link at a minimum.
+	 *
+	 * First, a number of id bytes equal to the number of pulses contained
+	 * in the message lists the sensor indices in the 5 most significant
+	 * bits and the number of edges observed from other sensors while the
+	 * given sensor's envelope signal was active in the 3 least significant
+	 * bits each, in chronological order of the falling edge.
+	 *
+	 * For example:
+	 *
+	 *            t0____t2
+	 * Sensor 4 ___|    |________ 1 edge while active, id0 = (4<<3)|1 = 0x21
+	 *                 _____
+	 * Sensor 7 ______|     |____ 1 edge while active, id1 = (7<<3)|1 = 0x39
+	 *                t1   t3
+	 *
+	 * The remaining bytes contain timestamp deltas between observed edges
+	 * encoded as variable length little-endian data with the most
+	 * significant bit denoting the start of a new value and the 7 least
+	 * significant bits containing the payload. Finally, a three byte
+	 * timestamp marks the falling edge of the last light pulse.
+	 *
+	 */
+	uint32_t timestamp = ((end[-1])<<16) | ((end[-2])<<8) | (end[-3]);
+	int32_t dt;
+
+	/* Edge times are delta encoded from the last timestamp */
+	uint32_t edge_ts[16];
+	int num_edges;
+
+	edge_ts[0] = timestamp;
+	num_edges = 1;
+	dt = 0;
+	for (i = end-buf-4; i >= num_edges / 2; i--) {
+		dt = (dt << 7) | (buf[i] & 0x7f);
+		if (buf[i] & 0x80) {
+			edge_ts[num_edges] = (edge_ts[num_edges - 1] - dt) & 0xffffff;
+			dt = 0;
+			num_edges++;
+		}
+	}
+
+	int rising = 0;
+	uint32_t mask = 0;
+	uint32_t duration[8];
+	uint32_t start[8];
+	for (i = 0; i < num_edges / 2; i++) {
+		int falling = rising + 1 + (buf[i] & 7);
+		mask |= 1 << falling;
+		duration[i] = edge_ts[rising] - edge_ts[falling];
+		start[i] = edge_ts[falling];
+
+		rising++;
+		while (mask & (1 << rising))
+			rising++;
+	}
+	for (i = num_edges / 2 - 1; i >= 0; i--) {
+		/*
+		 * Reconstruct the most significant byte of the pulse timestamp
+		 * from the packet timestamp.
+		 * About 99.4% of the time, it is the same as timestamp_hi, but
+		 * about 0.5% of the time it is timestamp_hi - 1, and about
+		 * 0.1% of the time it is timestamp_hi + 1.
+		 * Prepare all three candidate timestamps and choose whichever
+		 * is nearest to the packet timestamp.
+		 */
+		uint32_t ts1 = ((message->timestamp_hi - 1) << 24) | start[i];
+		uint32_t ts2 = (message->timestamp_hi << 24) | start[i];
+		uint32_t ts3 = ((message->timestamp_hi + 1) << 24) | start[i];
+		uint32_t ref = self->priv->timestamp;
+		uint32_t timestamp;
+
+		timestamp = (abs(ts1 - ref) < abs(ts2 - ref)) ? ts1 :
+			    (abs(ts2 - ref) < abs(ts3 - ref)) ? ts2 :
+								ts3;
 	}
 }
 

@@ -102,10 +102,8 @@ struct vive_headset_lighthouse_pulse_report1 {
 
 #define VIVE_CONTROLLER_REPORT1_ID			0x23
 
-struct vive_controller_analog_trigger_message {
-	__u8 squeeze;
-	__u8 unknown[4];
-} __attribute__((packed));
+#define VIVE_CONTROLLER_BATTERY_CHARGING		0x80
+#define VIVE_CONTROLLER_BATTERY_CHARGE_MASK		0x7f
 
 #define VIVE_CONTROLLER_BUTTON_TRIGGER			0x01
 #define VIVE_CONTROLLER_BUTTON_TOUCH			0x02
@@ -114,51 +112,11 @@ struct vive_controller_analog_trigger_message {
 #define VIVE_CONTROLLER_BUTTON_GRIP			0x10
 #define VIVE_CONTROLLER_BUTTON_MENU			0x20
 
-struct vive_controller_button_message {
-	__u8 buttons;
-	__u8 unknown[4];
-} __attribute__((packed));
-
-struct vive_controller_touchpad_move_message {
-	__le16 pos[2];
-	__u8 unknown[4];
-} __attribute__((packed));
-
-struct vive_controller_touchpad_updown_message {
-	__u8 buttons;
-	__le16 pos[2];
-	__u8 unknown[4];
-} __attribute__((packed));
-
-struct vive_controller_imu_message {
-	__u8 timestamp_3;
-	__le16 accel[3];
-	__le16 gyro[3];
-	__u8 unknown[4];
-} __attribute__((packed));
-
-struct vive_controller_ping_message {
-	__u8 charge;
-	__u8 unknown1[2];
-	__le16 accel[3];
-	__le16 gyro[3];
-	__u8 unknown2[5];
-} __attribute__((packed));
-
 struct vive_controller_message {
 	__u8 timestamp_hi;
-	__u8 type_hi;
+	__u8 len;
 	__u8 timestamp_lo;
-	__u8 type_lo;
-	union {
-		struct vive_controller_analog_trigger_message analog_trigger;
-		struct vive_controller_button_message button;
-		struct vive_controller_touchpad_move_message touchpad_move;
-		struct vive_controller_touchpad_updown_message touchpad_updown;
-		struct vive_controller_imu_message imu;
-		struct vive_controller_ping_message ping;
-		__u8 unknown[25];
-	};
+	__u8 payload[26];
 } __attribute__((packed));
 
 struct vive_controller_report1 {
