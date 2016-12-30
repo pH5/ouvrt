@@ -21,6 +21,7 @@
 #include "hidraw.h"
 #include "json.h"
 #include "math.h"
+#include "tracking-model.h"
 
 struct _OuvrtViveControllerPrivate {
 	JsonNode *config;
@@ -34,6 +35,7 @@ struct _OuvrtViveControllerPrivate {
 	uint8_t buttons;
 	int16_t touch_pos[2];
 	uint8_t squeeze;
+	struct tracking_model model;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveController, ouvrt_vive_controller, \
@@ -128,6 +130,13 @@ static int vive_controller_get_config(OuvrtViveController *self)
 
 	json_object_get_vec3_member(object, "gyro_bias", &imu->gyro_bias);
 	json_object_get_vec3_member(object, "gyro_scale", &imu->gyro_scale);
+
+	json_object_get_lighthouse_config_member(object, "lighthouse_config",
+						 &self->priv->model);
+	if (!self->priv->model.num_points) {
+		g_print("%s: Failed to parse Lighthouse configuration\n",
+			self->dev.name);
+	}
 
 	return 0;
 }

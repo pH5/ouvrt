@@ -21,10 +21,12 @@
 #include "imu.h"
 #include "json.h"
 #include "math.h"
+#include "tracking-model.h"
 
 struct _OuvrtViveHeadsetIMUPrivate {
 	JsonNode *config;
 	struct vive_imu imu;
+	struct tracking_model model;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveHeadsetIMU, ouvrt_vive_headset_imu, \
@@ -87,6 +89,13 @@ static int vive_headset_imu_get_config(OuvrtViveHeadsetIMU *self)
 
 	json_object_get_vec3_member(object, "gyro_bias", &imu->gyro_bias);
 	json_object_get_vec3_member(object, "gyro_scale", &imu->gyro_scale);
+
+	json_object_get_lighthouse_config_member(object, "lighthouse_config",
+						 &self->priv->model);
+	if (!self->priv->model.num_points) {
+		g_print("%s: Failed to parse Lighthouse configuration\n",
+			self->dev.name);
+	}
 
 	return 0;
 }
