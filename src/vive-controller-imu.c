@@ -93,8 +93,8 @@ static int vive_controller_imu_get_config(OuvrtViveControllerIMU *self)
 	self->priv->config = json_from_string(config_json, NULL);
 	g_free(config_json);
 	if (!self->priv->config) {
-		g_print("Vive Controller %s: Parsing JSON configuration data failed\n",
-			self->dev.serial);
+		g_print("%s: Parsing JSON configuration data failed\n",
+			self->dev.name);
 		return -1;
 	}
 
@@ -105,14 +105,14 @@ static int vive_controller_imu_get_config(OuvrtViveControllerIMU *self)
 
 	device_class = json_object_get_string_member(object, "device_class");
 	if (strcmp(device_class, "controller") != 0) {
-		g_print("Vive Controller %s: Unknown device class \"%s\"\n",
-			self->dev.serial, device_class);
+		g_print("%s: Unknown device class \"%s\"\n", self->dev.name,
+			device_class);
 	}
 
 	device_pid = json_object_get_int_member(object, "device_pid");
 	if (device_pid != PID_VIVE_CONTROLLER_USB) {
-		g_print("Vive Controller %s: Unknown device PID: 0x%04lx\n",
-			self->dev.serial, device_pid);
+		g_print("%s: Unknown device PID: 0x%04lx\n", self->dev.name,
+			device_pid);
 	}
 
 	serial = json_object_get_string_member(object, "device_serial_number");
@@ -122,8 +122,8 @@ static int vive_controller_imu_get_config(OuvrtViveControllerIMU *self)
 
 	device_vid = json_object_get_int_member(object, "device_vid");
 	if (device_vid != VID_VALVE) {
-		g_print("Vive Controller %s: Unknown device VID: 0x%04lx\n",
-			self->dev.serial, device_vid);
+		g_print("%s: Unknown device VID: 0x%04lx\n", self->dev.name,
+			device_vid);
 	}
 
 	json_object_get_vec3_member(object, "gyro_bias", &self->priv->gyro_bias);
@@ -153,6 +153,9 @@ static int vive_controller_imu_start(OuvrtDevice *dev)
 	OuvrtViveControllerIMU *self = OUVRT_VIVE_CONTROLLER_IMU(dev);
 	int fd = dev->fd;
 	int ret;
+
+	g_free(dev->name);
+	dev->name = g_strdup_printf("Vive Controller %s IMU", dev->serial);
 
 	if (fd == -1) {
 		fd = open(dev->devnode, O_RDWR | O_NONBLOCK);
@@ -223,15 +226,14 @@ static void vive_controller_imu_thread(OuvrtDevice *dev)
 
 		ret = read(dev->fd, buf, sizeof(buf));
 		if (ret == -1) {
-			g_print("Vive Controller %s: Read error: %d\n",
-				self->priv->serial, errno);
+			g_print("%s: Read error: %d\n", dev->name, errno);
 			continue;
 		}
 		if (ret == 52 && buf[0] == VIVE_IMU_REPORT_ID) {
 			vive_imu_decode_message(&self->priv->imu, buf, ret);
 		} else {
-			g_print("Vive Controller %s: Error, invalid %d-byte report 0x%02x\n",
-				self->priv->serial, ret, buf[0]);
+			g_print("%s: Error, invalid %d-byte report 0x%02x\n",
+				dev->name, ret, buf[0]);
 		}
 	}
 }

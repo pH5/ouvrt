@@ -45,6 +45,9 @@ static int vive_controller_buttons_start(OuvrtDevice *dev)
 {
 	int fd = dev->fd;
 
+	free(dev->name);
+	dev->name = g_strdup_printf("Vive Controller %s Buttons", dev->serial);
+
 	if (fd == -1) {
 		fd = open(dev->devnode, O_RDWR | O_NONBLOCK);
 		if (fd == -1) {

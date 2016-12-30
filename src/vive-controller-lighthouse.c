@@ -77,6 +77,10 @@ static int vive_controller_lighthouse_start(OuvrtDevice *dev)
 	OuvrtViveControllerLighthouse *self = OUVRT_VIVE_CONTROLLER_LIGHTHOUSE(dev);
 	int fd = dev->fd;
 
+	free(dev->name);
+	dev->name = g_strdup_printf("Vive Controller %s Lighthouse RX",
+				    dev->serial);
+
 	if (fd == -1) {
 		fd = open(dev->devnode, O_RDWR | O_NONBLOCK);
 		if (fd == -1) {

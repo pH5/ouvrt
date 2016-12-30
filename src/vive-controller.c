@@ -97,8 +97,8 @@ static int vive_controller_get_config(OuvrtViveController *self)
 	self->priv->config = json_from_string(config_json, NULL);
 	g_free(config_json);
 	if (!self->priv->config) {
-		g_print("Vive Wireless Receiver %s: Parsing JSON configuration data failed\n",
-			self->dev.serial);
+		g_print("%s: Parsing JSON configuration data failed\n",
+			self->dev.name);
 		return -1;
 	}
 
@@ -109,14 +109,14 @@ static int vive_controller_get_config(OuvrtViveController *self)
 
 	device_class = json_object_get_string_member(object, "device_class");
 	if (strcmp(device_class, "controller") != 0) {
-		g_print("Vive Wireless Receiver %s: Unknown device class \"%s\"\n",
-			self->dev.serial, device_class);
+		g_print("%s: Unknown device class \"%s\"\n", self->dev.name,
+			device_class);
 	}
 
 	device_pid = json_object_get_int_member(object, "device_pid");
 	if (device_pid != PID_VIVE_CONTROLLER_USB) {
-		g_print("Vive Wireless Receiver %s: Unknown device PID: 0x%04lx\n",
-			self->dev.serial, device_pid);
+		g_print("%s: Unknown device PID: 0x%04lx\n", self->dev.name,
+			device_pid);
 	}
 
 	self->priv->serial = json_object_get_string_member(object,
@@ -124,8 +124,8 @@ static int vive_controller_get_config(OuvrtViveController *self)
 
 	device_vid = json_object_get_int_member(object, "device_vid");
 	if (device_vid != VID_VALVE) {
-		g_print("Vive Wireless Receiver %s: Unknown device VID: 0x%04lx\n",
-			self->dev.serial, device_vid);
+		g_print("%s: Unknown device VID: 0x%04lx\n", self->dev.name,
+			device_vid);
 	}
 
 	json_object_get_vec3_member(object, "gyro_bias", &imu->gyro_bias);
@@ -383,11 +383,15 @@ static int vive_controller_start(OuvrtDevice *dev)
 	OuvrtViveController *self = OUVRT_VIVE_CONTROLLER(dev);
 	int fd = dev->fd;
 
+	g_free(self->dev.name);
+	self->dev.name = g_strdup_printf("Vive Wireless Receiver %s",
+					 dev->serial);
+
 	if (fd == -1) {
 		fd = open(dev->devnode, O_RDWR | O_NONBLOCK);
 		if (fd == -1) {
-			g_print("Vive Wireless Receiver %s: Failed to open '%s': %d\n",
-				dev->serial, dev->devnode, errno);
+			g_print("%s: Failed to open '%s': %d\n", dev->name,
+				dev->devnode, errno);
 			return -1;
 		}
 		dev->fd = fd;
@@ -410,14 +414,17 @@ static void vive_controller_thread(OuvrtDevice *dev)
 
 	ret = vive_controller_get_firmware_version(self);
 	if (ret < 0 && errno == EPIPE) {
-		g_print("Vive Wireless Receiver %s: No connected controller found\n",
-			dev->serial);
+		g_print("%s: No connected controller found\n", dev->name);
 	}
 	if (!ret) {
 		ret = vive_controller_get_config(self);
 		if (!ret) {
-			g_print("Vive Wireless Receiver %s: Controller %s connected\n",
-				dev->serial, self->priv->serial);
+			g_print("%s: Controller %s connected\n", dev->name,
+				self->priv->serial);
+			g_free(dev->name);
+			dev->name = g_strdup_printf("Vive Controller %s",
+						    self->priv->serial);
+			self->priv->watchman.name = dev->name;
 			self->priv->connected = TRUE;
 		}
 	}
@@ -429,16 +436,13 @@ static void vive_controller_thread(OuvrtDevice *dev)
 
 		ret = poll(&fds, 1, 1000);
 		if (ret == -1) {
-			g_print("Vive Wireless Receiver %s: Poll failure: %d\n",
-				dev->serial, errno);
+			g_print("%s: Poll failure: %d\n", dev->name, errno);
 			continue;
 		}
 
 		if (ret == 0) {
-			if (self->priv->connected) {
-				g_print("Vive Wireless Receiver %s: Poll timeout\n",
-					dev->serial);
-			}
+			if (self->priv->connected)
+				g_print("%s: Poll timeout\n", dev->name);
 			continue;
 		}
 
@@ -446,8 +450,8 @@ static void vive_controller_thread(OuvrtDevice *dev)
 			break;
 
 		if (!(fds.revents & POLLIN)) {
-			g_print("Vive Wireless Receiver %s: Unhandled poll event: 0x%x\n",
-				dev->serial, fds.revents);
+			g_print("%s: Unhandled poll event: 0x%x\n", dev->name,
+				fds.revents);
 			continue;
 		}
 
@@ -460,24 +464,27 @@ static void vive_controller_thread(OuvrtDevice *dev)
 			if (ret < 0)
 				continue;
 
-			g_print("Vive Wireless Receiver %s: Controller %s connected\n",
-				dev->serial, self->priv->serial);
+			g_print("%s: Controller %s connected\n", dev->name,
+				self->priv->serial);
+			g_free(dev->name);
+			dev->name = g_strdup_printf("Vive Controller %s",
+						    self->priv->serial);
+			self->priv->watchman.name = dev->name;
 			self->priv->connected = TRUE;
 		}
 
 		if (self->priv->imu.gyro_range == 0.0) {
 			ret = vive_imu_get_range_modes(dev, &self->priv->imu);
 			if (ret < 0) {
-				g_print("Vive Controller %s: Failed to get gyro/accelerometer range modes\n",
-					self->priv->serial);
+				g_print("%s: Failed to get gyro/accelerometer range modes\n",
+					dev->name);
 				continue;
 			}
 		}
 
 		ret = read(dev->fd, buf, sizeof(buf));
 		if (ret == -1) {
-			g_print("Vive Controller %s: Read error: %d\n",
-				self->priv->serial, errno);
+			g_print("%s: Read error: %d\n", dev->name, errno);
 			continue;
 		}
 		if (ret == 30 && buf[0] == VIVE_CONTROLLER_REPORT1_ID) {
@@ -494,12 +501,16 @@ static void vive_controller_thread(OuvrtDevice *dev)
 		} else if (ret == 2 &&
 			   buf[0] == VIVE_CONTROLLER_DISCONNECT_REPORT_ID &&
 			   buf[1] == 0x01) {
-			g_print("Vive Wireless Receiver %s: Controller %s disconnected\n",
-				dev->serial, self->priv->serial);
+			g_free(dev->name);
+			dev->name = g_strdup_printf("Vive Wireless Receiver %s",
+						    dev->serial);
+			self->priv->watchman.name = dev->name;
+			g_print("%s: Controller %s disconnected\n", dev->name,
+				self->priv->serial);
 			self->priv->connected = FALSE;
 		} else {
-			g_print("Vive Controller %s: Error, invalid %d-byte report 0x%02x\n",
-				self->priv->serial, ret, buf[0]);
+			g_print("%s: Error, invalid %d-byte report 0x%02x\n",
+				dev->name, ret, buf[0]);
 		}
 	}
 }
