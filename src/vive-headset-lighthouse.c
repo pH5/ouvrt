@@ -33,15 +33,15 @@ G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveHeadsetLighthouse, ouvrt_vive_headset_lighth
  * timing measurements.
  */
 static void
-vive_headset_lighthouse_decode_pulse_report1(OuvrtViveHeadsetLighthouse *self,
-					     const void *buf)
+vive_headset_controller_decode_pulse_report(OuvrtViveHeadsetLighthouse *self,
+					    const void *buf)
 {
-	const struct vive_headset_lighthouse_pulse_report1 *report = buf;
+	const struct vive_headset_controller_pulse_report *report = buf;
 	unsigned int i;
 
 	/* The pulses may appear in arbitrary order */
 	for (i = 0; i < 7; i++) {
-		const struct vive_headset_lighthouse_pulse1 *pulse;
+		const struct vive_controller_lighthouse_pulse *pulse;
 		uint16_t sensor_id;
 		uint16_t duration;
 		uint32_t timestamp;
@@ -77,15 +77,15 @@ vive_headset_lighthouse_decode_pulse_report1(OuvrtViveHeadsetLighthouse *self,
 }
 
 static void
-vive_headset_lighthouse_decode_pulse_report2(OuvrtViveHeadsetLighthouse *self,
-					     const void *buf)
+vive_headset_lighthouse_decode_pulse_report(OuvrtViveHeadsetLighthouse *self,
+					    const void *buf)
 {
-	const struct vive_headset_lighthouse_pulse_report2 *report = buf;
+	const struct vive_headset_lighthouse_pulse_report *report = buf;
 	unsigned int i;
 
 	/* The pulses may appear in arbitrary order */
 	for (i = 0; i < 9; i++) {
-		const struct vive_headset_lighthouse_pulse2 *pulse;
+		const struct vive_headset_lighthouse_pulse *pulse;
 		uint8_t sensor_id;
 		uint16_t duration;
 		uint32_t timestamp;
@@ -184,10 +184,10 @@ static void vive_headset_lighthouse_thread(OuvrtDevice *dev)
 			continue;
 		}
 		if (ret == 58 &&
-		    buf[0] == VIVE_HEADSET_LIGHTHOUSE_PULSE_REPORT1_ID) {
+		    buf[0] == VIVE_CONTROLLER_LIGHTHOUSE_PULSE_REPORT_ID) {
 			vive_headset_lighthouse_decode_pulse_report1(self, buf);
-		} else if (ret == 64 ||
-			   buf[0] == VIVE_HEADSET_LIGHTHOUSE_PULSE_REPORT2_ID) {
+		} else if (ret == 64 &&
+			   buf[0] == VIVE_HEADSET_LIGHTHOUSE_PULSE_REPORT_ID) {
 			vive_headset_lighthouse_decode_pulse_report2(self, buf);
 		} else {
 			g_print("%s: Error, invalid %d-byte report 0x%02x\n",
