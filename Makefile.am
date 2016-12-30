@@ -79,6 +79,8 @@ ouvrtd_SOURCES = \
 	src/vive-controller-lighthouse.c \
 	src/vive-controller-buttons.h \
 	src/vive-controller-buttons.c \
+	src/vive-firmware.h \
+	src/vive-firmware.c \
 	src/vive-imu.h \
 	src/vive-imu.c \
 	src/vive-headset-imu.h \

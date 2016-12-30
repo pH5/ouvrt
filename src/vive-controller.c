@@ -14,6 +14,7 @@
 
 #include "vive-controller.h"
 #include "vive-config.h"
+#include "vive-firmware.h"
 #include "vive-hid-reports.h"
 #include "vive-imu.h"
 #include "lighthouse.h"
@@ -40,41 +41,6 @@ struct _OuvrtViveControllerPrivate {
 
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveController, ouvrt_vive_controller, \
 			   OUVRT_TYPE_DEVICE)
-
-/*
- * Retrieves the controller firmware version
- */
-static int vive_controller_get_firmware_version(OuvrtViveController *self)
-{
-	struct vive_firmware_version_report report = {
-		.id = VIVE_FIRMWARE_VERSION_REPORT_ID,
-	};
-	uint32_t firmware_version;
-	int ret;
-
-	ret = hid_get_feature_report_timeout(self->dev.fd, &report,
-					     sizeof(report), 100);
-	if (ret < 0) {
-		if (errno != EPIPE) {
-			g_print("%s: Read error 0x05: %d\n", self->dev.name,
-				errno);
-		}
-		return ret;
-	}
-
-	firmware_version = __le32_to_cpu(report.firmware_version);
-
-	g_print("%s: Controller firmware version %u %s@%s FPGA %u.%u\n",
-		self->dev.name, firmware_version, report.string1,
-		report.string2, report.fpga_version_major,
-		report.fpga_version_minor);
-	g_print("%s: Hardware revision: %d rev %d.%d.%d\n",
-		self->dev.name, report.hardware_revision,
-		report.hardware_version_major, report.hardware_version_minor,
-		report.hardware_version_micro);
-
-	return 0;
-}
 
 #define VID_VALVE		0x28de
 #define PID_VIVE_CONTROLLER_USB	0x2012
@@ -412,7 +378,7 @@ static void vive_controller_thread(OuvrtDevice *dev)
 	struct pollfd fds;
 	int ret;
 
-	ret = vive_controller_get_firmware_version(self);
+	ret = vive_get_firmware_version(dev);
 	if (ret < 0 && errno == EPIPE) {
 		g_print("%s: No connected controller found\n", dev->name);
 	}
@@ -456,7 +422,7 @@ static void vive_controller_thread(OuvrtDevice *dev)
 		}
 
 		if (!self->priv->connected) {
-			ret = vive_controller_get_firmware_version(self);
+			ret = vive_get_firmware_version(dev);
 			if (ret < 0)
 				continue;
 

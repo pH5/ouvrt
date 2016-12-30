@@ -15,6 +15,7 @@
 #include "vive-headset-imu.h"
 #include "vive-hid-reports.h"
 #include "vive-config.h"
+#include "vive-firmware.h"
 #include "vive-imu.h"
 #include "device.h"
 #include "hidraw.h"
@@ -100,37 +101,6 @@ static int vive_headset_imu_get_config(OuvrtViveHeadsetIMU *self)
 	return 0;
 }
 
-/*
- * Retrieves the headset firmware version
- */
-static int vive_headset_get_firmware_version(OuvrtViveHeadsetIMU *self)
-{
-	struct vive_firmware_version_report report = {
-		.id = VIVE_FIRMWARE_VERSION_REPORT_ID,
-	};
-	uint32_t firmware_version;
-	int ret;
-
-	ret = hid_get_feature_report(self->dev.fd, &report, sizeof(report));
-	if (ret < 0) {
-		g_print("%s: Read error 0x05: %d\n", self->dev.name,
-			errno);
-		return ret;
-	}
-
-	firmware_version = __le32_to_cpu(report.firmware_version);
-
-	g_print("%s: Headset firmware version %u %s@%s FPGA %u.%u\n",
-		self->dev.name, firmware_version, report.string1,
-		report.string2, report.fpga_version_major,
-		report.fpga_version_minor);
-	g_print("%s: Hardware revision: %d rev %d.%d.%d\n", self->dev.name,
-		report.hardware_revision, report.hardware_version_major,
-		report.hardware_version_minor, report.hardware_version_micro);
-
-	return 0;
-}
-
 static int vive_headset_enable_lighthouse(OuvrtViveHeadsetIMU *self)
 {
 	unsigned char buf[5] = { 0x04 };
@@ -169,7 +139,7 @@ static int vive_headset_imu_start(OuvrtDevice *dev)
 		dev->fd = fd;
 	}
 
-	ret = vive_headset_get_firmware_version(self);
+	ret = vive_get_firmware_version(dev);
 	if (ret < 0) {
 		g_print("%s: Failed to get firmware version\n", dev->name);
 		return ret;

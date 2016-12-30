@@ -90,6 +90,8 @@ ouvrtd_sources = [
 	'src/vive-controller-imu.h',
 	'src/vive-controller-lighthouse.c',
 	'src/vive-controller-lighthouse.h',
+	'src/vive-firmware.c',
+	'src/vive-firmware.h',
 	'src/vive-headset-imu.c',
 	'src/vive-headset-imu.h',
 	'src/vive-headset-lighthouse.c',
