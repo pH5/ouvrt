@@ -26,6 +26,17 @@ struct lighthouse_base_calibration {
 	struct lighthouse_rotor_calibration rotor[2];
 };
 
+struct lighthouse_frame {
+	uint32_t sync_timestamp;
+	uint32_t sync_duration;
+	uint32_t sync_ids;
+	int num_sweeps;
+	uint32_t sweep_offset[32];
+	uint16_t sweep_duration[32];
+	uint8_t sweep_id[32];
+	uint32_t frame_duration;
+};
+
 struct lighthouse_base {
 	int data_sync;
 	int data_word;
@@ -42,6 +53,8 @@ struct lighthouse_base {
 
 	uint32_t last_sync_timestamp;
 	int active_rotor;
+
+	struct lighthouse_frame frame;
 };
 
 struct lighthouse_pulse {

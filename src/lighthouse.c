@@ -236,6 +236,24 @@ lighthouse_base_handle_ootx_data_bit(struct lighthouse_watchman *watchman,
 	}
 }
 
+static void lighthouse_base_handle_frame(struct lighthouse_watchman *watchman,
+					 struct lighthouse_base *base,
+					 uint32_t sync_timestamp)
+{
+	struct lighthouse_frame *frame = &base->frame;
+
+	(void)watchman;
+
+	if (!frame->num_sweeps)
+		return;
+
+	frame->frame_duration = sync_timestamp - frame->sync_timestamp;
+
+	frame->sync_timestamp = 0;
+	frame->sync_duration = 0;
+	frame->num_sweeps = 0;
+}
+
 /*
  * The pulse length encodes three bits. The skip bit indicates whether the
  * emitting base will enable the sweeping laser in the next sweep window.
@@ -306,9 +324,12 @@ static void lighthouse_handle_sync_pulse(struct lighthouse_watchman *watchman,
 	base->last_sync_timestamp = sync->timestamp;
 	base->active_rotor = (code & ROTOR_BIT);
 	lighthouse_base_handle_ootx_data_bit(watchman, base, (code & DATA_BIT));
+	lighthouse_base_handle_frame(watchman, base, sync->timestamp);
 
 	if (!(code & SKIP_BIT)) {
 		watchman->active_base = base;
+		base->frame.sync_timestamp = sync->timestamp;
+		base->frame.sync_duration = sync->duration;
 	}
 
 	watchman->last_timestamp = sync->timestamp;
@@ -319,6 +340,7 @@ static void lighthouse_handle_sweep_pulse(struct lighthouse_watchman *watchman,
 					  uint16_t duration)
 {
 	struct lighthouse_base *base = watchman->active_base;
+	struct lighthouse_frame *frame = &base->frame;
 	int32_t offset;
 
 	(void)id;
@@ -339,6 +361,17 @@ static void lighthouse_handle_sweep_pulse(struct lighthouse_watchman *watchman,
 			watchman->name, base->active_rotor, offset, duration);
 		return;
 	}
+
+	if (frame->num_sweeps == 32) {
+		g_print("%s: frame already contains 32 sweep pulses\n",
+			watchman->name);
+		return;
+	}
+
+	frame->sweep_duration[frame->num_sweeps] = duration;
+	frame->sweep_offset[frame->num_sweeps] = offset;
+	frame->sweep_id[frame->num_sweeps] = id;
+	frame->num_sweeps++;
 }
 
 static void accumulate_sync_pulse(struct lighthouse_watchman *watchman,
