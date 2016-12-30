@@ -30,6 +30,9 @@ struct _OuvrtViveHeadsetIMUPrivate {
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveHeadsetIMU, ouvrt_vive_headset_imu, \
 			   OUVRT_TYPE_DEVICE)
 
+#define VID_VALVE		0x28de
+#define PID_VIVE_HEADSET_USB	0x2000
+
 /*
  * Downloads the configuration data stored in the headset
  */
@@ -38,6 +41,9 @@ static int vive_headset_imu_get_config(OuvrtViveHeadsetIMU *self)
 	char *config_json;
 	JsonObject *object;
 	struct vive_imu *imu = &self->priv->imu;
+	const char *device_class;
+	gint64 device_pid, device_vid;
+	const char *serial;
 
 	config_json = ouvrt_vive_get_config(&self->dev);
 	if (!config_json)
@@ -55,6 +61,30 @@ static int vive_headset_imu_get_config(OuvrtViveHeadsetIMU *self)
 
 	json_object_get_vec3_member(object, "acc_bias", &imu->acc_bias);
 	json_object_get_vec3_member(object, "acc_scale", &imu->acc_scale);
+
+	device_class = json_object_get_string_member(object, "device_class");
+	if (strcmp(device_class, "hmd") != 0) {
+		g_print("%s: Unknown device class \"%s\"\n", self->dev.name,
+			device_class);
+	}
+
+	device_pid = json_object_get_int_member(object, "device_pid");
+	if (device_pid != PID_VIVE_HEADSET_USB) {
+		g_print("%s: Unknown device PID: 0x%04lx\n",
+			self->dev.name, device_pid);
+	}
+
+	serial = json_object_get_string_member(object, "device_serial_number");
+	if (strcmp(serial, self->dev.serial) != 0)
+		g_print("%s: Configuration serial number differs: %s\n",
+			self->dev.name, serial);
+
+	device_vid = json_object_get_int_member(object, "device_vid");
+	if (device_vid != VID_VALVE) {
+		g_print("%s: Unknown device VID: 0x%04lx\n",
+			self->dev.name, device_vid);
+	}
+
 	json_object_get_vec3_member(object, "gyro_bias", &imu->gyro_bias);
 	json_object_get_vec3_member(object, "gyro_scale", &imu->gyro_scale);
 

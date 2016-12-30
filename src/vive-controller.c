@@ -74,6 +74,9 @@ static int vive_controller_get_firmware_version(OuvrtViveController *self)
 	return 0;
 }
 
+#define VID_VALVE		0x28de
+#define PID_VIVE_CONTROLLER_USB	0x2012
+
 /*
  * Downloads the configuration data stored in the controller
  */
@@ -82,6 +85,8 @@ static int vive_controller_get_config(OuvrtViveController *self)
 	char *config_json;
 	JsonObject *object;
 	struct vive_imu *imu = &self->priv->imu;
+	const char *device_class;
+	gint64 device_pid, device_vid;
 
 	config_json = ouvrt_vive_get_config(&self->dev);
 	if (!config_json)
@@ -100,8 +105,26 @@ static int vive_controller_get_config(OuvrtViveController *self)
 	json_object_get_vec3_member(object, "acc_bias", &imu->acc_bias);
 	json_object_get_vec3_member(object, "acc_scale", &imu->acc_scale);
 
+	device_class = json_object_get_string_member(object, "device_class");
+	if (strcmp(device_class, "controller") != 0) {
+		g_print("Vive Wireless Receiver %s: Unknown device class \"%s\"\n",
+			self->dev.serial, device_class);
+	}
+
+	device_pid = json_object_get_int_member(object, "device_pid");
+	if (device_pid != PID_VIVE_CONTROLLER_USB) {
+		g_print("Vive Wireless Receiver %s: Unknown device PID: 0x%04lx\n",
+			self->dev.serial, device_pid);
+	}
+
 	self->priv->serial = json_object_get_string_member(object,
 							   "device_serial_number");
+
+	device_vid = json_object_get_int_member(object, "device_vid");
+	if (device_vid != VID_VALVE) {
+		g_print("Vive Wireless Receiver %s: Unknown device VID: 0x%04lx\n",
+			self->dev.serial, device_vid);
+	}
 
 	json_object_get_vec3_member(object, "gyro_bias", &imu->gyro_bias);
 	json_object_get_vec3_member(object, "gyro_scale", &imu->gyro_scale);
