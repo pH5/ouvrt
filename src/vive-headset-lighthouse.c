@@ -33,50 +33,6 @@ G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveHeadsetLighthouse, ouvrt_vive_headset_lighth
  * timing measurements.
  */
 static void
-vive_headset_controller_decode_pulse_report(OuvrtViveHeadsetLighthouse *self,
-					    const void *buf)
-{
-	const struct vive_headset_controller_pulse_report *report = buf;
-	unsigned int i;
-
-	/* The pulses may appear in arbitrary order */
-	for (i = 0; i < 7; i++) {
-		const struct vive_controller_lighthouse_pulse *pulse;
-		uint16_t sensor_id;
-		uint16_t duration;
-		uint32_t timestamp;
-
-		pulse = &report->pulse[i];
-
-		sensor_id = __le16_to_cpu(pulse->id);
-		if (sensor_id == 0xffff)
-			continue;
-
-		timestamp = __le32_to_cpu(pulse->timestamp);
-		if (sensor_id == 0x00fe) {
-			/* TODO: handle vsync timestamp */
-			continue;
-		}
-		if (sensor_id == 0xfefe) {
-			/* Unknown timestamp, ignore */
-			continue;
-		}
-
-		if (sensor_id > 31) {
-			g_print("%s: unhandled sensor id: %04x\n",
-				self->dev.name, sensor_id);
-			return;
-		}
-
-		duration = __le16_to_cpu(pulse->duration);
-
-		lighthouse_watchman_handle_pulse(&self->priv->watchman,
-						 sensor_id, duration,
-						 timestamp);
-	}
-}
-
-static void
 vive_headset_lighthouse_decode_pulse_report(OuvrtViveHeadsetLighthouse *self,
 					    const void *buf)
 {
@@ -183,12 +139,9 @@ static void vive_headset_lighthouse_thread(OuvrtDevice *dev)
 			g_print("%s: Read error: %d\n", dev->name, errno);
 			continue;
 		}
-		if (ret == 58 &&
-		    buf[0] == VIVE_CONTROLLER_LIGHTHOUSE_PULSE_REPORT_ID) {
-			vive_headset_lighthouse_decode_pulse_report1(self, buf);
-		} else if (ret == 64 &&
-			   buf[0] == VIVE_HEADSET_LIGHTHOUSE_PULSE_REPORT_ID) {
-			vive_headset_lighthouse_decode_pulse_report2(self, buf);
+		if (ret == 64 &&
+		    buf[0] == VIVE_HEADSET_LIGHTHOUSE_PULSE_REPORT_ID) {
+			vive_headset_lighthouse_decode_pulse_report(self, buf);
 		} else {
 			g_print("%s: Error, invalid %d-byte report 0x%02x\n",
 				dev->name, ret, buf[0]);
