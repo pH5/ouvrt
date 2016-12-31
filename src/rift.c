@@ -467,6 +467,27 @@ static void rift_decode_sensor_message(OuvrtRift *rift,
 	(void)sample_count;
 }
 
+static int rift_check_unknown_report_06(OuvrtRift *rift)
+{
+	struct rift_unknown_report_6 report = {
+		.id = RIFT_UNKNOWN_REPORT_6_ID,
+	};
+	int fd = rift->dev.fd;
+	int ret;
+
+	ret = hid_get_feature_report(fd, &report, sizeof(report));
+	if (ret < 0)
+		return ret;
+
+	if (report.echo || report.unknown) {
+		g_print("%s: unexpected report 06: %04x %02x\n", rift->dev.name,
+			__le16_to_cpu(report.echo), report.unknown);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /*
  * Enables the IR tracking LEDs and registers them with the tracker.
  */

@@ -22,6 +22,14 @@ struct rift_config_report {
 	__le16 sample_rate;
 } __attribute__((packed));
 
+#define RIFT_UNKNOWN_REPORT_6_ID		0x06
+
+struct rift_unknown_report_6 {
+	__u8 id;
+	__u16 echo;
+	__u8 unknown;
+} __attribute__((packed));
+
 #define RIFT_TRACKING_REPORT_ID			0x0c
 
 #define RIFT_TRACKING_ENABLE			0x01
