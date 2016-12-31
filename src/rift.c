@@ -6,7 +6,6 @@
 #include <asm/byteorder.h>
 #include <errno.h>
 #include <poll.h>
-#include <pthread.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
