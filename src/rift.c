@@ -488,6 +488,39 @@ static int rift_check_unknown_report_06(OuvrtRift *rift)
 	return 0;
 }
 
+static int rift_read_flash(OuvrtRift *rift, uint8_t index, unsigned char *buf)
+{
+	struct rift_cv1_read_flash_report report = {
+		.id = RIFT_CV1_READ_FLASH_REPORT_ID,
+		.index = index,
+		.unknown = 0x80,
+	};
+	int ret;
+
+	ret = rift_check_unknown_report_06(rift);
+	if (ret < 0)
+		return ret;
+
+	ret = hid_send_feature_report(rift->dev.fd, &report, sizeof(report));
+	if (ret < 0) {
+		g_print("%s: failed to set flash read address\n",
+			rift->dev.name);
+		return ret;
+	}
+
+	usleep(10000);
+
+	ret = hid_get_feature_report(rift->dev.fd, &report, sizeof(report));
+	if (ret < 0) {
+		g_print("%s: failed to read from flash\n", rift->dev.name);
+		return ret;
+	}
+
+	memcpy(buf, report.payload, sizeof(report.payload));
+
+	return 0;
+}
+
 /*
  * Enables the IR tracking LEDs and registers them with the tracker.
  */

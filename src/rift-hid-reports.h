@@ -171,6 +171,16 @@ struct rift_cv1_sensor_report {
 	__u8 unknown_zeros[4];
 };
 
+#define RIFT_CV1_READ_FLASH_REPORT_ID		0x21
+
+struct rift_cv1_read_flash_report {
+	__u8 id;
+	__u16 echo;
+	__u8 index;
+	__u8 unknown;
+	__u8 payload[64];
+} __attribute__((packed));
+
 #define RIFT_CV1_LIFETIME_REPORT_ID		0x22
 
 struct rift_cv1_lifetime_report {
