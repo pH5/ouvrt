@@ -45,6 +45,42 @@ static int rift_radio_transfer(int fd, uint8_t a, uint8_t b, uint8_t c)
 	return 0;
 }
 
+static int rift_radio_read(int fd, uint8_t a, uint8_t b, uint8_t c,
+			   struct rift_radio_data_report *report)
+{
+	int ret;
+
+	if (report->id != RIFT_RADIO_DATA_REPORT_ID)
+		return -EINVAL;
+
+	ret = rift_radio_transfer(fd, a, b, c);
+	if (ret < 0)
+		return ret;
+
+	return hid_get_feature_report(fd, report, sizeof(*report));
+}
+
+int rift_get_firmware_version(int fd)
+{
+	struct rift_radio_data_report report = {
+		.id = RIFT_RADIO_DATA_REPORT_ID,
+	};
+	int ret;
+	int i;
+
+	ret = rift_radio_read(fd, 0x05, RIFT_RADIO_FIRMWARE_VERSION_CONTROL,
+			      0x05, &report);
+	if (ret < 0)
+		return ret;
+
+	g_print("Rift: Firmware version ");
+	for (i = 14; i < 24 && g_ascii_isalnum(report.payload[i]); i++)
+		g_print("%c", report.payload[i]);
+	g_print("\n");
+
+	return 0;
+}
+
 static void rift_decode_remote_message(struct rift_remote *remote,
 				       const struct rift_radio_message *message)
 {

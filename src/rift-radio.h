@@ -17,6 +17,8 @@ struct rift_radio {
 	struct rift_remote remote;
 };
 
+int rift_get_firmware_version(int fd);
+
 void rift_decode_radio_message(struct rift_radio *radio,
 			       const unsigned char *buf, size_t len);
 

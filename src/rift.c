@@ -496,6 +496,9 @@ static int rift_start(OuvrtDevice *dev)
 		dev->fds[1] = fd;
 	}
 
+	if (rift->type == RIFT_CV1)
+		rift_get_firmware_version(dev->fds[0]);
+
 	ret = rift_get_positions(rift);
 	if (ret < 0) {
 		g_print("Rift: Error reading factory calibrated positions\n");
