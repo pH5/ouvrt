@@ -103,6 +103,22 @@ struct rift_keepalive_report {
 	__le16 timeout_ms;
 } __attribute__((packed));
 
+#define RIFT_RADIO_CONTROL_REPORT_ID		0x1a
+
+struct rift_radio_control_report {
+	__u8 id;
+	__u16 echo;
+	__u8 unknown[3];
+} __attribute__((packed));
+
+#define RIFT_RADIO_DATA_REPORT_ID		0x1b
+
+struct rift_radio_data_report {
+	__u8 id;
+	__u16 echo;
+	__u8 payload[28];
+} __attribute__((packed));
+
 #define RIFT_CV1_POWER_REPORT_ID		0x1d
 
 #define RIFT_CV1_POWER_DISPLAY			0x01

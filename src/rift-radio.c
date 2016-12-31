@@ -4,11 +4,13 @@
  * SPDX-License-Identifier:	LGPL-2.0+ or BSL-1.0
  */
 #include <asm/byteorder.h>
+#include <errno.h>
 #include <glib.h>
 #include <stdint.h>
 
 #include "rift-hid-reports.h"
 #include "rift-radio.h"
+#include "hidraw.h"
 
 static void rift_dump_message(const unsigned char *buf, size_t len)
 {
@@ -17,6 +19,30 @@ static void rift_dump_message(const unsigned char *buf, size_t len)
 	for (i = 0; i < len; i++)
 		g_print(" %02x", buf[i]);
 	g_print("\n");
+}
+
+static int rift_radio_transfer(int fd, uint8_t a, uint8_t b, uint8_t c)
+{
+	struct rift_radio_control_report report = {
+		.id = RIFT_RADIO_CONTROL_REPORT_ID,
+		.unknown = { a, b, c },
+	};
+	int ret;
+
+	ret = hid_send_feature_report(fd, &report, sizeof(report));
+	if (ret < 0)
+		return ret;
+
+	do {
+		ret = hid_get_feature_report(fd, &report, sizeof(report));
+		if (ret < 0)
+			return ret;
+	} while (report.unknown[0] & 0x80);
+
+	if (report.unknown[0] & 0x08)
+		return -EIO;
+
+	return 0;
 }
 
 static void rift_decode_remote_message(struct rift_remote *remote,
