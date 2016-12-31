@@ -15,6 +15,7 @@
 #include "vive-controller.h"
 #include "vive-config.h"
 #include "vive-hid-reports.h"
+#include "vive-imu.h"
 #include "lighthouse.h"
 #include "device.h"
 #include "hidraw.h"
@@ -25,11 +26,8 @@ struct _OuvrtViveControllerPrivate {
 	JsonNode *config;
 	const gchar *serial;
 	gboolean connected;
+	struct vive_imu imu;
 	struct lighthouse_watchman watchman;
-	vec3 acc_bias;
-	vec3 acc_scale;
-	vec3 gyro_bias;
-	vec3 gyro_scale;
 
 	uint32_t timestamp;
 	uint8_t battery;
@@ -83,6 +81,7 @@ static int vive_controller_get_config(OuvrtViveController *self)
 {
 	char *config_json;
 	JsonObject *object;
+	struct vive_imu *imu = &self->priv->imu;
 
 	config_json = ouvrt_vive_get_config(&self->dev);
 	if (!config_json)
@@ -98,14 +97,14 @@ static int vive_controller_get_config(OuvrtViveController *self)
 
 	object = json_node_get_object(self->priv->config);
 
-	json_object_get_vec3_member(object, "acc_bias", &self->priv->acc_bias);
-	json_object_get_vec3_member(object, "acc_scale", &self->priv->acc_scale);
+	json_object_get_vec3_member(object, "acc_bias", &imu->acc_bias);
+	json_object_get_vec3_member(object, "acc_scale", &imu->acc_scale);
 
 	self->priv->serial = json_object_get_string_member(object,
 							   "device_serial_number");
 
-	json_object_get_vec3_member(object, "gyro_bias", &self->priv->gyro_bias);
-	json_object_get_vec3_member(object, "gyro_scale", &self->priv->gyro_scale);
+	json_object_get_vec3_member(object, "gyro_bias", &imu->gyro_bias);
+	json_object_get_vec3_member(object, "gyro_scale", &imu->gyro_scale);
 
 	return 0;
 }
@@ -491,6 +490,8 @@ static void ouvrt_vive_controller_init(OuvrtViveController *self)
 
 	self->priv->config = NULL;
 	self->priv->connected = FALSE;
+	self->priv->imu.sequence = 0;
+	self->priv->imu.time = 0;
 	lighthouse_watchman_init(&self->priv->watchman);
 }
 
