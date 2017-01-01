@@ -197,15 +197,7 @@ static void ouvrt_rift_radio_init(OuvrtRiftRadio *self)
  *
  * Returns the newly allocated Rift Radio device.
  */
-OuvrtDevice *rift_cv1_radio_new(const char *devnode)
+OuvrtDevice *rift_cv1_radio_new(const char *devnode G_GNUC_UNUSED)
 {
-	OuvrtRiftRadio *rift;
-
-	rift = g_object_new(OUVRT_TYPE_RIFT_RADIO, NULL);
-	if (rift == NULL)
-		return NULL;
-
-	rift->dev.devnode = g_strdup(devnode);
-
-	return &rift->dev;
+	return OUVRT_DEVICE(g_object_new(OUVRT_TYPE_RIFT_RADIO, NULL));
 }

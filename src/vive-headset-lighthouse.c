@@ -191,15 +191,8 @@ static void ouvrt_vive_headset_lighthouse_init(OuvrtViveHeadsetLighthouse *self)
  *
  * Returns the newly allocated Vive Headset Lighthouse Receiver device.
  */
-OuvrtDevice *vive_headset_lighthouse_new(const char *devnode)
+OuvrtDevice *vive_headset_lighthouse_new(const char *devnode G_GNUC_UNUSED)
 {
-	OuvrtViveHeadsetLighthouse *vive;
-
-	vive = g_object_new(OUVRT_TYPE_VIVE_HEADSET_LIGHTHOUSE, NULL);
-	if (vive == NULL)
-		return NULL;
-
-	vive->dev.devnode = g_strdup(devnode);
-
-	return &vive->dev;
+	return OUVRT_DEVICE(g_object_new(OUVRT_TYPE_VIVE_HEADSET_LIGHTHOUSE,
+					 NULL));
 }

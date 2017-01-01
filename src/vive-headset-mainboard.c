@@ -245,15 +245,8 @@ static void ouvrt_vive_headset_mainboard_init(OuvrtViveHeadsetMainboard *self)
  *
  * Returns the newly allocated Vive Headset Mainboard device.
  */
-OuvrtDevice *vive_headset_mainboard_new(const char *devnode)
+OuvrtDevice *vive_headset_mainboard_new(const char *devnode G_GNUC_UNUSED)
 {
-	OuvrtViveHeadsetMainboard *vive;
-
-	vive = g_object_new(OUVRT_TYPE_VIVE_HEADSET_MAINBOARD, NULL);
-	if (vive == NULL)
-		return NULL;
-
-	vive->dev.devnode = g_strdup(devnode);
-
-	return &vive->dev;
+	return OUVRT_DEVICE(g_object_new(OUVRT_TYPE_VIVE_HEADSET_MAINBOARD,
+					 NULL));
 }

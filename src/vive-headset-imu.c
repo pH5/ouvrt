@@ -260,15 +260,7 @@ static void ouvrt_vive_headset_imu_init(OuvrtViveHeadsetIMU *self)
  *
  * Returns the newly allocated Vive Headset IMU device.
  */
-OuvrtDevice *vive_headset_imu_new(const char *devnode)
+OuvrtDevice *vive_headset_imu_new(const char *devnode G_GNUC_UNUSED)
 {
-	OuvrtViveHeadsetIMU *vive;
-
-	vive = g_object_new(OUVRT_TYPE_VIVE_HEADSET_IMU, NULL);
-	if (vive == NULL)
-		return NULL;
-
-	vive->dev.devnode = g_strdup(devnode);
-
-	return &vive->dev;
+	return OUVRT_DEVICE(g_object_new(OUVRT_TYPE_VIVE_HEADSET_IMU, NULL));
 }

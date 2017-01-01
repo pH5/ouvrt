@@ -195,15 +195,8 @@ static void ouvrt_vive_controller_lighthouse_init(OuvrtViveControllerLighthouse 
  *
  * Returns the newly allocated Vive Controller Lighthouse Receiver device.
  */
-OuvrtDevice *vive_controller_lighthouse_new(const char *devnode)
+OuvrtDevice *vive_controller_lighthouse_new(const char *devnode G_GNUC_UNUSED)
 {
-	OuvrtViveControllerLighthouse *vive;
-
-	vive = g_object_new(OUVRT_TYPE_VIVE_CONTROLLER_LIGHTHOUSE, NULL);
-	if (vive == NULL)
-		return NULL;
-
-	vive->dev.devnode = g_strdup(devnode);
-
-	return &vive->dev;
+	return OUVRT_DEVICE(g_object_new(OUVRT_TYPE_VIVE_CONTROLLER_LIGHTHOUSE,
+					 NULL));
 }

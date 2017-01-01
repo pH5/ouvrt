@@ -198,6 +198,8 @@ static void ouvrtd_device_add(struct udev_device *dev)
 	d = device_matches[i].new(devnode);
 	if (d == NULL)
 		return;
+	if (!d->devnode)
+		d->devnode = g_strdup(devnode);
 	if (d->name == NULL)
 		d->name = strdup(device_matches[i].name);
 	if (serial && d->serial == NULL)

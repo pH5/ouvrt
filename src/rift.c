@@ -642,7 +642,7 @@ static void ouvrt_rift_init(OuvrtRift *self)
  *
  * Returns the newly allocated Rift device.
  */
-OuvrtDevice *rift_new(const char *devnode, enum rift_type type)
+OuvrtDevice *rift_new(enum rift_type type)
 {
 	OuvrtRift *rift;
 
@@ -650,21 +650,20 @@ OuvrtDevice *rift_new(const char *devnode, enum rift_type type)
 	if (rift == NULL)
 		return NULL;
 
-	rift->dev.devnode = g_strdup(devnode);
 	rift->tracker = ouvrt_tracker_new();
 	rift->type = type;
 
 	return &rift->dev;
 }
 
-OuvrtDevice *rift_dk2_new(const char *devnode)
+OuvrtDevice *rift_dk2_new(const char *devnode G_GNUC_UNUSED)
 {
-	return rift_new(devnode, RIFT_DK2);
+	return rift_new(RIFT_DK2);
 }
 
-OuvrtDevice *rift_cv1_new(const char *devnode)
+OuvrtDevice *rift_cv1_new(const char *devnode G_GNUC_UNUSED)
 {
-	return rift_new(devnode, RIFT_CV1);
+	return rift_new(RIFT_CV1);
 }
 
 void ouvrt_rift_set_flicker(OuvrtRift *rift, gboolean flicker)
