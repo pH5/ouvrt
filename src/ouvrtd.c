@@ -26,18 +26,18 @@
 #include "vive-controller.h"
 #include "vive-controller-usb.h"
 
-#define VID_HTC			"0bb4"
-#define PID_VIVE		"2c87"
+#define VID_HTC			0x0bb4
+#define PID_VIVE		0x2c87
 
-#define VID_OCULUSVR		"2833"
-#define PID_RIFT_DK2		"0021"
-#define PID_RIFT_CV1		"0031"
-#define PID_CAMERA_DK2		"0201"
+#define VID_OCULUSVR		0x2833
+#define PID_RIFT_DK2		0x0021
+#define PID_RIFT_CV1		0x0031
+#define PID_CAMERA_DK2		0x0201
 
-#define VID_VALVE		"28de"
-#define PID_VIVE_HEADSET	"2000"
-#define PID_VIVE_CONTROLLER_USB	"2012"
-#define PID_VIVE_CONTROLLER	"2101"
+#define VID_VALVE		0x28de
+#define PID_VIVE_HEADSET	0x2000
+#define PID_VIVE_CONTROLLER_USB	0x2012
+#define PID_VIVE_CONTROLLER	0x2101
 
 #define NUM_MATCHES	7
 
@@ -47,8 +47,8 @@ struct interface_match {
 };
 
 struct device_match {
-	const char *vid;
-	const char *pid;
+	uint16_t vid;
+	uint16_t pid;
 	const char *name;
 	union {
 		const char *subsystem;
@@ -135,7 +135,8 @@ static gint ouvrt_device_cmp_serial(OuvrtDevice *dev, const char *serial)
  */
 static void ouvrtd_device_add(struct udev_device *dev)
 {
-	const char *devnode, *vid, *pid, *serial, *subsystem, *interface;
+	const char *devnode, *serial, *subsystem, *value;
+	uint16_t vid, pid;
 	struct udev_device *parent;
 	OuvrtDevice *d;
 	int i, j, iface;
@@ -149,28 +150,30 @@ static void ouvrtd_device_add(struct udev_device *dev)
 	if (!parent)
 		return;
 
-	interface = udev_device_get_sysattr_value(parent, "bInterfaceNumber");
-	if (!interface)
+	value = udev_device_get_sysattr_value(parent, "bInterfaceNumber");
+	if (!value)
 		return;
-	iface = atoi(interface);
+	iface = atoi(value);
 
 	parent = udev_device_get_parent(parent);
 	if (!parent)
 		return;
 
-	vid = udev_device_get_sysattr_value(parent, "idVendor");
-	if (!vid)
+	value = udev_device_get_sysattr_value(parent, "idVendor");
+	if (!value)
 		return;
+	vid = strtol(value, NULL, 16);
 
-	pid = udev_device_get_sysattr_value(parent, "idProduct");
-	if (!pid)
+	value = udev_device_get_sysattr_value(parent, "idProduct");
+	if (!value)
 		return;
+	pid = strtol(value, NULL, 16);
 
 	for (i = 0; i < NUM_MATCHES; i++) {
 		int j;
 
-		if (strcmp(vid, device_matches[i].vid) != 0 ||
-		    strcmp(pid, device_matches[i].pid) != 0)
+		if (vid != device_matches[i].vid ||
+		    pid != device_matches[i].pid)
 			continue;
 
 		if (device_matches[i].num_interfaces == 0) {
