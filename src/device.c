@@ -54,11 +54,15 @@ static void ouvrt_device_class_init(OuvrtDeviceClass *klass)
 static void ouvrt_device_init(OuvrtDevice *self)
 {
 	self->type = 0;
-	self->devnode = NULL;
+	self->devnodes[0] = NULL;
+	self->devnodes[1] = NULL;
+	self->devnodes[2] = NULL;
 	self->name = NULL;
 	self->serial = NULL;
 	self->active = FALSE;
-	self->fd = -1;
+	self->fds[0] = -1;
+	self->fds[1] = -1;
+	self->fds[2] = -1;
 	self->priv = ouvrt_device_get_instance_private(self);
 	self->priv->thread = NULL;
 }

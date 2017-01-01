@@ -35,11 +35,18 @@ struct _OuvrtDevice {
 	GObject parent_instance;
 
 	enum device_type type;
-	char *devnode;
+	union {
+		char *devnode;
+		char *devnodes[3];
+	};
 	char *name;
 	char *serial;
 	gboolean active;
-	int fd;
+	union {
+		int fd;
+		int fds[3];
+	};
+	void *parent;
 
 	OuvrtDevicePrivate *priv;
 };

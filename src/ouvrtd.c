@@ -45,11 +45,20 @@
 
 #define NUM_MATCHES	11
 
+struct interface_match {
+	const char *subsystem;
+	const char *name;
+};
+
 struct device_match {
 	const char *vid;
 	const char *pid;
-	const char *subsystem;
 	const char *name;
+	union {
+		const char *subsystem;
+		const struct interface_match *interfaces;
+	};
+	int num_interfaces;
 	int interface;
 	OuvrtDevice *(*new)(const char *devnode);
 };
@@ -153,7 +162,7 @@ static void ouvrtd_device_add(struct udev_device *dev)
 	const char *devnode, *vid, *pid, *serial, *subsystem, *interface;
 	struct udev_device *parent;
 	OuvrtDevice *d;
-	int i, iface;
+	int i, j, iface;
 
 	subsystem = udev_device_get_subsystem(dev);
 	if (!subsystem)
@@ -182,10 +191,26 @@ static void ouvrtd_device_add(struct udev_device *dev)
 		return;
 
 	for (i = 0; i < NUM_MATCHES; i++) {
-		if (strcmp(vid, device_matches[i].vid) == 0 &&
-		    strcmp(pid, device_matches[i].pid) == 0 &&
-		    strcmp(subsystem, device_matches[i].subsystem) == 0 &&
-		    device_matches[i].interface == iface)
+		int j;
+
+		if (strcmp(vid, device_matches[i].vid) != 0 ||
+		    strcmp(pid, device_matches[i].pid) != 0)
+			continue;
+
+		if (device_matches[i].num_interfaces == 0) {
+			if (strcmp(device_matches[i].subsystem,
+				   subsystem) == 0 &&
+			    device_matches[i].interface == iface)
+				break;
+			continue;
+		}
+
+		for (j = 0; j < device_matches[i].num_interfaces; j++) {
+			if (strcmp(device_matches[i].interfaces[j].subsystem,
+				   subsystem) == 0 && iface == j)
+				break;
+		}
+		if (j < device_matches[i].num_interfaces)
 			break;
 	}
 	if (i == NUM_MATCHES)
@@ -193,13 +218,53 @@ static void ouvrtd_device_add(struct udev_device *dev)
 
 	devnode = udev_device_get_devnode(dev);
 	serial = udev_device_get_sysattr_value(parent, "serial");
-	g_print("udev: Found %s: %s\n", device_matches[i].name, devnode);
+	if (device_matches[i].num_interfaces)
+		g_print("udev: Found %s %s: %s\n", device_matches[i].name,
+			device_matches[i].interfaces[iface].name, devnode);
+	else
+		g_print("udev: Found %s: %s\n", device_matches[i].name, devnode);
 
+	/*
+	 * If this is a new interface of an already existing multi-interface
+	 * device, join the existing device.
+	 */
+	if (device_matches[i].num_interfaces > 1) {
+		GList *link;
+
+		link = g_list_find_custom(device_list, serial,
+					  (GCompareFunc)ouvrt_device_cmp_serial);
+		if (link) {
+			d = OUVRT_DEVICE(link->data);
+			if (d->devnodes[iface]) {
+				g_print("udev: Interface %d occupied by %s\n",
+					iface, d->devnodes[iface]);
+				return;
+			} else {
+				d->devnodes[iface] = g_strdup(devnode);
+			}
+
+			for (j = 0; j < device_matches[i].num_interfaces; j++) {
+				if (d->devnodes[j] == NULL)
+					break;
+			}
+			if (j == device_matches[i].num_interfaces)
+				ouvrt_device_start(d);
+
+			return;
+		}
+	}
+
+	/* Otherwise create a new device */
 	d = device_matches[i].new(devnode);
 	if (d == NULL)
 		return;
-	if (!d->devnode)
-		d->devnode = g_strdup(devnode);
+	d->parent = parent;
+	if (!d->devnodes[iface]) {
+		if (device_matches[i].num_interfaces)
+			d->devnodes[iface] = g_strdup(devnode);
+		else
+			d->devnode = g_strdup(devnode);
+	}
 	if (d->name == NULL)
 		d->name = strdup(device_matches[i].name);
 	if (serial && d->serial == NULL)
@@ -237,7 +302,12 @@ static void ouvrtd_device_add(struct udev_device *dev)
 	}
 
 	device_list = g_list_append(device_list, d);
-	ouvrt_device_start(d);
+
+	for (j = 0; i < device_matches[i].num_interfaces; j++)
+		if (d->devnodes[j] == NULL)
+			break;
+	if (j == device_matches[i].num_interfaces)
+		ouvrt_device_start(d);
 }
 
 /*
