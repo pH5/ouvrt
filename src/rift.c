@@ -15,6 +15,7 @@
 
 #include "rift.h"
 #include "rift-hid-reports.h"
+#include "rift-radio.h"
 #include "debug.h"
 #include "device.h"
 #include "hidraw.h"
@@ -28,6 +29,7 @@ struct _OuvrtRiftPrivate {
 	int report_interval;
 	gboolean flicker;
 	uint32_t last_sample_timestamp;
+	struct rift_radio radio;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtRift, ouvrt_rift, OUVRT_TYPE_DEVICE)
@@ -472,17 +474,26 @@ static void rift_decode_sensor_message(OuvrtRift *rift,
 static int rift_start(OuvrtDevice *dev)
 {
 	OuvrtRift *rift = OUVRT_RIFT(dev);
-	int fd = rift->dev.fd;
+	int fd;
 	int ret;
 
-	if (fd == -1) {
-		fd = open(rift->dev.devnode, O_RDWR);
+	if (dev->fds[0] == -1) {
+		fd = open(dev->devnodes[0], O_RDWR);
 		if (fd == -1) {
 			g_print("Rift: Failed to open '%s': %d\n",
-				rift->dev.devnode, errno);
+				dev->devnodes[0], errno);
 			return -1;
 		}
-		rift->dev.fd = fd;
+		dev->fds[0] = fd;
+	}
+	if (dev->fds[1] == -1 && dev->devnodes[1]) {
+		fd = open(dev->devnodes[1], O_RDWR);
+		if (fd == -1) {
+			g_print("Rift: Failed to open '%s': %d\n",
+				dev->devnodes[1], errno);
+			return -1;
+		}
+		dev->fds[1] = fd;
 	}
 
 	ret = rift_get_positions(rift);
@@ -538,7 +549,7 @@ static void rift_thread(OuvrtDevice *dev)
 {
 	OuvrtRift *rift = OUVRT_RIFT(dev);
 	unsigned char buf[64];
-	struct pollfd fds;
+	struct pollfd fds[2];
 	int count;
 	int ret;
 
@@ -547,11 +558,14 @@ static void rift_thread(OuvrtDevice *dev)
 	count = 0;
 
 	while (dev->active) {
-		fds.fd = dev->fd;
-		fds.events = POLLIN;
-		fds.revents = 0;
+		fds[0].fd = dev->fds[0];
+		fds[0].events = POLLIN;
+		fds[0].revents = 0;
+		fds[1].fd = dev->fds[1];
+		fds[1].events = POLLIN;
+		fds[1].revents = 0;
 
-		ret = poll(&fds, 1, 1000);
+		ret = poll(fds, 2, 1000);
 		if (ret == -1 || ret == 0 ||
 		    count > 9 * rift->priv->report_rate) {
 			if (ret == -1 || ret == 0)
@@ -561,22 +575,44 @@ static void rift_thread(OuvrtDevice *dev)
 			continue;
 		}
 
-		if (fds.events & (POLLERR | POLLHUP | POLLNVAL))
+		if ((fds[0].revents & (POLLERR | POLLHUP | POLLNVAL)) ||
+		    (fds[1].revents & (POLLERR | POLLHUP | POLLNVAL)))
 			break;
 
-		ret = read(dev->fd, buf, sizeof(buf));
-		if (ret == -1) {
-			g_print("%s: Read error: %d\n", dev->name, errno);
-			continue;
-		}
-		if (ret < 64) {
-			g_print("%s: Error, invalid %d-byte report 0x%02x\n",
-				dev->name, ret, buf[0]);
-			continue;
-		}
+		if (fds[0].revents & POLLIN) {
+			ret = read(dev->fds[0], buf, sizeof(buf));
+			if (ret == -1) {
+				g_print("%s: Read error: %d\n", dev->name,
+					errno);
+				continue;
+			}
+			if (ret < 64) {
+				g_print("%s: Error, invalid %d-byte report 0x%02x\n",
+					dev->name, ret, buf[0]);
+				continue;
+			}
 
-		rift_decode_sensor_message(rift, buf, sizeof(buf));
-		count++;
+			rift_decode_sensor_message(rift, buf, sizeof(buf));
+			count++;
+		}
+		if (fds[1].revents & POLLIN) {
+			ret = read(dev->fds[1], buf, sizeof(buf));
+			if (ret == -1) {
+				g_print("%s: Read error: %d\n", dev->name,
+					errno);
+				continue;
+			}
+			if (ret != 64 ||
+			    (buf[0] != RIFT_RADIO_MESSAGE_ID &&
+			     buf[0] != RIFT_RADIO_UNKNOWN_MESSAGE_ID)) {
+				g_print("%s: Error, invalid %d-byte report 0x%02x\n",
+						dev->name, ret, buf[0]);
+				continue;
+			}
+
+			rift_decode_radio_message(&rift->priv->radio, buf,
+						  sizeof(buf));
+		}
 	}
 }
 

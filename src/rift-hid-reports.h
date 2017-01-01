@@ -202,7 +202,7 @@ struct rift_touch_message {
 	__u8 unknown[36];
 } __attribute__((packed));
 
-#define RIFT_REMOTE				5
+#define RIFT_REMOTE				1
 #define RIFT_TOUCH_CONTROLLER_LEFT		2
 #define RIFT_TOUCH_CONTROLLER_RIGHT		3
 
