@@ -25,9 +25,7 @@
 #include "vive-headset-mainboard.h"
 #include "vive-headset-lighthouse.h"
 #include "vive-controller.h"
-#include "vive-controller-imu.h"
-#include "vive-controller-lighthouse.h"
-#include "vive-controller-buttons.h"
+#include "vive-controller-usb.h"
 
 #define VID_HTC			"0bb4"
 #define PID_VIVE		"2c87"
@@ -42,7 +40,7 @@
 #define PID_VIVE_CONTROLLER_USB	"2012"
 #define PID_VIVE_CONTROLLER	"2101"
 
-#define NUM_MATCHES	10
+#define NUM_MATCHES	8
 
 struct interface_match {
 	const char *subsystem;
@@ -109,24 +107,14 @@ static const struct device_match device_matches[NUM_MATCHES] = {
 	}, {
 		.vid = VID_VALVE,
 		.pid = PID_VIVE_CONTROLLER_USB,
-		.subsystem = "hidraw",
-		.name = "Vive Controller IMU",
-		.interface = 0,
-		.new = vive_controller_imu_new,
-	}, {
-		.vid = VID_VALVE,
-		.pid = PID_VIVE_CONTROLLER_USB,
-		.subsystem = "hidraw",
-		.name = "Vive Controller Lighthouse RX",
-		.interface = 1,
-		.new = vive_controller_lighthouse_new,
-	}, {
-		.vid = VID_VALVE,
-		.pid = PID_VIVE_CONTROLLER_USB,
-		.subsystem = "hidraw",
-		.name = "Vive Controller Buttons",
-		.interface = 2,
-		.new = vive_controller_buttons_new,
+		.name = "Vive Controller",
+		.interfaces = (const struct interface_match[]){
+			{ .subsystem = "hidraw", .name = "IMU" },
+			{ .subsystem = "hidraw", .name = "Lighthouse RX" },
+			{ .subsystem = "hidraw", .name = "Buttons" },
+		},
+		.num_interfaces = 3,
+		.new = vive_controller_usb_new,
 	}, {
 		.vid = VID_VALVE,
 		.pid = PID_VIVE_CONTROLLER,

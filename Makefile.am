@@ -75,12 +75,8 @@ ouvrtd_SOURCES = \
 	src/opencv.h \
 	src/vive-controller.h \
 	src/vive-controller.c \
-	src/vive-controller-imu.h \
-	src/vive-controller-imu.c \
-	src/vive-controller-lighthouse.h \
-	src/vive-controller-lighthouse.c \
-	src/vive-controller-buttons.h \
-	src/vive-controller-buttons.c \
+	src/vive-controller-usb.h \
+	src/vive-controller-usb.c \
 	src/vive-firmware.h \
 	src/vive-firmware.c \
 	src/vive-imu.h \
