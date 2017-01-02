@@ -55,7 +55,6 @@ struct device_match {
 		const struct interface_match *interfaces;
 	};
 	int num_interfaces;
-	int interface;
 	OuvrtDevice *(*new)(const char *devnode);
 };
 
@@ -87,7 +86,6 @@ static const struct device_match device_matches[NUM_MATCHES] = {
 		.pid = PID_VIVE,
 		.subsystem = "hidraw",
 		.name = "Vive Headset Mainboard",
-		.interface = 0,
 		.new = vive_headset_mainboard_new,
 	}, {
 		.vid = VID_VALVE,
@@ -177,8 +175,7 @@ static void ouvrtd_device_add(struct udev_device *dev)
 
 		if (device_matches[i].num_interfaces == 0) {
 			if (strcmp(device_matches[i].subsystem,
-				   subsystem) == 0 &&
-			    device_matches[i].interface == iface)
+				   subsystem) == 0 && iface == 0)
 				break;
 			continue;
 		}
