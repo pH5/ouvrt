@@ -81,12 +81,10 @@ ouvrtd_SOURCES = \
 	src/vive-firmware.c \
 	src/vive-imu.h \
 	src/vive-imu.c \
-	src/vive-headset-imu.h \
-	src/vive-headset-imu.c \
+	src/vive-headset.h \
+	src/vive-headset.c \
 	src/vive-headset-mainboard.h \
 	src/vive-headset-mainboard.c \
-	src/vive-headset-lighthouse.h \
-	src/vive-headset-lighthouse.c \
 	src/vive-config.h \
 	src/vive-config.c
 

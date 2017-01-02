@@ -1,5 +1,5 @@
 /*
- * HTC Vive Headset IMU
+ * HTC Vive Headset
  * Copyright 2016 Philipp Zabel
  * SPDX-License-Identifier:	LGPL-2.0+
  */
@@ -12,7 +12,7 @@
 #include <sys/fcntl.h>
 #include <unistd.h>
 
-#include "vive-headset-imu.h"
+#include "vive-headset.h"
 #include "vive-hid-reports.h"
 #include "vive-config.h"
 #include "vive-firmware.h"
@@ -21,16 +21,18 @@
 #include "hidraw.h"
 #include "imu.h"
 #include "json.h"
+#include "lighthouse.h"
 #include "math.h"
 #include "tracking-model.h"
 
-struct _OuvrtViveHeadsetIMUPrivate {
+struct _OuvrtViveHeadsetPrivate {
 	JsonNode *config;
 	struct vive_imu imu;
 	struct tracking_model model;
+	struct lighthouse_watchman watchman;
 };
 
-G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveHeadsetIMU, ouvrt_vive_headset_imu, \
+G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveHeadset, ouvrt_vive_headset, \
 			   OUVRT_TYPE_DEVICE)
 
 #define VID_VALVE		0x28de
@@ -39,7 +41,7 @@ G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveHeadsetIMU, ouvrt_vive_headset_imu, \
 /*
  * Downloads the configuration data stored in the headset
  */
-static int vive_headset_imu_get_config(OuvrtViveHeadsetIMU *self)
+static int vive_headset_get_config(OuvrtViveHeadset *self)
 {
 	char *config_json;
 	JsonObject *object;
@@ -101,7 +103,7 @@ static int vive_headset_imu_get_config(OuvrtViveHeadsetIMU *self)
 	return 0;
 }
 
-static int vive_headset_enable_lighthouse(OuvrtViveHeadsetIMU *self)
+static int vive_headset_enable_lighthouse(OuvrtViveHeadset *self)
 {
 	unsigned char buf[5] = { 0x04 };
 	int ret;
@@ -120,23 +122,75 @@ static int vive_headset_enable_lighthouse(OuvrtViveHeadsetIMU *self)
 }
 
 /*
- * Opens the IMU device, reads the stored configuration and enables
- * the Lighthouse receiver.
+ * Decodes the periodic Lighthouse receiver message containing IR pulse
+ * timing measurements.
  */
-static int vive_headset_imu_start(OuvrtDevice *dev)
+static void vive_headset_decode_pulse_report(OuvrtViveHeadset *self,
+					     const void *buf)
 {
-	OuvrtViveHeadsetIMU *self = OUVRT_VIVE_HEADSET_IMU(dev);
-	int fd = self->dev.fd;
+	const struct vive_headset_lighthouse_pulse_report *report = buf;
+	unsigned int i;
+
+	/* The pulses may appear in arbitrary order */
+	for (i = 0; i < 9; i++) {
+		const struct vive_headset_lighthouse_pulse *pulse;
+		uint8_t sensor_id;
+		uint16_t duration;
+		uint32_t timestamp;
+
+		pulse = &report->pulse[i];
+
+		sensor_id = pulse->id;
+		if (sensor_id == 0xff)
+			continue;
+
+		timestamp = __le32_to_cpu(pulse->timestamp);
+		if (sensor_id == 0xfe) {
+			/* TODO: handle vsync timestamp */
+			continue;
+		}
+
+		if (sensor_id > 31) {
+			g_print("%s: unhandled sensor id: %04x\n",
+				self->dev.name, sensor_id);
+			return;
+		}
+
+		duration = __le16_to_cpu(pulse->duration);
+
+		lighthouse_watchman_handle_pulse(&self->priv->watchman,
+						 sensor_id, duration,
+						 timestamp);
+	}
+}
+
+/*
+ * Opens the IMU and Lighthouse receiver devices, reads the stored
+ * configuration and enables the Lighthouse receiver.
+ */
+static int vive_headset_start(OuvrtDevice *dev)
+{
+	OuvrtViveHeadset *self = OUVRT_VIVE_HEADSET(dev);
+	int fd;
 	int ret;
 
-	if (fd == -1) {
-		fd = open(self->dev.devnode, O_RDWR | O_NONBLOCK);
+	if (dev->fds[0] == -1) {
+		fd = open(self->dev.devnodes[0], O_RDWR | O_NONBLOCK);
 		if (fd == -1) {
 			g_print("%s: Failed to open '%s': %d\n", dev->name,
 				dev->devnode, errno);
 			return -1;
 		}
-		dev->fd = fd;
+		dev->fds[0] = fd;
+	}
+	if (dev->fds[1] == -1) {
+		fd = open(self->dev.devnodes[1], O_RDWR | O_NONBLOCK);
+		if (fd == -1) {
+			g_print("%s: Failed to open '%s': %d\n", dev->name,
+				dev->devnode, errno);
+			return -1;
+		}
+		dev->fds[1] = fd;
 	}
 
 	ret = vive_get_firmware_version(dev);
@@ -145,7 +199,7 @@ static int vive_headset_imu_start(OuvrtDevice *dev)
 		return ret;
 	}
 
-	ret = vive_headset_imu_get_config(self);
+	ret = vive_headset_get_config(self);
 	if (ret < 0) {
 		g_print("%s: Failed to read configuration\n", dev->name);
 		return ret;
@@ -158,25 +212,30 @@ static int vive_headset_imu_start(OuvrtDevice *dev)
 		return ret;
 	}
 
+	self->priv->watchman.name = dev->name;
+
 	return 0;
 }
 
 /*
- * Handles IMU messages.
+ * Handles IMU and Lighthouse Receiver messages.
  */
-static void vive_headset_imu_thread(OuvrtDevice *dev)
+static void vive_headset_thread(OuvrtDevice *dev)
 {
-	OuvrtViveHeadsetIMU *self = OUVRT_VIVE_HEADSET_IMU(dev);
+	OuvrtViveHeadset *self = OUVRT_VIVE_HEADSET(dev);
 	unsigned char buf[64];
-	struct pollfd fds;
+	struct pollfd fds[2];
 	int ret;
 
 	while (dev->active) {
-		fds.fd = dev->fd;
-		fds.events = POLLIN;
-		fds.revents = 0;
+		fds[0].fd = dev->fds[0];
+		fds[0].events = POLLIN;
+		fds[0].revents = 0;
+		fds[1].fd = dev->fds[1];
+		fds[1].events = POLLIN;
+		fds[1].revents = 0;
 
-		ret = poll(&fds, 1, 1000);
+		ret = poll(fds, 2, 1000);
 		if (ret == -1) {
 			g_print("%s: Poll failure: %d\n", dev->name, errno);
 			continue;
@@ -187,16 +246,11 @@ static void vive_headset_imu_thread(OuvrtDevice *dev)
 			continue;
 		}
 
-		if (fds.revents & (POLLERR | POLLHUP | POLLNVAL)) {
+		if ((fds[0].revents & (POLLERR | POLLHUP | POLLNVAL)) ||
+		    (fds[1].revents & (POLLERR | POLLHUP | POLLNVAL))) {
 			g_print("%s: Disconnected\n", dev->name);
 			dev->active = FALSE;
 			break;
-		}
-
-		if (!(fds.revents & POLLIN)) {
-			g_print("%s: Unhandled poll event: 0x%x\n", dev->name,
-				fds.revents);
-			continue;
 		}
 
 		if (self->priv->imu.gyro_range == 0.0) {
@@ -208,25 +262,44 @@ static void vive_headset_imu_thread(OuvrtDevice *dev)
 			}
 		}
 
-		ret = read(dev->fd, buf, sizeof(buf));
-		if (ret == -1) {
-			g_print("%s: Read error: %d\n", dev->name, errno);
-			continue;
-		}
-		if (ret != 52 || buf[0] != VIVE_IMU_REPORT_ID) {
-			g_print("%s: Error, invalid %d-byte report 0x%02x\n",
-				dev->name, ret, buf[0]);
-			continue;
-		}
+		if (fds[0].revents & POLLIN) {
+			ret = read(dev->fds[0], buf, sizeof(buf));
+			if (ret == -1) {
+				g_print("%s: Read error: %d\n", dev->name,
+					errno);
+				continue;
+			}
+			if (ret != 52 || buf[0] != VIVE_IMU_REPORT_ID) {
+				g_print("%s: Error, invalid %d-byte report 0x%02x\n",
+					dev->name, ret, buf[0]);
+				continue;
+			}
 
-		vive_imu_decode_message(&self->priv->imu, buf, 52);
+			vive_imu_decode_message(&self->priv->imu, buf, 52);
+		}
+		if (fds[1].revents & POLLIN) {
+			ret = read(dev->fds[1], buf, sizeof(buf));
+			if (ret == -1) {
+				g_print("%s: Read error: %d\n", dev->name,
+					errno);
+				continue;
+			}
+			if (ret == 64 &&
+			    buf[0] == VIVE_HEADSET_LIGHTHOUSE_PULSE_REPORT_ID) {
+				vive_headset_decode_pulse_report(self, buf);
+			} else {
+				g_print("%s: Error, invalid %d-byte report 0x%02x\n",
+					dev->name, ret, buf[0]);
+				continue;
+			}
+		}
 	}
 }
 
 /*
  * Nothing to do here.
  */
-static void vive_headset_imu_stop(OuvrtDevice *dev)
+static void vive_headset_stop(OuvrtDevice *dev)
 {
 	(void)dev;
 }
@@ -234,33 +307,34 @@ static void vive_headset_imu_stop(OuvrtDevice *dev)
 /*
  * Frees the device structure and its contents.
  */
-static void ouvrt_vive_headset_imu_finalize(GObject *object)
+static void ouvrt_vive_headset_finalize(GObject *object)
 {
-	G_OBJECT_CLASS(ouvrt_vive_headset_imu_parent_class)->finalize(object);
+	G_OBJECT_CLASS(ouvrt_vive_headset_parent_class)->finalize(object);
 }
 
-static void ouvrt_vive_headset_imu_class_init(OuvrtViveHeadsetIMUClass *klass)
+static void ouvrt_vive_headset_class_init(OuvrtViveHeadsetClass *klass)
 {
-	G_OBJECT_CLASS(klass)->finalize = ouvrt_vive_headset_imu_finalize;
-	OUVRT_DEVICE_CLASS(klass)->start = vive_headset_imu_start;
-	OUVRT_DEVICE_CLASS(klass)->thread = vive_headset_imu_thread;
-	OUVRT_DEVICE_CLASS(klass)->stop = vive_headset_imu_stop;
+	G_OBJECT_CLASS(klass)->finalize = ouvrt_vive_headset_finalize;
+	OUVRT_DEVICE_CLASS(klass)->start = vive_headset_start;
+	OUVRT_DEVICE_CLASS(klass)->thread = vive_headset_thread;
+	OUVRT_DEVICE_CLASS(klass)->stop = vive_headset_stop;
 }
 
-static void ouvrt_vive_headset_imu_init(OuvrtViveHeadsetIMU *self)
+static void ouvrt_vive_headset_init(OuvrtViveHeadset *self)
 {
 	self->dev.type = DEVICE_TYPE_HMD;
-	self->priv = ouvrt_vive_headset_imu_get_instance_private(self);
+	self->priv = ouvrt_vive_headset_get_instance_private(self);
 	self->priv->imu.sequence = 0;
 	self->priv->imu.time = 0;
+	lighthouse_watchman_init(&self->priv->watchman);
 }
 
 /*
  * Allocates and initializes the device structure.
  *
- * Returns the newly allocated Vive Headset IMU device.
+ * Returns the newly allocated Vive Headset device.
  */
-OuvrtDevice *vive_headset_imu_new(const char *devnode G_GNUC_UNUSED)
+OuvrtDevice *vive_headset_new(const char *devnode G_GNUC_UNUSED)
 {
-	return OUVRT_DEVICE(g_object_new(OUVRT_TYPE_VIVE_HEADSET_IMU, NULL));
+	return OUVRT_DEVICE(g_object_new(OUVRT_TYPE_VIVE_HEADSET, NULL));
 }

@@ -21,9 +21,8 @@
 #include "gdbus-generated.h"
 #include "rift.h"
 #include "camera-dk2.h"
-#include "vive-headset-imu.h"
+#include "vive-headset.h"
 #include "vive-headset-mainboard.h"
-#include "vive-headset-lighthouse.h"
 #include "vive-controller.h"
 #include "vive-controller-usb.h"
 
@@ -40,7 +39,7 @@
 #define PID_VIVE_CONTROLLER_USB	"2012"
 #define PID_VIVE_CONTROLLER	"2101"
 
-#define NUM_MATCHES	8
+#define NUM_MATCHES	7
 
 struct interface_match {
 	const char *subsystem;
@@ -93,17 +92,13 @@ static const struct device_match device_matches[NUM_MATCHES] = {
 	}, {
 		.vid = VID_VALVE,
 		.pid = PID_VIVE_HEADSET,
-		.subsystem = "hidraw",
-		.name = "Vive Headset IMU",
-		.interface = 0,
-		.new = vive_headset_imu_new,
-	}, {
-		.vid = VID_VALVE,
-		.pid = PID_VIVE_HEADSET,
-		.subsystem = "hidraw",
-		.name = "Vive Headset Lighthouse RX",
-		.interface = 1,
-		.new = vive_headset_lighthouse_new,
+		.name = "Vive Headset",
+		.interfaces = (const struct interface_match[]){
+			{ .subsystem = "hidraw", .name = "IMU" },
+			{ .subsystem = "hidraw", .name = "Lighthouse RX" },
+		},
+		.num_interfaces = 2,
+		.new = vive_headset_new,
 	}, {
 		.vid = VID_VALVE,
 		.pid = PID_VIVE_CONTROLLER_USB,
