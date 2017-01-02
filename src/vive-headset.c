@@ -24,6 +24,7 @@
 #include "lighthouse.h"
 #include "math.h"
 #include "tracking-model.h"
+#include "usb-ids.h"
 
 struct _OuvrtViveHeadsetPrivate {
 	JsonNode *config;
@@ -34,9 +35,6 @@ struct _OuvrtViveHeadsetPrivate {
 
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveHeadset, ouvrt_vive_headset, \
 			   OUVRT_TYPE_DEVICE)
-
-#define VID_VALVE		0x28de
-#define PID_VIVE_HEADSET_USB	0x2000
 
 /*
  * Downloads the configuration data stored in the headset
@@ -74,7 +72,7 @@ static int vive_headset_get_config(OuvrtViveHeadset *self)
 	}
 
 	device_pid = json_object_get_int_member(object, "device_pid");
-	if (device_pid != PID_VIVE_HEADSET_USB) {
+	if (device_pid != PID_VIVE_HEADSET) {
 		g_print("%s: Unknown device PID: 0x%04lx\n",
 			self->dev.name, device_pid);
 	}

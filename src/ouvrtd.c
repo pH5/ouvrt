@@ -19,25 +19,13 @@
 #include "debug.h"
 #include "device.h"
 #include "gdbus-generated.h"
+#include "usb-ids.h"
 #include "rift.h"
 #include "camera-dk2.h"
 #include "vive-headset.h"
 #include "vive-headset-mainboard.h"
 #include "vive-controller.h"
 #include "vive-controller-usb.h"
-
-#define VID_HTC			0x0bb4
-#define PID_VIVE		0x2c87
-
-#define VID_OCULUSVR		0x2833
-#define PID_RIFT_DK2		0x0021
-#define PID_RIFT_CV1		0x0031
-#define PID_CAMERA_DK2		0x0201
-
-#define VID_VALVE		0x28de
-#define PID_VIVE_HEADSET	0x2000
-#define PID_VIVE_CONTROLLER_USB	0x2012
-#define PID_VIVE_CONTROLLER	0x2101
 
 #define NUM_MATCHES	7
 

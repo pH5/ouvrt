@@ -23,6 +23,7 @@
 #include "json.h"
 #include "math.h"
 #include "tracking-model.h"
+#include "usb-ids.h"
 
 struct _OuvrtViveControllerPrivate {
 	JsonNode *config;
@@ -41,9 +42,6 @@ struct _OuvrtViveControllerPrivate {
 
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveController, ouvrt_vive_controller, \
 			   OUVRT_TYPE_DEVICE)
-
-#define VID_VALVE		0x28de
-#define PID_VIVE_CONTROLLER_USB	0x2012
 
 /*
  * Downloads the configuration data stored in the controller
