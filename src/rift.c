@@ -613,8 +613,8 @@ static void rift_thread(OuvrtDevice *dev)
 				continue;
 			}
 
-			rift_decode_radio_message(&rift->priv->radio, buf,
-						  sizeof(buf));
+			rift_decode_radio_message(&rift->priv->radio, dev->fds[1],
+						  buf, sizeof(buf));
 		}
 	}
 }
@@ -673,6 +673,7 @@ static void ouvrt_rift_init(OuvrtRift *self)
 	self->priv = ouvrt_rift_get_instance_private(self);
 	self->priv->flicker = false;
 	self->priv->last_sample_timestamp = 0;
+	rift_radio_init(&self->priv->radio);
 }
 
 /*

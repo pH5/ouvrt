@@ -81,6 +81,49 @@ int rift_get_firmware_version(int fd)
 	return 0;
 }
 
+static int rift_radio_get_serial(int fd, int device_type, char *serial)
+{
+	struct rift_radio_data_report report = {
+		.id = RIFT_RADIO_DATA_REPORT_ID,
+	};
+	int ret;
+	int i;
+
+	ret = rift_radio_read(fd, 0x03, RIFT_RADIO_SERIAL_NUMBER_CONTROL,
+			      device_type, &report);
+	if (ret < 0)
+		return ret;
+
+	for (i = 0; i < 14 && g_ascii_isalnum(report.serial.number[i]); i++)
+		serial[i] = report.serial.number[i];
+
+	return 0;
+}
+
+static int rift_radio_get_firmware_version(int fd, int device_type,
+					   char *firmware_date,
+					   char *firmware_version)
+{
+	struct rift_radio_data_report report = {
+		.id = RIFT_RADIO_DATA_REPORT_ID,
+	};
+	int ret;
+	int i;
+
+	ret = rift_radio_read(fd, 0x03, RIFT_RADIO_FIRMWARE_VERSION_CONTROL,
+			      device_type, &report);
+	if (ret < 0)
+		return ret;
+
+	for (i = 0; i < 11 && g_ascii_isprint(report.firmware.date[i]); i++)
+		firmware_date[i] = report.firmware.date[i];
+
+	for (i = 0; i < 10 && g_ascii_isalnum(report.firmware.version[i]); i++)
+		firmware_version[i] = report.firmware.version[i];
+
+	return 0;
+}
+
 static void rift_decode_remote_message(struct rift_remote *remote,
 				       const struct rift_radio_message *message)
 {
@@ -121,7 +164,34 @@ static void rift_decode_touch_message(const struct rift_radio_message *message)
 	(void)stick;
 }
 
-void rift_decode_radio_message(struct rift_radio *radio,
+static int rift_radio_activate(struct rift_wireless_device *dev, int fd)
+{
+	int ret;
+
+	ret = rift_radio_get_serial(fd, dev->id, dev->serial);
+	if (ret < 0) {
+		g_print("Rift: Failed to read %s serial number\n", dev->name);
+		return ret;
+	}
+
+	g_print("Rift: %s: Serial %.14s\n", dev->name, dev->serial);
+
+	ret = rift_radio_get_firmware_version(fd, dev->id, dev->firmware_date,
+					      dev->firmware_version);
+	if (ret < 0) {
+		g_print("Rift: Failed to read firmware version\n");
+		return ret;
+	}
+
+	g_print("Rift: %s: Firmware version %.10s\n", dev->name,
+		dev->firmware_version);
+
+	dev->active = true;
+
+	return 0;
+}
+
+void rift_decode_radio_message(struct rift_radio *radio, int fd,
 			       const unsigned char *buf, size_t len)
 {
 	const struct rift_radio_message *message = (const void *)buf;
@@ -129,8 +199,13 @@ void rift_decode_radio_message(struct rift_radio *radio,
 	if (message->id == RIFT_RADIO_MESSAGE_ID) {
 		if (message->device_type == RIFT_REMOTE) {
 			rift_decode_remote_message(&radio->remote, message);
-		} else if (message->device_type == RIFT_TOUCH_CONTROLLER_LEFT ||
-			 message->device_type == RIFT_TOUCH_CONTROLLER_RIGHT) {
+		} else if (message->device_type == RIFT_TOUCH_CONTROLLER_LEFT) {
+			if (!radio->touch[0].base.active)
+				rift_radio_activate(&radio->touch[0].base, fd);
+			rift_decode_touch_message(message);
+		} else if (message->device_type == RIFT_TOUCH_CONTROLLER_RIGHT) {
+			if (!radio->touch[1].base.active)
+				rift_radio_activate(&radio->touch[1].base, fd);
 			rift_decode_touch_message(message);
 		} else {
 			g_print("%s: unknown device %02x:", radio->name,
@@ -147,4 +222,14 @@ void rift_decode_radio_message(struct rift_radio *radio,
 			return;
 		}
 	}
+}
+
+void rift_radio_init(struct rift_radio *radio)
+{
+	radio->remote.base.name = "Remote";
+	radio->remote.base.id = RIFT_REMOTE;
+	radio->touch[0].base.name = "Left Touch Controller";
+	radio->touch[0].base.id = RIFT_TOUCH_CONTROLLER_LEFT;
+	radio->touch[1].base.name = "Right Touch Controller";
+	radio->touch[1].base.id = RIFT_TOUCH_CONTROLLER_RIGHT;
 }

@@ -105,6 +105,9 @@ struct rift_keepalive_report {
 
 #define RIFT_RADIO_CONTROL_REPORT_ID		0x1a
 
+#define RIFT_RADIO_SERIAL_NUMBER_CONTROL	0x88
+#define RIFT_RADIO_FIRMWARE_VERSION_CONTROL	0x82
+
 struct rift_radio_control_report {
 	__u8 id;
 	__u16 echo;
@@ -113,10 +116,27 @@ struct rift_radio_control_report {
 
 #define RIFT_RADIO_DATA_REPORT_ID		0x1b
 
+struct rift_radio_serial_number_report {
+	__u8 unknown[9];
+	__u8 number[14];
+	__u8 padding[5];
+} __attribute__((packed));
+
+struct rift_radio_firmware_version_report {
+	__u8 unknown[3];
+	__u8 date[11];
+	__u8 version[10];
+	__u8 padding[4];
+} __attribute__((packed));
+
 struct rift_radio_data_report {
 	__u8 id;
 	__u16 echo;
-	__u8 payload[28];
+	union {
+		struct rift_radio_serial_number_report serial;
+		struct rift_radio_firmware_version_report firmware;
+		__u8 payload[28];
+	};
 } __attribute__((packed));
 
 #define RIFT_CV1_POWER_REPORT_ID		0x1d
