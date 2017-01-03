@@ -324,10 +324,10 @@ static void lighthouse_handle_sync_pulse(struct lighthouse_watchman *watchman,
 	base = &watchman->base[channel == 'C'];
 	base->channel = channel;
 	base->last_sync_timestamp = sync->timestamp;
-	base->active_rotor = (code & ROTOR_BIT);
 	lighthouse_base_handle_ootx_data_bit(watchman, base, (code & DATA_BIT));
 	lighthouse_base_handle_frame(watchman, base, sync->timestamp);
 
+	base->active_rotor = (code & ROTOR_BIT);
 	if (!(code & SKIP_BIT)) {
 		watchman->active_base = base;
 		base->frame.sync_timestamp = sync->timestamp;
