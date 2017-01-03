@@ -4,8 +4,10 @@
  * SPDX-License-Identifier:	LGPL-2.0+ or BSL-1.0
  */
 #include <glib.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/fcntl.h>
 #include <unistd.h>
 
 #include "device.h"
@@ -84,10 +86,22 @@ static gpointer device_start_routine(gpointer data)
  */
 int ouvrt_device_start(OuvrtDevice *dev)
 {
-	int ret;
+	int i, ret;
 
 	if (dev->active)
 		return 0;
+
+	for (i = 0; i < 3; i++) {
+		if (dev->fds[i] == -1 && dev->devnodes[i] != NULL) {
+			dev->fds[i] = open(dev->devnodes[i],
+					   O_RDWR | O_NONBLOCK);
+			if (dev->fds[i] == -1) {
+				g_print("%s: Failed to open '%s': %d\n",
+					dev->name, dev->devnodes[i], errno);
+				return -1;
+			}
+		}
+	}
 
 	ret = OUVRT_DEVICE_GET_CLASS(dev)->start(dev);
 	if (ret < 0)
@@ -104,6 +118,8 @@ int ouvrt_device_start(OuvrtDevice *dev)
  */
 void ouvrt_device_stop(OuvrtDevice *dev)
 {
+	int i;
+
 	if (!dev->active)
 		return;
 
@@ -113,4 +129,10 @@ void ouvrt_device_stop(OuvrtDevice *dev)
 	dev->priv->thread = NULL;
 
 	OUVRT_DEVICE_GET_CLASS(dev)->stop(dev);
+
+	for (i = 2; i >= 0; i--) {
+		if (dev->fds[i] != -1)
+			close(dev->fds[i]);
+		dev->fds[i] = -1;
+	}
 }

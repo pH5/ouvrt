@@ -8,7 +8,6 @@
 #include <poll.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/fcntl.h>
 #include <unistd.h>
 
 #include "vive-headset-mainboard.h"
@@ -126,18 +125,7 @@ static int vive_headset_get_device_info(OuvrtViveHeadsetMainboard *self)
 static int vive_headset_mainboard_start(OuvrtDevice *dev)
 {
 	OuvrtViveHeadsetMainboard *self = OUVRT_VIVE_HEADSET_MAINBOARD(dev);
-	int fd = self->dev.fd;
 	int ret;
-
-	if (fd == -1) {
-		fd = open(self->dev.devnode, O_RDWR | O_NONBLOCK);
-		if (fd == -1) {
-			g_print("%s: Failed to open '%s': %d\n", dev->name,
-				dev->devnode, errno);
-			return -1;
-		}
-		dev->fd = fd;
-	}
 
 	ret = vive_headset_poweron(self);
 	if (ret < 0)

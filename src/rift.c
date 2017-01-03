@@ -9,7 +9,6 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <sys/fcntl.h>
 #include <unistd.h>
 #include <math.h>
 
@@ -474,27 +473,7 @@ static void rift_decode_sensor_message(OuvrtRift *rift,
 static int rift_start(OuvrtDevice *dev)
 {
 	OuvrtRift *rift = OUVRT_RIFT(dev);
-	int fd;
 	int ret;
-
-	if (dev->fds[0] == -1) {
-		fd = open(dev->devnodes[0], O_RDWR);
-		if (fd == -1) {
-			g_print("Rift: Failed to open '%s': %d\n",
-				dev->devnodes[0], errno);
-			return -1;
-		}
-		dev->fds[0] = fd;
-	}
-	if (dev->fds[1] == -1 && dev->devnodes[1]) {
-		fd = open(dev->devnodes[1], O_RDWR);
-		if (fd == -1) {
-			g_print("Rift: Failed to open '%s': %d\n",
-				dev->devnodes[1], errno);
-			return -1;
-		}
-		dev->fds[1] = fd;
-	}
 
 	if (rift->type == RIFT_CV1)
 		rift_get_firmware_version(dev->fds[0]);

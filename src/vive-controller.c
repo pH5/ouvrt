@@ -345,21 +345,10 @@ vive_controller_decode_message(OuvrtViveController *self,
 static int vive_controller_start(OuvrtDevice *dev)
 {
 	OuvrtViveController *self = OUVRT_VIVE_CONTROLLER(dev);
-	int fd = dev->fd;
 
 	g_free(self->dev.name);
 	self->dev.name = g_strdup_printf("Vive Wireless Receiver %s",
 					 dev->serial);
-
-	if (fd == -1) {
-		fd = open(dev->devnode, O_RDWR | O_NONBLOCK);
-		if (fd == -1) {
-			g_print("%s: Failed to open '%s': %d\n", dev->name,
-				dev->devnode, errno);
-			return -1;
-		}
-		dev->fd = fd;
-	}
 
 	self->priv->watchman.name = self->dev.name;
 

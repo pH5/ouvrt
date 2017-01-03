@@ -9,7 +9,6 @@
 #include <poll.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/fcntl.h>
 #include <unistd.h>
 
 #include "vive-headset.h"
@@ -169,27 +168,7 @@ static void vive_headset_decode_pulse_report(OuvrtViveHeadset *self,
 static int vive_headset_start(OuvrtDevice *dev)
 {
 	OuvrtViveHeadset *self = OUVRT_VIVE_HEADSET(dev);
-	int fd;
 	int ret;
-
-	if (dev->fds[0] == -1) {
-		fd = open(self->dev.devnodes[0], O_RDWR | O_NONBLOCK);
-		if (fd == -1) {
-			g_print("%s: Failed to open '%s': %d\n", dev->name,
-				dev->devnode, errno);
-			return -1;
-		}
-		dev->fds[0] = fd;
-	}
-	if (dev->fds[1] == -1) {
-		fd = open(self->dev.devnodes[1], O_RDWR | O_NONBLOCK);
-		if (fd == -1) {
-			g_print("%s: Failed to open '%s': %d\n", dev->name,
-				dev->devnode, errno);
-			return -1;
-		}
-		dev->fds[1] = fd;
-	}
 
 	ret = vive_get_firmware_version(dev);
 	if (ret < 0) {

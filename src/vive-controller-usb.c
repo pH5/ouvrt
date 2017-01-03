@@ -9,7 +9,6 @@
 #include <poll.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/fcntl.h>
 #include <unistd.h>
 
 #include "vive-controller-usb.h"
@@ -161,39 +160,10 @@ void vive_controller_decode_button_message(OuvrtViveControllerUSB *self,
 static int vive_controller_usb_start(OuvrtDevice *dev)
 {
 	OuvrtViveControllerUSB *self = OUVRT_VIVE_CONTROLLER_USB(dev);
-	int fd;
 	int ret;
 
 	g_free(dev->name);
 	dev->name = g_strdup_printf("Vive Controller %s USB", dev->serial);
-
-	if (dev->fds[0] == -1) {
-		fd = open(dev->devnodes[0], O_RDWR | O_NONBLOCK);
-		if (fd == -1) {
-			g_print("%s: Failed to open '%s': %d\n", dev->name,
-				dev->devnode, errno);
-			return -1;
-		}
-		dev->fds[0] = fd;
-	}
-	if (dev->fds[1] == -1) {
-		fd = open(dev->devnodes[1], O_RDWR | O_NONBLOCK);
-		if (fd == -1) {
-			g_print("%s: Failed to open '%s': %d\n", dev->name,
-				dev->devnode, errno);
-			return -1;
-		}
-		dev->fds[1] = fd;
-	}
-	if (dev->fds[2] == -1) {
-		fd = open(dev->devnodes[2], O_RDWR | O_NONBLOCK);
-		if (fd == -1) {
-			g_print("%s: Failed to open '%s': %d\n", dev->name,
-				dev->devnode, errno);
-			return -1;
-		}
-		dev->fds[2] = fd;
-	}
 
 	self->priv->watchman.name = dev->name;
 

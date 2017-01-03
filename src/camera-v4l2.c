@@ -8,7 +8,6 @@
 #include <poll.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <sys/fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <time.h>
@@ -62,19 +61,9 @@ static int ouvrt_camera_v4l2_start(OuvrtDevice *dev)
 		.type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
 		.memory = V4L2_MEMORY_MMAP,
 	};
-	int fd;
+	int fd = dev->fd;
 	int ret;
 	unsigned int i;
-
-	if (dev->fd == -1) {
-		dev->fd = open(dev->devnode, O_RDWR);
-		if (dev->fd == -1) {
-			g_print("v4l2: Failed to open '%s': %d\n",
-				dev->devnode, errno);
-			return -1;
-		}
-	}
-	fd = dev->fd;
 
 	if (v4l2->pixelformat == V4L2_PIX_FMT_GREY)
 		format.fmt.pix.bytesperline = width;
