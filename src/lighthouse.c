@@ -243,14 +243,14 @@ static void lighthouse_base_handle_frame(struct lighthouse_watchman *watchman,
 
 	(void)watchman;
 
-	if (!frame->num_sweeps)
+	if (!frame->sweep_ids)
 		return;
 
 	frame->frame_duration = sync_timestamp - frame->sync_timestamp;
 
 	frame->sync_timestamp = 0;
 	frame->sync_duration = 0;
-	frame->num_sweeps = 0;
+	frame->sweep_ids = 0;
 }
 
 /*
@@ -361,16 +361,15 @@ static void lighthouse_handle_sweep_pulse(struct lighthouse_watchman *watchman,
 		return;
 	}
 
-	if (frame->num_sweeps == 32) {
-		g_print("%s: frame already contains 32 sweep pulses\n",
-			watchman->name);
+	if (frame->sweep_ids & (1 << id)) {
+		g_print("%s: sensor %u hit twice per frame, assuming reflection\n",
+			watchman->name, id);
 		return;
 	}
 
-	frame->sweep_duration[frame->num_sweeps] = duration;
-	frame->sweep_offset[frame->num_sweeps] = offset;
-	frame->sweep_id[frame->num_sweeps] = id;
-	frame->num_sweeps++;
+	frame->sweep_duration[id] = duration;
+	frame->sweep_offset[id] = offset;
+	frame->sweep_ids |= (1 << id);
 }
 
 static void accumulate_sync_pulse(struct lighthouse_watchman *watchman,

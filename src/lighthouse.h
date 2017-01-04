@@ -31,10 +31,9 @@ struct lighthouse_frame {
 	uint32_t sync_timestamp;
 	uint32_t sync_duration;
 	uint32_t sync_ids;
-	int num_sweeps;
+	uint32_t sweep_ids;
 	uint32_t sweep_offset[32];
 	uint16_t sweep_duration[32];
-	uint8_t sweep_id[32];
 	uint32_t frame_duration;
 };
 
