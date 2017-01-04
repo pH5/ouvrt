@@ -5,11 +5,8 @@
  */
 #include <asm/byteorder.h>
 #include <glib.h>
-#include <math.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <zlib.h>
 #include "lighthouse.h"
 #include "math.h"
