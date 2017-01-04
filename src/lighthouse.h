@@ -13,6 +13,7 @@
 #include <math.h>
 
 #include "math.h"
+#include "tracking-model.h"
 
 struct lighthouse_rotor_calibration {
 	float tilt;
@@ -71,6 +72,7 @@ struct lighthouse_sensor {
 struct lighthouse_watchman {
 	unsigned int id;
 	const gchar *name;
+	struct tracking_model model;
 	gboolean base_visible;
 	struct lighthouse_base base[2];
 	struct lighthouse_base *active_base;

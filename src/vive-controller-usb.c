@@ -22,13 +22,11 @@
 #include "json.h"
 #include "lighthouse.h"
 #include "math.h"
-#include "tracking-model.h"
 #include "usb-ids.h"
 
 struct _OuvrtViveControllerUSBPrivate {
 	JsonNode *config;
 	struct vive_imu imu;
-	struct tracking_model model;
 	struct lighthouse_watchman watchman;
 	uint32_t buttons;
 };
@@ -92,8 +90,8 @@ static int vive_controller_usb_get_config(OuvrtViveControllerUSB *self)
 	json_object_get_vec3_member(object, "gyro_scale", &imu->gyro_scale);
 
 	json_object_get_lighthouse_config_member(object, "lighthouse_config",
-						 &self->priv->model);
-	if (!self->priv->model.num_points) {
+						 &self->priv->watchman.model);
+	if (!self->priv->watchman.model.num_points) {
 		g_print("%s: Failed to parse Lighthouse configuration\n",
 			self->dev.name);
 	}
