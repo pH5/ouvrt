@@ -54,7 +54,7 @@ struct lighthouse_base {
 	uint32_t last_sync_timestamp;
 	int active_rotor;
 
-	struct lighthouse_frame frame;
+	struct lighthouse_frame frame[2];
 };
 
 struct lighthouse_pulse {

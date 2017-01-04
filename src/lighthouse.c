@@ -239,7 +239,7 @@ static void lighthouse_base_handle_frame(struct lighthouse_watchman *watchman,
 					 struct lighthouse_base *base,
 					 uint32_t sync_timestamp)
 {
-	struct lighthouse_frame *frame = &base->frame;
+	struct lighthouse_frame *frame = &base->frame[base->active_rotor];
 
 	(void)watchman;
 
@@ -247,10 +247,6 @@ static void lighthouse_base_handle_frame(struct lighthouse_watchman *watchman,
 		return;
 
 	frame->frame_duration = sync_timestamp - frame->sync_timestamp;
-
-	frame->sync_timestamp = 0;
-	frame->sync_duration = 0;
-	frame->sweep_ids = 0;
 }
 
 /*
@@ -326,9 +322,12 @@ static void lighthouse_handle_sync_pulse(struct lighthouse_watchman *watchman,
 
 	base->active_rotor = (code & ROTOR_BIT);
 	if (!(code & SKIP_BIT)) {
+		struct lighthouse_frame *frame = &base->frame[code & ROTOR_BIT];
+
 		watchman->active_base = base;
-		base->frame.sync_timestamp = sync->timestamp;
-		base->frame.sync_duration = sync->duration;
+		frame->sync_timestamp = sync->timestamp;
+		frame->sync_duration = sync->duration;
+		frame->sweep_ids = 0;
 	}
 
 	watchman->last_timestamp = sync->timestamp;
@@ -339,7 +338,7 @@ static void lighthouse_handle_sweep_pulse(struct lighthouse_watchman *watchman,
 					  uint16_t duration)
 {
 	struct lighthouse_base *base = watchman->active_base;
-	struct lighthouse_frame *frame = &base->frame;
+	struct lighthouse_frame *frame;
 	int32_t offset;
 
 	(void)id;
@@ -348,6 +347,8 @@ static void lighthouse_handle_sweep_pulse(struct lighthouse_watchman *watchman,
 		g_print("%s: sweep without sync\n", watchman->name);
 		return;
 	}
+
+	frame= &base->frame[base->active_rotor];
 
 	offset = timestamp - base->last_sync_timestamp;
 
