@@ -146,15 +146,12 @@ static void rift_decode_touch_message(struct rift_touch_controller *touch,
 		__le16_to_cpu(message->touch.gyro[1]),
 		__le16_to_cpu(message->touch.gyro[2]),
 	};
-	uint16_t trigger = message->touch.trigger_grip_stick[0] |
-			   ((message->touch.trigger_grip_stick[1] & 0x03) << 8);
-	uint16_t grip = ((message->touch.trigger_grip_stick[1] & 0xfc) >> 2) |
-			((message->touch.trigger_grip_stick[2] & 0x0f) << 6);
+	const uint8_t *tgs = message->touch.trigger_grip_stick;
+	uint16_t trigger = tgs[0] | ((tgs[1] & 0x03) << 8);
+	uint16_t grip = ((tgs[1] & 0xfc) >> 2) | ((tgs[2] & 0x0f) << 6);
 	uint16_t stick[2] = {
-		((message->touch.trigger_grip_stick[2] & 0xf0) >> 4) |
-		((message->touch.trigger_grip_stick[3] & 0x3f) << 4),
-		((message->touch.trigger_grip_stick[3] & 0xc0) >> 6) |
-		((message->touch.trigger_grip_stick[4] & 0xff) << 2),
+		((tgs[2] & 0xf0) >> 4) | ((tgs[3] & 0x3f) << 4),
+		((tgs[3] & 0xc0) >> 6) | ((tgs[4] & 0xff) << 2),
 	};
 	uint16_t adc_value = __le16_to_cpu(message->touch.adc_value);
 
