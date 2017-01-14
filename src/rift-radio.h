@@ -25,6 +25,11 @@ struct rift_remote {
 
 struct rift_touch_controller {
 	struct rift_wireless_device base;
+	uint16_t cap_a_x;
+	uint16_t cap_b_y;
+	uint16_t cap_rest;
+	uint16_t cap_stick;
+	uint16_t cap_trigger;
 };
 
 struct rift_radio {

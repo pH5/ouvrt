@@ -229,13 +229,21 @@ struct rift_remote_message {
 #define RIFT_TOUCH_CONTROLLER_BUTTON_OCULUS	0x04
 #define RIFT_TOUCH_CONTROLLER_BUTTON_STICK	0x08
 
+#define RIFT_TOUCH_CONTROLLER_ADC_STICK		0x01
+#define RIFT_TOUCH_CONTROLLER_ADC_B_Y		0x02
+#define RIFT_TOUCH_CONTROLLER_ADC_TRIGGER	0x03
+#define RIFT_TOUCH_CONTROLLER_ADC_A_X		0x04
+#define RIFT_TOUCH_CONTROLLER_ADC_REST		0x08
+
 struct rift_touch_message {
 	__le32 timestamp;
 	__le16 accel[3];
 	__le16 gyro[3];
 	__u8 buttons;
 	__u8 trigger_grip_stick[5];
-	__u8 unknown[36];
+	__u8 adc_channel;
+	__le16 adc_value;
+	__u8 unknown[33];
 } __attribute__((packed));
 
 #define RIFT_REMOTE				1

@@ -133,29 +133,48 @@ static void rift_decode_remote_message(struct rift_remote *remote,
 		remote->buttons = buttons;
 }
 
-static void rift_decode_touch_message(const struct rift_radio_message *message)
+static void rift_decode_touch_message(struct rift_touch_controller *touch,
+				      const struct rift_radio_message *message)
 {
-	const struct rift_touch_message *touch = &message->touch;
 	int16_t accel[3] = {
-		__le16_to_cpu(touch->accel[0]),
-		__le16_to_cpu(touch->accel[1]),
-		__le16_to_cpu(touch->accel[2]),
+		__le16_to_cpu(message->touch.accel[0]),
+		__le16_to_cpu(message->touch.accel[1]),
+		__le16_to_cpu(message->touch.accel[2]),
 	};
 	int16_t gyro[3] = {
-		__le16_to_cpu(touch->gyro[0]),
-		__le16_to_cpu(touch->gyro[1]),
-		__le16_to_cpu(touch->gyro[2]),
+		__le16_to_cpu(message->touch.gyro[0]),
+		__le16_to_cpu(message->touch.gyro[1]),
+		__le16_to_cpu(message->touch.gyro[2]),
 	};
-	uint16_t trigger = touch->trigger_grip_stick[0] |
-			   ((touch->trigger_grip_stick[1] & 0x03) << 8);
-	uint16_t grip = ((touch->trigger_grip_stick[1] & 0xfc) >> 2) |
-			((touch->trigger_grip_stick[2] & 0x0f) << 6);
+	uint16_t trigger = message->touch.trigger_grip_stick[0] |
+			   ((message->touch.trigger_grip_stick[1] & 0x03) << 8);
+	uint16_t grip = ((message->touch.trigger_grip_stick[1] & 0xfc) >> 2) |
+			((message->touch.trigger_grip_stick[2] & 0x0f) << 6);
 	uint16_t stick[2] = {
-		((touch->trigger_grip_stick[2] & 0xf0) >> 4) |
-		((touch->trigger_grip_stick[3] & 0x3f) << 4),
-		((touch->trigger_grip_stick[3] & 0xc0) >> 6) |
-		((touch->trigger_grip_stick[4] & 0xff) << 2),
+		((message->touch.trigger_grip_stick[2] & 0xf0) >> 4) |
+		((message->touch.trigger_grip_stick[3] & 0x3f) << 4),
+		((message->touch.trigger_grip_stick[3] & 0xc0) >> 6) |
+		((message->touch.trigger_grip_stick[4] & 0xff) << 2),
 	};
+	uint16_t adc_value = __le16_to_cpu(message->touch.adc_value);
+
+	switch (message->touch.adc_channel) {
+	case RIFT_TOUCH_CONTROLLER_ADC_A_X:
+		touch->cap_a_x = adc_value;
+		break;
+	case RIFT_TOUCH_CONTROLLER_ADC_B_Y:
+		touch->cap_b_y = adc_value;
+		break;
+	case RIFT_TOUCH_CONTROLLER_ADC_REST:
+		touch->cap_rest = adc_value;
+		break;
+	case RIFT_TOUCH_CONTROLLER_ADC_STICK:
+		touch->cap_stick = adc_value;
+		break;
+	case RIFT_TOUCH_CONTROLLER_ADC_TRIGGER:
+		touch->cap_trigger = adc_value;
+		break;
+	}
 
 	(void)accel;
 	(void)gyro;
@@ -202,11 +221,11 @@ void rift_decode_radio_message(struct rift_radio *radio, int fd,
 		} else if (message->device_type == RIFT_TOUCH_CONTROLLER_LEFT) {
 			if (!radio->touch[0].base.active)
 				rift_radio_activate(&radio->touch[0].base, fd);
-			rift_decode_touch_message(message);
+			rift_decode_touch_message(&radio->touch[0], message);
 		} else if (message->device_type == RIFT_TOUCH_CONTROLLER_RIGHT) {
 			if (!radio->touch[1].base.active)
 				rift_radio_activate(&radio->touch[1].base, fd);
-			rift_decode_touch_message(message);
+			rift_decode_touch_message(&radio->touch[1], message);
 		} else {
 			g_print("%s: unknown device %02x:", radio->name,
 				message->device_type);
