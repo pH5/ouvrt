@@ -538,6 +538,19 @@ static int rift_start(OuvrtDevice *dev)
 		return ret;
 	}
 
+	if (rift->type == RIFT_CV1) {
+		unsigned char index[6] = { 0, 5, 3, 4, 36, 33 };
+		unsigned char buf[64];
+		int i;
+
+		for (i = 0; i < 6; i++) {
+			ret = rift_read_flash(rift, index[i], buf);
+			if (ret < 0)
+				return ret;
+			/* TODO: figure out what to do with these */
+		}
+	}
+
 	ret = rift_get_led_patterns(rift);
 	if (ret < 0) {
 		g_print("Rift: Error reading IR LED blinking patterns\n");
