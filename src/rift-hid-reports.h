@@ -179,7 +179,7 @@ struct rift_cv1_sensor_report {
 	__le16 lens_separation;
 	__le16 unknown[4];
 	__u8 unknown_zeros[4];
-};
+} __attribute__((packed));
 
 #define RIFT_CV1_READ_FLASH_REPORT_ID		0x21
 
