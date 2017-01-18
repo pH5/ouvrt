@@ -30,6 +30,7 @@
 #define NUM_MATCHES	7
 
 struct interface_match {
+	int iface;
 	const char *subsystem;
 	const char *name;
 };
@@ -52,8 +53,8 @@ static const struct device_match device_matches[NUM_MATCHES] = {
 		.pid = PID_RIFT_CV1,
 		.name = "Rift CV1",
 		.interfaces = (const struct interface_match[]){
-			{ .subsystem = "hidraw", .name = "IMU" },
-			{ .subsystem = "hidraw", .name = "Radio" },
+			{ 0, .subsystem = "hidraw", .name = "IMU" },
+			{ 1, .subsystem = "hidraw", .name = "Radio" },
 		},
 		.num_interfaces = 2,
 		.new = rift_cv1_new,
@@ -80,8 +81,8 @@ static const struct device_match device_matches[NUM_MATCHES] = {
 		.pid = PID_VIVE_HEADSET,
 		.name = "Vive Headset",
 		.interfaces = (const struct interface_match[]){
-			{ .subsystem = "hidraw", .name = "IMU" },
-			{ .subsystem = "hidraw", .name = "Lighthouse RX" },
+			{ 0, .subsystem = "hidraw", .name = "IMU" },
+			{ 1, .subsystem = "hidraw", .name = "Lighthouse RX" },
 		},
 		.num_interfaces = 2,
 		.new = vive_headset_new,
@@ -90,9 +91,9 @@ static const struct device_match device_matches[NUM_MATCHES] = {
 		.pid = PID_VIVE_CONTROLLER_USB,
 		.name = "Vive Controller",
 		.interfaces = (const struct interface_match[]){
-			{ .subsystem = "hidraw", .name = "IMU" },
-			{ .subsystem = "hidraw", .name = "Lighthouse RX" },
-			{ .subsystem = "hidraw", .name = "Buttons" },
+			{ 0, .subsystem = "hidraw", .name = "IMU" },
+			{ 1, .subsystem = "hidraw", .name = "Lighthouse RX" },
+			{ 2, .subsystem = "hidraw", .name = "Buttons" },
 		},
 		.num_interfaces = 3,
 		.new = vive_controller_usb_new,
@@ -171,8 +172,6 @@ static void ouvrtd_device_add(struct udev_device *dev)
 	pid = strtol(value, NULL, 16);
 
 	for (i = 0; i < NUM_MATCHES; i++) {
-		int j;
-
 		if (vid != device_matches[i].vid ||
 		    pid != device_matches[i].pid)
 			continue;
@@ -186,7 +185,8 @@ static void ouvrtd_device_add(struct udev_device *dev)
 
 		for (j = 0; j < device_matches[i].num_interfaces; j++) {
 			if (strcmp(device_matches[i].interfaces[j].subsystem,
-				   subsystem) == 0 && iface == j)
+				   subsystem) == 0 &&
+			    device_matches[i].interfaces[j].iface == iface)
 				break;
 		}
 		if (j < device_matches[i].num_interfaces)
@@ -198,7 +198,7 @@ static void ouvrtd_device_add(struct udev_device *dev)
 	devnode = udev_device_get_devnode(dev);
 	if (device_matches[i].num_interfaces)
 		g_print("udev: Found %s %s: %s\n", device_matches[i].name,
-			device_matches[i].interfaces[iface].name, devnode);
+			device_matches[i].interfaces[j].name, devnode);
 	else
 		g_print("udev: Found %s: %s\n", device_matches[i].name, devnode);
 
@@ -213,12 +213,12 @@ static void ouvrtd_device_add(struct udev_device *dev)
 				(GCompareFunc)ouvrt_device_cmp_parent_devpath);
 		if (link) {
 			d = OUVRT_DEVICE(link->data);
-			if (d->devnodes[iface]) {
+			if (d->devnodes[j]) {
 				g_print("udev: Interface %d occupied by %s\n",
-					iface, d->devnodes[iface]);
+					iface, d->devnodes[j]);
 				return;
 			} else {
-				d->devnodes[iface] = g_strdup(devnode);
+				d->devnodes[j] = g_strdup(devnode);
 			}
 
 			for (j = 0; j < device_matches[i].num_interfaces; j++) {
@@ -237,9 +237,9 @@ static void ouvrtd_device_add(struct udev_device *dev)
 	if (d == NULL)
 		return;
 	d->parent_devpath = g_strdup(parent_devpath);
-	if (!d->devnodes[iface]) {
+	if (!d->devnodes[j]) {
 		if (device_matches[i].num_interfaces)
-			d->devnodes[iface] = g_strdup(devnode);
+			d->devnodes[j] = g_strdup(devnode);
 		else
 			d->devnode = g_strdup(devnode);
 	}
