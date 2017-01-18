@@ -285,7 +285,7 @@ static void ouvrtd_device_add(struct udev_device *dev)
 
 	device_list = g_list_append(device_list, d);
 
-	for (j = 0; i < device_matches[i].num_interfaces; j++)
+	for (j = 0; j < device_matches[i].num_interfaces; j++)
 		if (d->devnodes[j] == NULL)
 			break;
 	if (j == device_matches[i].num_interfaces)
