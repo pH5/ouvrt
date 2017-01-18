@@ -46,7 +46,7 @@ struct _OuvrtDevice {
 		int fd;
 		int fds[3];
 	};
-	void *parent;
+	char *parent_devpath;
 
 	OuvrtDevicePrivate *priv;
 };

@@ -110,6 +110,15 @@ GList *device_list = NULL;
 static int num_devices;
 
 /*
+ * Compares the device's parent against a given parent.
+ */
+static gint ouvrt_device_cmp_parent_devpath(OuvrtDevice *dev,
+					    const char *parent_devpath)
+{
+	return g_strcmp0(dev->parent_devpath, parent_devpath);
+}
+
+/*
  * Compares the device's serial against a given serial.
  */
 static gint ouvrt_device_cmp_serial(OuvrtDevice *dev, const char *serial)
@@ -123,7 +132,7 @@ static gint ouvrt_device_cmp_serial(OuvrtDevice *dev, const char *serial)
  */
 static void ouvrtd_device_add(struct udev_device *dev)
 {
-	const char *devnode, *serial, *subsystem, *value;
+	const char *devnode, *parent_devpath, *serial, *subsystem, *value;
 	uint16_t vid, pid;
 	struct udev_device *parent;
 	OuvrtDevice *d;
@@ -145,6 +154,10 @@ static void ouvrtd_device_add(struct udev_device *dev)
 
 	parent = udev_device_get_parent(parent);
 	if (!parent)
+		return;
+
+	parent_devpath = udev_device_get_devpath(parent);
+	if (!parent_devpath)
 		return;
 
 	value = udev_device_get_sysattr_value(parent, "idVendor");
@@ -183,7 +196,6 @@ static void ouvrtd_device_add(struct udev_device *dev)
 		return;
 
 	devnode = udev_device_get_devnode(dev);
-	serial = udev_device_get_sysattr_value(parent, "serial");
 	if (device_matches[i].num_interfaces)
 		g_print("udev: Found %s %s: %s\n", device_matches[i].name,
 			device_matches[i].interfaces[iface].name, devnode);
@@ -197,8 +209,8 @@ static void ouvrtd_device_add(struct udev_device *dev)
 	if (device_matches[i].num_interfaces > 1) {
 		GList *link;
 
-		link = g_list_find_custom(device_list, serial,
-					  (GCompareFunc)ouvrt_device_cmp_serial);
+		link = g_list_find_custom(device_list, parent_devpath,
+				(GCompareFunc)ouvrt_device_cmp_parent_devpath);
 		if (link) {
 			d = OUVRT_DEVICE(link->data);
 			if (d->devnodes[iface]) {
@@ -224,7 +236,7 @@ static void ouvrtd_device_add(struct udev_device *dev)
 	d = device_matches[i].new(devnode);
 	if (d == NULL)
 		return;
-	d->parent = parent;
+	d->parent_devpath = g_strdup(parent_devpath);
 	if (!d->devnodes[iface]) {
 		if (device_matches[i].num_interfaces)
 			d->devnodes[iface] = g_strdup(devnode);
@@ -233,8 +245,12 @@ static void ouvrtd_device_add(struct udev_device *dev)
 	}
 	if (d->name == NULL)
 		d->name = strdup(device_matches[i].name);
-	if (serial && d->serial == NULL)
-		d->serial = strdup(serial);
+
+	if (d->serial == NULL) {
+		serial = udev_device_get_sysattr_value(parent, "serial");
+		if (serial)
+			d->serial = strdup(serial);
+	}
 	if (d->serial) {
 		GList *link;
 
