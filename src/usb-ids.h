@@ -6,6 +6,9 @@
 #ifndef __USB_IDS_H__
 #define __USB_IDS_H__
 
+#define VID_SONY		0x054c
+#define PID_PSVR		0x09af
+
 #define VID_HTC			0x0bb4
 #define PID_VIVE		0x2c87
 

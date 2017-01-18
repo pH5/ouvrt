@@ -20,6 +20,7 @@
 #include "device.h"
 #include "gdbus-generated.h"
 #include "usb-ids.h"
+#include "psvr.h"
 #include "rift.h"
 #include "camera-dk2.h"
 #include "vive-headset.h"
@@ -27,7 +28,7 @@
 #include "vive-controller.h"
 #include "vive-controller-usb.h"
 
-#define NUM_MATCHES	7
+#define NUM_MATCHES	8
 
 struct interface_match {
 	int iface;
@@ -49,6 +50,16 @@ struct device_match {
 
 static const struct device_match device_matches[NUM_MATCHES] = {
 	{
+		.vid = VID_SONY,
+		.pid = PID_PSVR,
+		.name = "PSVR",
+		.interfaces = (const struct interface_match[]){
+			{ 4, .subsystem = "hidraw", .name = "IMU" },
+			{ 5, .subsystem = "hidraw", .name = "Control" },
+		},
+		.num_interfaces = 2,
+		.new = psvr_new,
+	}, {
 		.vid = VID_OCULUSVR,
 		.pid = PID_RIFT_CV1,
 		.name = "Rift CV1",

@@ -62,6 +62,9 @@ ouvrtd_SOURCES = \
 	src/lighthouse.h \
 	src/math.h \
 	src/math.c \
+	src/psvr.h \
+	src/psvr-hid-reports.h \
+	src/psvr.c \
 	src/rift.h \
 	src/rift-hid-reports.h \
 	src/rift.c \
