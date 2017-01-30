@@ -24,6 +24,7 @@
 #include "tracker.h"
 
 struct _OuvrtRiftPrivate {
+	unsigned char uuid[20];
 	int report_rate;
 	int report_interval;
 	gboolean flicker;
@@ -263,6 +264,26 @@ static int rift_get_led_patterns(OuvrtRift *rift)
 		if (ret < 0)
 			return ret;
 	}
+
+	return 0;
+}
+
+/*
+ * Reads the HMD UUID
+ */
+static int rift_get_uuid(OuvrtRift *rift)
+{
+	struct rift_uuid_report report = {
+		.id = RIFT_UUID_REPORT_ID,
+	};
+	int fd = rift->dev.fd;
+	int ret;
+
+	ret = hid_get_feature_report(fd, &report, sizeof(report));
+	if (ret < 0)
+		return ret;
+
+	memcpy(rift->priv->uuid, report.uuid, 20);
 
 	return 0;
 }
@@ -553,6 +574,12 @@ static int rift_start(OuvrtDevice *dev)
 {
 	OuvrtRift *rift = OUVRT_RIFT(dev);
 	int ret;
+
+	ret = rift_get_uuid(rift);
+	if (ret < 0) {
+		g_print("Rift: Error reading UUID\n");
+		return ret;
+	}
 
 	if (rift->type == RIFT_CV1)
 		rift_get_firmware_version(dev->fds[0]);

@@ -129,6 +129,15 @@ struct rift_keepalive_report {
 	__le16 timeout_ms;
 } __attribute__((packed));
 
+#define RIFT_UUID_REPORT_ID			0x13
+#define RIFT_UUID_REPORT_SIZE			23
+
+struct rift_uuid_report {
+	__u8 id;
+	__u16 echo;
+	__u8 uuid[20];
+} __attribute__((packed));
+
 #define RIFT_RADIO_CONTROL_REPORT_ID		0x1a
 #define RIFT_RADIO_CONTROL_REPORT_SIZE		6
 
@@ -320,6 +329,7 @@ ASSERT_SIZE(rift_display_report, RIFT_DISPLAY_REPORT_SIZE);
 ASSERT_SIZE(rift_position_report, RIFT_POSITION_REPORT_SIZE);
 ASSERT_SIZE(rift_led_pattern_report, RIFT_LED_PATTERN_REPORT_SIZE);
 ASSERT_SIZE(rift_keepalive_report, RIFT_KEEPALIVE_REPORT_SIZE);
+ASSERT_SIZE(rift_uuid_report, RIFT_UUID_REPORT_SIZE);
 ASSERT_SIZE(rift_radio_control_report, RIFT_RADIO_CONTROL_REPORT_SIZE);
 ASSERT_SIZE(rift_radio_data_report, RIFT_RADIO_DATA_REPORT_SIZE);
 ASSERT_SIZE(rift_cv1_power_report, RIFT_CV1_POWER_REPORT_SIZE);
