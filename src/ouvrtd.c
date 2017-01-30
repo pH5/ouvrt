@@ -136,7 +136,7 @@ static void ouvrtd_device_add(struct udev_device *dev)
 	uint16_t vid, pid;
 	struct udev_device *parent;
 	OuvrtDevice *d;
-	int i, j, iface;
+	int i, j = 0, iface;
 
 	subsystem = udev_device_get_subsystem(dev);
 	if (!subsystem)
