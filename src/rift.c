@@ -365,11 +365,17 @@ static int rift_send_tracking(OuvrtRift *rift, bool blink)
 {
 	struct rift_tracking_report report = {
 		.id = RIFT_TRACKING_REPORT_ID,
-		.exposure_us = __cpu_to_le16(RIFT_TRACKING_EXPOSURE_US),
-		.period_us = __cpu_to_le16(RIFT_TRACKING_PERIOD_US),
 		.vsync_offset = __cpu_to_le16(RIFT_TRACKING_VSYNC_OFFSET),
 		.duty_cycle = RIFT_TRACKING_DUTY_CYCLE,
 	};
+
+	if (rift->type == RIFT_CV1) {
+		report.exposure_us = __cpu_to_le16(RIFT_TRACKING_EXPOSURE_US_CV1);
+		report.period_us = __cpu_to_le16(RIFT_TRACKING_PERIOD_US_CV1);
+	} else {
+		report.exposure_us = __cpu_to_le16(RIFT_TRACKING_EXPOSURE_US_DK2);
+		report.period_us = __cpu_to_le16(RIFT_TRACKING_PERIOD_US_DK2);
+	}
 
 	if (blink) {
 		report.pattern = 0;
