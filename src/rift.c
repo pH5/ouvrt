@@ -555,10 +555,10 @@ static void rift_decode_sensor_message(OuvrtRift *rift,
 	(void)sample_count;
 }
 
-static int rift_check_unknown_report_06(OuvrtRift *rift)
+static int rift_get_boot_mode(OuvrtRift *rift)
 {
-	struct rift_unknown_report_6 report = {
-		.id = RIFT_UNKNOWN_REPORT_6_ID,
+	struct rift_bootload_report report = {
+		.id = RIFT_BOOTLOAD_REPORT_ID,
 	};
 	int fd = rift->dev.fd;
 	int ret;
@@ -567,13 +567,15 @@ static int rift_check_unknown_report_06(OuvrtRift *rift)
 	if (ret < 0)
 		return ret;
 
-	if (report.echo || report.unknown) {
-		g_print("%s: unexpected report 06: %04x %02x\n", rift->dev.name,
-			__le16_to_cpu(report.echo), report.unknown);
+	if (report.bootload != RIFT_BOOT_NORMAL &&
+	    report.bootload != RIFT_BOOT_BOOTLOADER &&
+	    report.bootload != RIFT_BOOT_RADIO_PAIRING) {
+		g_print("%s: unexpected boot mode: 0x%02x\n", rift->dev.name,
+			report.bootload);
 		return -EINVAL;
 	}
 
-	return 0;
+	return report.bootload;
 }
 
 static int rift_read_flash(OuvrtRift *rift, uint8_t index, unsigned char *buf)
@@ -585,8 +587,10 @@ static int rift_read_flash(OuvrtRift *rift, uint8_t index, unsigned char *buf)
 	};
 	int ret;
 
-	ret = rift_check_unknown_report_06(rift);
+	ret = rift_get_boot_mode(rift);
 	if (ret < 0)
+		return ret;
+	if (ret != RIFT_BOOT_NORMAL)
 		return ret;
 
 	ret = hid_send_feature_report(rift->dev.fd, &report, sizeof(report));

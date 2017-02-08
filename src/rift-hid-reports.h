@@ -47,13 +47,17 @@ struct rift_range_report {
 	__le16 mag_range;
 } __attribute__((packed));
 
-#define RIFT_UNKNOWN_REPORT_6_ID		0x06
-#define RIFT_UNKNOWN_REPORT_6_SIZE		4
+#define RIFT_BOOTLOAD_REPORT_ID			0x06
+#define RIFT_BOOTLOAD_REPORT_SIZE		4
 
-struct rift_unknown_report_6 {
+#define RIFT_BOOT_NORMAL			0
+#define RIFT_BOOT_BOOTLOADER			1
+#define RIFT_BOOT_RADIO_PAIRING			2
+
+struct rift_bootload_report {
 	__u8 id;
 	__u16 echo;
-	__u8 unknown;
+	__u8 bootload;
 } __attribute__((packed));
 
 #define RIFT_TRACKING_REPORT_ID			0x0c
@@ -337,7 +341,7 @@ struct rift_radio_message {
 ASSERT_SIZE(rift_config_report, RIFT_CONFIG_REPORT_SIZE);
 ASSERT_SIZE(rift_imu_calibration_report, RIFT_IMU_CALIBRATION_REPORT_SIZE);
 ASSERT_SIZE(rift_range_report, RIFT_RANGE_REPORT_SIZE);
-ASSERT_SIZE(rift_unknown_report_6, RIFT_UNKNOWN_REPORT_6_SIZE);
+ASSERT_SIZE(rift_bootload_report, RIFT_BOOTLOAD_REPORT_SIZE);
 ASSERT_SIZE(rift_tracking_report, RIFT_TRACKING_REPORT_SIZE);
 ASSERT_SIZE(rift_display_report, RIFT_DISPLAY_REPORT_SIZE);
 ASSERT_SIZE(rift_position_report, RIFT_POSITION_REPORT_SIZE);
