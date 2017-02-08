@@ -322,6 +322,17 @@ struct rift_touch_message {
 #define RIFT_TOUCH_CONTROLLER_LEFT		2
 #define RIFT_TOUCH_CONTROLLER_RIGHT		3
 
+struct rift_pairing_message {
+	__u8 unknown_1;
+	__u8 maybe_rssi;
+	__u8 unknown_0;
+	__u8 device_type;
+	__le32 id[2];
+	__u8 unknown[2];
+	__u8 firmware[8];
+	__u8 padding[36];
+} __attribute__((packed));
+
 struct rift_radio_message {
 	__u8 id;
 	__u16 echo;
@@ -330,6 +341,7 @@ struct rift_radio_message {
 	union {
 		struct rift_remote_message remote;
 		struct rift_touch_message touch;
+		struct rift_pairing_message pairing;
 	};
 } __attribute__((packed));
 

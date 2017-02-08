@@ -36,6 +36,7 @@ struct rift_touch_controller {
 struct rift_radio {
 	const char *name;
 	uint32_t address;
+	bool pairing;
 	struct rift_remote remote;
 	struct rift_touch_controller touch[2];
 };

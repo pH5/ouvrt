@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <glib.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "rift-hid-reports.h"
 #include "rift-radio.h"
@@ -58,6 +59,21 @@ static int rift_radio_read(int fd, uint8_t a, uint8_t b, uint8_t c,
 		return ret;
 
 	return hid_get_feature_report(fd, report, sizeof(*report));
+}
+
+static int rift_radio_write(int fd, uint8_t a, uint8_t b, uint8_t c,
+			    struct rift_radio_data_report *report)
+{
+	int ret;
+
+	if (report->id != RIFT_RADIO_DATA_REPORT_ID)
+		return -EINVAL;
+
+	ret = hid_send_feature_report(fd, report, sizeof(*report));
+	if (ret < 0)
+		return ret;
+
+	return rift_radio_transfer(fd, a, b, c);
 }
 
 int rift_radio_get_address(int fd, uint32_t *address)
@@ -226,12 +242,114 @@ static int rift_radio_activate(struct rift_wireless_device *dev, int fd)
 	return 0;
 }
 
+int rift_decode_pairing_message(struct rift_radio *radio, int fd,
+				const struct rift_radio_message *message)
+{
+	struct rift_radio_data_report report = {
+		.id = RIFT_RADIO_DATA_REPORT_ID,
+	};
+	uint8_t device_type = message->pairing.device_type;
+	uint32_t device_address = __le32_to_cpu(message->pairing.id[0]);
+	uint32_t radio_address = __le32_to_cpu(message->pairing.id[1]);
+	struct rift_wireless_device *dev;
+	uint16_t maybe_channel;
+	int ret;
+
+	if (message->unknown[0] != 0x1a ||
+	    message->unknown[1] != 0x00 ||
+	    message->device_type != 0x03 ||
+	    message->pairing.unknown_1 != 0x01 ||
+	    message->pairing.unknown_0 != 0x00 ||
+	    message->pairing.unknown[0] != 0x8c ||
+	    message->pairing.unknown[1] != 0x00) {
+		g_print("Rift: Unexpected pairing message!\n");
+		return -EINVAL;
+	}
+
+	switch (device_type) {
+	case RIFT_REMOTE:
+		dev = &radio->remote.base;
+		maybe_channel = 750;
+		break;
+	case RIFT_TOUCH_CONTROLLER_LEFT:
+		dev = &radio->touch[0].base;
+		maybe_channel = 1000;
+		break;
+	case RIFT_TOUCH_CONTROLLER_RIGHT:
+		dev = &radio->touch[1].base;
+		maybe_channel = 1250;
+		break;
+	default:
+		g_print("Rift: Unknown device type: 0x%02x\n", device_type);
+		return -EINVAL;
+	}
+
+	g_print("Rift: Detected %s %08x: %s paired to %08x, firmware %s, rssi(?) %u\n",
+		dev->name, device_address,
+		(radio_address == radio->address) ? "already" : "currently",
+		radio_address, message->pairing.firmware,
+		message->pairing.maybe_rssi);
+
+	if (dev->address == device_address)
+		return 0;
+
+	g_print("Rift: Pairing %s %08x to headset radio %08x, channel(?) %u ...\n",
+		dev->name, device_address, radio->address, maybe_channel);
+
+	/* Step 1: set device address */
+	memset(report.payload, 0, sizeof(report.payload));
+	*(__le32 *)report.payload = __cpu_to_le32(device_address);
+	ret = rift_radio_write(fd, 0x04, 0x07, 0x05, &report);
+	if (ret < 0)
+		return ret;
+
+	/* Step 2: configure device target address and channel(?) */
+	memset(report.payload, 0, sizeof(report.payload));
+	report.payload[0] = 0x11;
+	report.payload[1] = 0x05;
+	report.payload[2] = device_type;
+	*(__le32 *)(report.payload + 3) = __cpu_to_le32(radio->address);
+	*(__le32 *)(report.payload + 7) = __cpu_to_le32(radio->address);
+	report.payload[11] = 0x8c;
+	*(__le16 *)(report.payload + 12) = __cpu_to_le16(maybe_channel);
+	*(__le16 *)(report.payload + 16) = __cpu_to_le16(2000);
+	ret = rift_radio_write(fd, 0x04, 0x09, 0x05, &report);
+	if (ret < 0)
+		return ret;
+
+	/* Step 3: tell device to stop pairing */
+	memset(report.payload, 0, sizeof(report.payload));
+	report.payload[0] = 0x21;
+	ret = rift_radio_write(fd, 0x04, 0x09, 0x05, &report);
+	if (ret < 0)
+		return ret;
+
+	/* Step 4: finish pairing */
+	memset(report.payload, 0, sizeof(report.payload));
+	ret = rift_radio_write(fd, 0x04, 0x08, 0x05, &report);
+	if (ret < 0)
+		return ret;
+
+	dev->address = device_address;
+
+	g_print("Rift: Pairing %s %08x finished\n", dev->name, dev->address);
+
+	return 0;
+}
+
 void rift_decode_radio_message(struct rift_radio *radio, int fd,
 			       const unsigned char *buf, size_t len)
 {
 	const struct rift_radio_message *message = (const void *)buf;
+	int ret;
 
 	if (message->id == RIFT_RADIO_MESSAGE_ID) {
+		if (radio->pairing) {
+			ret = rift_decode_pairing_message(radio, fd, message);
+			if (ret < 0)
+				rift_dump_message(buf, len);
+			return;
+		}
 		if (message->device_type == RIFT_REMOTE) {
 			rift_decode_remote_message(&radio->remote, message);
 		} else if (message->device_type == RIFT_TOUCH_CONTROLLER_LEFT) {

@@ -622,6 +622,10 @@ static int rift_start(OuvrtDevice *dev)
 	int ret;
 
 	if (rift->type == RIFT_CV1) {
+		ret = rift_get_boot_mode(rift);
+		if (ret == RIFT_BOOT_RADIO_PAIRING)
+			rift->priv->radio.pairing = true;
+
 		ret = rift_radio_get_address(dev->fds[0],
 					     &rift->priv->radio.address);
 		if (ret < 0)
@@ -634,8 +638,11 @@ static int rift_start(OuvrtDevice *dev)
 		return ret;
 	}
 
-	if (rift->type == RIFT_CV1)
-		rift_get_firmware_version(dev->fds[0]);
+	if (rift->type == RIFT_CV1) {
+		ret = rift_get_boot_mode(rift);
+		if (ret == RIFT_BOOT_NORMAL)
+			rift_get_firmware_version(dev->fds[0]);
+	}
 
 	ret = rift_get_ranges(rift);
 	if (ret < 0)
@@ -764,6 +771,7 @@ static void rift_thread(OuvrtDevice *dev)
 					errno);
 				continue;
 			}
+
 			if (ret != 64 ||
 			    (buf[0] != RIFT_RADIO_MESSAGE_ID &&
 			     buf[0] != RIFT_RADIO_UNKNOWN_MESSAGE_ID)) {
