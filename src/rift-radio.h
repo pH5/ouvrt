@@ -34,10 +34,12 @@ struct rift_touch_controller {
 
 struct rift_radio {
 	const char *name;
+	uint32_t address;
 	struct rift_remote remote;
 	struct rift_touch_controller touch[2];
 };
 
+int rift_radio_get_address(int fd, uint32_t *address);
 int rift_get_firmware_version(int fd);
 
 void rift_decode_radio_message(struct rift_radio *radio, int fd,

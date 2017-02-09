@@ -621,6 +621,13 @@ static int rift_start(OuvrtDevice *dev)
 	OuvrtRift *rift = OUVRT_RIFT(dev);
 	int ret;
 
+	if (rift->type == RIFT_CV1) {
+		ret = rift_radio_get_address(dev->fds[0],
+					     &rift->priv->radio.address);
+		if (ret < 0)
+			return ret;
+	}
+
 	ret = rift_get_uuid(rift);
 	if (ret < 0) {
 		g_print("Rift: Error reading UUID\n");

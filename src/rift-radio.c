@@ -60,6 +60,22 @@ static int rift_radio_read(int fd, uint8_t a, uint8_t b, uint8_t c,
 	return hid_get_feature_report(fd, report, sizeof(*report));
 }
 
+int rift_radio_get_address(int fd, uint32_t *address)
+{
+	struct rift_radio_data_report report = {
+		.id = RIFT_RADIO_DATA_REPORT_ID,
+	};
+	int ret;
+
+	ret = rift_radio_read(fd, 0x05, 0x03, 0x05, &report);
+	if (ret < 0)
+		return ret;
+
+	*address = __le32_to_cpup((__le32 *)report.payload);
+
+	return 0;
+}
+
 int rift_get_firmware_version(int fd)
 {
 	struct rift_radio_data_report report = {
