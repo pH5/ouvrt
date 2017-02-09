@@ -171,7 +171,9 @@ struct rift_radio_control_report {
 #define RIFT_RADIO_DATA_REPORT_SIZE		31
 
 struct rift_radio_serial_number_report {
-	__u8 unknown[9];
+	__le32 address;
+	__u8 device_type;
+	__u8 unknown[4];
 	__u8 number[14];
 	__u8 padding[5];
 } __attribute__((packed));

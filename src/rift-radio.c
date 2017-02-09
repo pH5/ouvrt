@@ -97,7 +97,8 @@ int rift_get_firmware_version(int fd)
 	return 0;
 }
 
-static int rift_radio_get_serial(int fd, int device_type, char *serial)
+static int rift_radio_get_serial(int fd, int device_type,
+				 uint32_t *address, char *serial)
 {
 	struct rift_radio_data_report report = {
 		.id = RIFT_RADIO_DATA_REPORT_ID,
@@ -109,6 +110,8 @@ static int rift_radio_get_serial(int fd, int device_type, char *serial)
 			      device_type, &report);
 	if (ret < 0)
 		return ret;
+
+	*address = __le32_to_cpu(report.serial.address);
 
 	for (i = 0; i < 14 && g_ascii_isalnum(report.serial.number[i]); i++)
 		serial[i] = report.serial.number[i];
@@ -200,7 +203,7 @@ static int rift_radio_activate(struct rift_wireless_device *dev, int fd)
 {
 	int ret;
 
-	ret = rift_radio_get_serial(fd, dev->id, dev->serial);
+	ret = rift_radio_get_serial(fd, dev->id, &dev->address, dev->serial);
 	if (ret < 0) {
 		g_print("Rift: Failed to read %s serial number\n", dev->name);
 		return ret;
