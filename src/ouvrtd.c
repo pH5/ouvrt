@@ -200,6 +200,7 @@ static void ouvrtd_device_add(struct udev_device *dev)
 			    device_matches[i].interfaces[j].iface == iface)
 				break;
 		}
+
 		if (j < device_matches[i].num_interfaces)
 			break;
 	}
