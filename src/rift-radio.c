@@ -12,6 +12,7 @@
 #include "rift-hid-reports.h"
 #include "rift-radio.h"
 #include "hidraw.h"
+#include "imu.h"
 
 static void rift_dump_report(const unsigned char *buf, size_t len)
 {
@@ -254,6 +255,7 @@ static void rift_decode_remote_message(struct rift_remote *remote,
 static void rift_decode_touch_message(struct rift_touch_controller *touch,
 				      const struct rift_radio_message *message)
 {
+	uint32_t timestamp = __le32_to_cpu(message->touch.timestamp);
 	int16_t accel[3] = {
 		__le16_to_cpu(message->touch.accel[0]),
 		__le16_to_cpu(message->touch.accel[1]),
@@ -272,6 +274,60 @@ static void rift_decode_touch_message(struct rift_touch_controller *touch,
 		((tgs[3] & 0xc0) >> 6) | ((tgs[4] & 0xff) << 2),
 	};
 	uint16_t adc_value = __le16_to_cpu(message->touch.adc_value);
+	int32_t dt = timestamp - touch->last_timestamp;
+
+	if (dt > 1000 - 25 && dt < 1000 + 25) {
+		/* 1 ms */
+	} else if (dt > 2000 - 25 && dt < 2000 + 25) {
+		/* 2 ms */
+	} else if (dt > 3000 - 25 || dt < 3000 + 25) {
+		/* 3 ms */
+	} else {
+		g_print("%s: %d µs since last IMU sample\n", touch->base.name,
+			dt);
+	}
+	touch->last_timestamp = timestamp;
+
+	const double ax = 9.81 / 2048 * accel[0];
+	const double ay = 9.81 / 2048 * accel[1];
+	const double az = 9.81 / 2048 * accel[2];
+	const double gx = 1.0 / 2048 * gyro[0];
+	const double gy = 1.0 / 2048 * gyro[1];
+	const double gz = 1.0 / 2048 * gyro[2];
+
+	touch->imu.linear_acceleration.x = ax;
+	touch->imu.linear_acceleration.y = ay;
+	touch->imu.linear_acceleration.z = az;
+
+	touch->imu.angular_velocity.x = gx;
+	touch->imu.angular_velocity.y = gy;
+	touch->imu.angular_velocity.z = gz;
+
+	/* Advance */
+	const double dt_s = 1e-6 * dt;
+	double scale = dt_s * 0.5;
+	dquat *q = &touch->imu.pose.rotation;
+	dquat dq;
+
+	dq.w = scale * (-q->x * gx - q->y * gy - q->z * gz);
+	dq.x = scale * (q->w * gx + q->y * gz - q->z * gy);
+	dq.y = scale * (q->w * gy - q->x * gz + q->z * gx);
+	dq.z = scale * (q->w * gz + q->x * gy - q->y * gx);
+
+	q->w += dq.w;
+	q->x += dq.x;
+	q->y += dq.y;
+	q->z += dq.z;
+
+	scale = 1.0 / sqrt(q->w * q->w + q->x * q->x + q->y * q->y + q->z * q->z);
+	q->w *= scale;
+	q->x *= scale;
+	q->y *= scale;
+	q->z *= scale;
+
+	touch->imu.linear_velocity.x += ax;
+	touch->imu.linear_velocity.y += ay;
+	touch->imu.linear_velocity.z += az;
 
 	switch (message->touch.adc_channel) {
 	case RIFT_TOUCH_CONTROLLER_ADC_A_X:
@@ -291,8 +347,6 @@ static void rift_decode_touch_message(struct rift_touch_controller *touch,
 		break;
 	}
 
-	(void)accel;
-	(void)gyro;
 	(void)trigger;
 	(void)grip;
 	(void)stick;
@@ -567,6 +621,8 @@ void rift_radio_init(struct rift_radio *radio)
 	radio->remote.base.id = RIFT_REMOTE;
 	radio->touch[0].base.name = "Touch Controller L";
 	radio->touch[0].base.id = RIFT_TOUCH_CONTROLLER_LEFT;
+	radio->touch[0].imu.pose.rotation.w = 1.0;
 	radio->touch[1].base.name = "Touch Controller R";
 	radio->touch[1].base.id = RIFT_TOUCH_CONTROLLER_RIGHT;
+	radio->touch[1].imu.pose.rotation.w = 1.0;
 }

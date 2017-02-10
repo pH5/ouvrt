@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include <stdbool.h>
 
+#include "imu.h"
+
 struct rift_wireless_device {
 	unsigned long dev_id;
 	const char *name;
@@ -28,6 +30,8 @@ struct rift_remote {
 
 struct rift_touch_controller {
 	struct rift_wireless_device base;
+	struct imu_state imu;
+	uint32_t last_timestamp;
 	uint16_t cap_a_x;
 	uint16_t cap_b_y;
 	uint16_t cap_rest;
