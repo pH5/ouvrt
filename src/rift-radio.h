@@ -13,6 +13,7 @@ struct rift_wireless_device {
 	const char *name;
 	uint32_t address;
 	uint8_t id;
+	bool present;
 	bool active;
 	char firmware_date[11];
 	char firmware_version[10];

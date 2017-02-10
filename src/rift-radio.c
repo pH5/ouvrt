@@ -351,13 +351,32 @@ void rift_decode_radio_message(struct rift_radio *radio, int fd,
 			return;
 		}
 		if (message->device_type == RIFT_REMOTE) {
+			if (!radio->remote.base.present) {
+				g_print("Rift: %s present\n",
+					radio->remote.base.name);
+				radio->remote.base.present = true;
+			}
 			rift_decode_remote_message(&radio->remote, message);
 		} else if (message->device_type == RIFT_TOUCH_CONTROLLER_LEFT) {
-			if (!radio->touch[0].base.active)
+			if (!radio->touch[0].base.present) {
+				g_print("Rift: %s present (%sactive)\n",
+					radio->touch[0].base.name,
+					message->touch.timestamp ? "" : "in");
+				radio->touch[0].base.present = true;
+			}
+			if (!radio->touch[0].base.active &&
+			    message->touch.timestamp)
 				rift_radio_activate(&radio->touch[0].base, fd);
 			rift_decode_touch_message(&radio->touch[0], message);
 		} else if (message->device_type == RIFT_TOUCH_CONTROLLER_RIGHT) {
-			if (!radio->touch[1].base.active)
+			if (!radio->touch[1].base.present) {
+				g_print("Rift: %s present (%sactive)\n",
+					radio->touch[1].base.name,
+					message->touch.timestamp ? "" : "in");
+				radio->touch[1].base.present = true;
+			}
+			if (!radio->touch[1].base.active &&
+			    message->touch.timestamp)
 				rift_radio_activate(&radio->touch[1].base, fd);
 			rift_decode_touch_message(&radio->touch[1], message);
 		} else {
