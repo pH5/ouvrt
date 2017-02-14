@@ -160,6 +160,7 @@ struct rift_uuid_report {
 
 #define RIFT_RADIO_SERIAL_NUMBER_CONTROL	0x88
 #define RIFT_RADIO_FIRMWARE_VERSION_CONTROL	0x82
+#define RIFT_RADIO_READ_FLASH_CONTROL		0x0a
 
 struct rift_radio_control_report {
 	__u8 id;
@@ -185,12 +186,20 @@ struct rift_radio_firmware_version_report {
 	__u8 padding[4];
 } __attribute__((packed));
 
+struct rift_radio_read_flash_report {
+	__le16 offset;
+	__le16 length;
+	__u8 data[20];
+	__le32 unknown;
+} __attribute__((packed));
+
 struct rift_radio_data_report {
 	__u8 id;
 	__u16 echo;
 	union {
 		struct rift_radio_serial_number_report serial;
 		struct rift_radio_firmware_version_report firmware;
+		struct rift_radio_read_flash_report flash;
 		__u8 payload[28];
 	};
 } __attribute__((packed));

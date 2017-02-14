@@ -76,6 +76,89 @@ static int rift_radio_write(int fd, uint8_t a, uint8_t b, uint8_t c,
 	return rift_radio_transfer(fd, a, b, c);
 }
 
+static int rift_radio_read_flash(int fd, uint8_t device_type,
+				 struct rift_radio_data_report *report)
+{
+	int ret;
+
+	ret = hid_send_feature_report(fd, report, sizeof(*report));
+	if (ret < 0)
+		return ret;
+
+	ret = rift_radio_transfer(fd, 0x03, RIFT_RADIO_READ_FLASH_CONTROL,
+				  device_type);
+	if (ret < 0)
+		return ret;
+
+	return hid_get_feature_report(fd, report, sizeof(*report));
+}
+
+static int rift_radio_read_calibration_hash(int fd, uint8_t device_type,
+					    uint8_t hash[16])
+{
+	struct rift_radio_data_report report = {
+		.id = RIFT_RADIO_DATA_REPORT_ID,
+		.flash.offset = __cpu_to_le16(0x1bf0),
+		.flash.length = 16,
+	};
+	int ret;
+
+	ret = rift_radio_read_flash(fd, device_type, &report);
+	if (ret < 0)
+		return ret;
+
+	memcpy(hash, report.flash.data, 16);
+
+	return 0;
+}
+
+static int rift_radio_read_calibration(int fd, uint8_t device_type, char **json,
+				       uint16_t *length)
+{
+	struct rift_radio_data_report report = {
+		.id = RIFT_RADIO_DATA_REPORT_ID,
+	};
+	uint16_t offset;
+	uint16_t size;
+	char *tmp;
+	int ret;
+
+	report.flash.offset = __cpu_to_le16(0);
+	report.flash.length = __cpu_to_le16(20);
+	ret = rift_radio_read_flash(fd, device_type, &report);
+	if (ret < 0)
+		return ret;
+
+	if (__le16_to_cpup((__le16 *)&report.flash.data[0]) != 1)
+		return -EINVAL;
+
+	size = __le16_to_cpup((__le16 *)&report.flash.data[2]);
+
+	tmp = g_malloc(size + 1);
+
+	memcpy(tmp, report.flash.data + 4, 16);
+
+	for (offset = 20; offset < size + 4; offset += 20) {
+		report.flash.offset = __cpu_to_le16(offset);
+		report.flash.length = __cpu_to_le16(20);
+		ret = rift_radio_read_flash(fd, device_type, &report);
+		if (ret < 0) {
+			g_free(tmp);
+			return ret;
+		}
+
+		memcpy(tmp + offset - 4, report.flash.data,
+		       (offset - 4 + 20 <= size) ? 20 :
+		       (size - (offset - 4)));
+	}
+	tmp[size] = 0;
+
+	*json = tmp;
+	*length = size;
+
+	return 0;
+}
+
 int rift_radio_get_address(int fd, uint32_t *address)
 {
 	struct rift_radio_data_report report = {
@@ -215,6 +298,67 @@ static void rift_decode_touch_message(struct rift_touch_controller *touch,
 	(void)stick;
 }
 
+static int rift_touch_get_calibration(struct rift_touch_controller *touch,
+				      int fd)
+{
+	struct rift_wireless_device *dev = &touch->base;
+	uint8_t hash[16];
+	char hash_string[33];
+	gboolean success;
+	char *path;
+	char *filename;
+	char *json;
+	int ret;
+	int i;
+
+	ret = rift_radio_read_calibration_hash(fd, dev->id, hash);
+	if (ret < 0)
+		return ret;
+
+	for (i = 0; i < 32; i++) {
+		uint8_t nibble = (i % 2) ? (hash[i / 2] & 0xf) :
+					   (hash[i / 2] >> 4);
+		hash_string[i] = (nibble < 10) ? ('0' + nibble) :
+						 ('a' + nibble - 10);
+	}
+	hash_string[32] = 0;
+
+	g_print("Rift: %s: calibration hash: %s\n", dev->name, hash_string);
+
+	path = g_strdup_printf("%s/ouvrt", g_get_user_cache_dir());
+
+	filename = g_strdup_printf("%s/%.14s_%s.%ctouch", path, dev->serial,
+				   hash_string,
+				   (dev->id == RIFT_TOUCH_CONTROLLER_LEFT) ? 'l' : 'r');
+
+	success = g_file_get_contents(filename, &json, NULL, NULL);
+	if (success) {
+		g_print("Rift: %s: read cached calibration data\n", dev->name);
+	} else {
+		uint16_t length;
+
+		g_print("Rift: %s: reading calibration data\n", dev->name);
+
+		ret = rift_radio_read_calibration(fd, dev->id, &json, &length);
+		if (ret < 0) {
+			g_free(filename);
+			g_free(path);
+			return ret;
+		}
+
+		g_mkdir_with_parents(path, 0755);
+		g_file_set_contents(filename, json, length, NULL);
+
+		g_print("Rift: %s: wrote calibration data cache\n", dev->name);
+	}
+
+	g_free(filename);
+	g_free(path);
+	g_free(json);
+
+	return 0;
+}
+
 static int rift_radio_activate(struct rift_wireless_device *dev, int fd)
 {
 	int ret;
@@ -236,6 +380,15 @@ static int rift_radio_activate(struct rift_wireless_device *dev, int fd)
 
 	g_print("Rift: %s: Firmware version %.10s\n", dev->name,
 		dev->firmware_version);
+
+	if (dev->id != RIFT_REMOTE) {
+		struct rift_touch_controller *touch;
+
+		touch = (struct rift_touch_controller *)dev;
+		ret = rift_touch_get_calibration(touch, fd);
+		if (ret < 0)
+			return ret;
+	}
 
 	dev->active = true;
 
