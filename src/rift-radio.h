@@ -10,6 +10,7 @@
 #include <stdbool.h>
 
 #include "imu.h"
+#include "tracking-model.h"
 
 struct rift_wireless_device {
 	unsigned long dev_id;
@@ -28,8 +29,33 @@ struct rift_remote {
 	uint16_t buttons;
 };
 
+struct rift_touch_calibration {
+	vec3 imu_position;
+	float gyro_calibration[12];
+	float acc_calibration[12];
+	uint16_t joy_x_range_min;
+	uint16_t joy_x_range_max;
+	uint16_t joy_x_dead_min;
+	uint16_t joy_x_dead_max;
+	uint16_t joy_y_range_min;
+	uint16_t joy_y_range_max;
+	uint16_t joy_y_dead_min;
+	uint16_t joy_y_dead_max;
+	uint16_t trigger_min_range;
+	uint16_t trigger_mid_range;
+	uint16_t trigger_max_range;
+	uint16_t middle_min_range;
+	uint16_t middle_mid_range;
+	uint16_t middle_max_range;
+	bool middle_flipped;
+	uint16_t cap_sense_min[8];
+	uint16_t cap_sense_touch[8];
+};
+
 struct rift_touch_controller {
 	struct rift_wireless_device base;
+	struct rift_touch_calibration calibration;
+	struct tracking_model model;
 	struct imu_state imu;
 	uint32_t last_timestamp;
 	uint16_t cap_a_x;

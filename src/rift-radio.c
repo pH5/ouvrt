@@ -13,6 +13,8 @@
 #include "rift-radio.h"
 #include "hidraw.h"
 #include "imu.h"
+#include "json.h"
+#include "tracking-model.h"
 
 static void rift_dump_report(const unsigned char *buf, size_t len)
 {
@@ -352,6 +354,93 @@ static void rift_decode_touch_message(struct rift_touch_controller *touch,
 	(void)stick;
 }
 
+static int rift_touch_parse_calibration(struct rift_touch_controller *touch,
+					const char *json,
+					struct rift_touch_calibration *c)
+{
+	JsonNode *node = json_from_string(json, NULL);
+	JsonObject *object = json_node_get_object(node);
+	JsonArray *array;
+	int version;
+	int i, j;
+
+	object = json_object_get_object_member(object, "TrackedObject");
+	if (!object) {
+		json_node_unref(node);
+		return -EINVAL;
+	}
+
+	version = json_object_get_int_member(object, "JsonVersion");
+	if (version != 2) {
+		json_node_unref(node);
+		return -EINVAL;
+	}
+
+	json_object_get_vec3_member(object, "ImuPosition", &c->imu_position);
+
+	c->joy_x_range_min = json_object_get_int_member(object, "JoyXRangeMin");
+	c->joy_x_range_max = json_object_get_int_member(object, "JoyXRangeMax");
+	c->joy_x_dead_min = json_object_get_int_member(object, "JoyXDeadMin");
+	c->joy_x_dead_max = json_object_get_int_member(object, "JoyXDeadMax");
+	c->joy_y_range_min = json_object_get_int_member(object, "JoyYRangeMin");
+	c->joy_y_range_max = json_object_get_int_member(object, "JoyYRangeMax");
+	c->joy_y_dead_min = json_object_get_int_member(object, "JoyYDeadMin");
+	c->joy_y_dead_max = json_object_get_int_member(object, "JoyYDeadMax");
+
+	c->trigger_min_range = json_object_get_int_member(object, "TriggerMinRange");
+	c->trigger_mid_range = json_object_get_int_member(object, "TriggerMidRange");
+	c->trigger_max_range = json_object_get_int_member(object, "TriggerMaxRange");
+
+	array = json_object_get_array_member(object, "GyroCalibration");
+	for (i = 0; i < 12; i++)
+		c->gyro_calibration[i] = json_array_get_double_element(array, i);
+
+	c->middle_min_range = json_object_get_int_member(object, "MiddleMinRange");
+	c->middle_mid_range = json_object_get_int_member(object, "MiddleMidRange");
+	c->middle_max_range = json_object_get_int_member(object, "MiddleMaxRange");
+
+	c->middle_flipped = json_object_get_boolean_member(object, "MiddleFlipped");
+
+	array = json_object_get_array_member(object, "AccCalibration");
+	for (i = 0; i < 12; i++)
+		c->acc_calibration[i] = json_array_get_double_element(array, i);
+
+	array = json_object_get_array_member(object, "CapSenseMin");
+	for (i = 0; i < 8; i++)
+		c->cap_sense_min[i] = json_array_get_int_element(array, i);
+
+	array = json_object_get_array_member(object, "CapSenseTouch");
+	for (i = 0; i < 8; i++)
+		c->cap_sense_touch[i] = json_array_get_int_element(array, i);
+
+	JsonObject *model = json_object_get_object_member(object, "ModelPoints");
+
+	tracking_model_init(&touch->model, json_object_get_size(model));
+
+	for (i = 0; i < touch->model.num_points; i++) {
+		char name[8];
+
+		g_snprintf(name, 8, "Point%d", i);
+		array = json_object_get_array_member(model, name);
+
+		double point[6];
+
+		for (j = 0; j < 6; j++)
+			point[j] = json_array_get_double_element(array, j);
+
+		touch->model.points[i].x = point[0];
+		touch->model.points[i].y = point[1];
+		touch->model.points[i].z = point[2];
+		touch->model.normals[i].x = point[3];
+		touch->model.normals[i].y = point[4];
+		touch->model.normals[i].z = point[5];
+	}
+
+	json_node_unref(node);
+
+	return 0;
+}
+
 static int rift_touch_get_calibration(struct rift_touch_controller *touch,
 				      int fd)
 {
@@ -408,6 +497,9 @@ static int rift_touch_get_calibration(struct rift_touch_controller *touch,
 
 	g_free(filename);
 	g_free(path);
+
+	rift_touch_parse_calibration(touch, json, &touch->calibration);
+
 	g_free(json);
 
 	return 0;
