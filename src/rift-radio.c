@@ -565,8 +565,8 @@ void rift_radio_init(struct rift_radio *radio)
 {
 	radio->remote.base.name = "Remote";
 	radio->remote.base.id = RIFT_REMOTE;
-	radio->touch[0].base.name = "Left Touch Controller";
+	radio->touch[0].base.name = "Touch Controller L";
 	radio->touch[0].base.id = RIFT_TOUCH_CONTROLLER_LEFT;
-	radio->touch[1].base.name = "Right Touch Controller";
+	radio->touch[1].base.name = "Touch Controller R";
 	radio->touch[1].base.id = RIFT_TOUCH_CONTROLLER_RIGHT;
 }
