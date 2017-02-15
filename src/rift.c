@@ -773,15 +773,15 @@ static void rift_thread(OuvrtDevice *dev)
 			}
 
 			if (ret != 64 ||
-			    (buf[0] != RIFT_RADIO_MESSAGE_ID &&
+			    (buf[0] != RIFT_RADIO_REPORT_ID &&
 			     buf[0] != RIFT_RADIO_UNKNOWN_MESSAGE_ID)) {
 				g_print("%s: Error, invalid %d-byte report 0x%02x\n",
 						dev->name, ret, buf[0]);
 				continue;
 			}
 
-			rift_decode_radio_message(&rift->priv->radio, dev->fds[1],
-						  buf, sizeof(buf));
+			rift_decode_radio_report(&rift->priv->radio, dev->fds[1],
+						 buf, sizeof(buf));
 		}
 	}
 }

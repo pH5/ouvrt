@@ -284,8 +284,12 @@ struct rift_sensor_message {
 	__le16 reserved;
 } __attribute__((packed));
 
-#define RIFT_RADIO_MESSAGE_ID			0x0c
-#define RIFT_RADIO_MESSAGE_SIZE			64
+#define RIFT_RADIO_REPORT_ID			0x0c
+#define RIFT_RADIO_REPORT_SIZE			64
+
+#define RIFT_REMOTE				1
+#define RIFT_TOUCH_CONTROLLER_LEFT		2
+#define RIFT_TOUCH_CONTROLLER_RIGHT		3
 
 #define RIFT_REMOTE_BUTTON_UP			0x001
 #define RIFT_REMOTE_BUTTON_DOWN			0x002
@@ -299,7 +303,7 @@ struct rift_sensor_message {
 
 struct rift_remote_message {
 	__le16 buttons;
-	__u8 unknown[56];
+	__u8 unknown[23];
 } __attribute__((packed));
 
 #define RIFT_TOUCH_CONTROLLER_BUTTON_A		0x01
@@ -324,12 +328,7 @@ struct rift_touch_message {
 	__u8 trigger_grip_stick[5];
 	__u8 adc_channel;
 	__le16 adc_value;
-	__u8 unknown[33];
 } __attribute__((packed));
-
-#define RIFT_REMOTE				1
-#define RIFT_TOUCH_CONTROLLER_LEFT		2
-#define RIFT_TOUCH_CONTROLLER_RIGHT		3
 
 struct rift_pairing_message {
 	__u8 unknown_1;
@@ -339,12 +338,10 @@ struct rift_pairing_message {
 	__le32 id[2];
 	__u8 unknown[2];
 	__u8 firmware[8];
-	__u8 padding[36];
+	__u8 padding[3];
 } __attribute__((packed));
 
 struct rift_radio_message {
-	__u8 id;
-	__u16 echo;
 	__u8 unknown[2];
 	__u8 device_type;
 	union {
@@ -352,6 +349,13 @@ struct rift_radio_message {
 		struct rift_touch_message touch;
 		struct rift_pairing_message pairing;
 	};
+} __attribute__((packed));
+
+struct rift_radio_report {
+	__u8 id;
+	__u16 echo;
+	struct rift_radio_message message[2];
+	__u8 padding[5];
 } __attribute__((packed));
 
 /* This message is sent in a 250 ms interval and contains all zeros */
@@ -378,6 +382,6 @@ ASSERT_SIZE(rift_cv1_sensor_report, RIFT_CV1_SENSOR_REPORT_SIZE);
 ASSERT_SIZE(rift_cv1_read_flash_report, RIFT_CV1_READ_FLASH_REPORT_SIZE);
 ASSERT_SIZE(rift_cv1_lifetime_report, RIFT_CV1_LIFETIME_REPORT_SIZE);
 ASSERT_SIZE(rift_sensor_message, RIFT_SENSOR_MESSAGE_SIZE);
-ASSERT_SIZE(rift_radio_message, RIFT_RADIO_MESSAGE_SIZE);
+ASSERT_SIZE(rift_radio_report, RIFT_RADIO_REPORT_SIZE);
 
 #endif /* __RIFT_HID_REPORTS__ */

@@ -13,7 +13,7 @@
 #include "rift-radio.h"
 #include "hidraw.h"
 
-static void rift_dump_message(const unsigned char *buf, size_t len)
+static void rift_dump_report(const unsigned char *buf, size_t len)
 {
 	unsigned int i;
 
@@ -490,52 +490,65 @@ int rift_decode_pairing_message(struct rift_radio *radio, int fd,
 	return 0;
 }
 
-void rift_decode_radio_message(struct rift_radio *radio, int fd,
-			       const unsigned char *buf, size_t len)
+int rift_decode_radio_message(struct rift_radio *radio, int fd,
+			       const struct rift_radio_message *message)
 {
-	const struct rift_radio_message *message = (const void *)buf;
-	int ret;
+	if (radio->pairing)
+		return rift_decode_pairing_message(radio, fd, message);
 
-	if (message->id == RIFT_RADIO_MESSAGE_ID) {
-		if (radio->pairing) {
-			ret = rift_decode_pairing_message(radio, fd, message);
-			if (ret < 0)
-				rift_dump_message(buf, len);
-			return;
+	if (message->unknown[0] == 0)
+		return 0;
+
+	if (message->device_type == RIFT_REMOTE) {
+		if (!radio->remote.base.present) {
+			g_print("Rift: %s present\n", radio->remote.base.name);
+			radio->remote.base.present = true;
 		}
-		if (message->device_type == RIFT_REMOTE) {
-			if (!radio->remote.base.present) {
-				g_print("Rift: %s present\n",
-					radio->remote.base.name);
-				radio->remote.base.present = true;
+		rift_decode_remote_message(&radio->remote, message);
+	} else if (message->device_type == RIFT_TOUCH_CONTROLLER_LEFT) {
+		if (!radio->touch[0].base.present) {
+			g_print("Rift: %s present (%sactive)\n",
+				radio->touch[0].base.name,
+				message->touch.timestamp ? "" : "in");
+			radio->touch[0].base.present = true;
+		}
+		if (!radio->touch[0].base.active && message->touch.timestamp)
+			rift_radio_activate(&radio->touch[0].base, fd);
+		rift_decode_touch_message(&radio->touch[0], message);
+	} else if (message->device_type == RIFT_TOUCH_CONTROLLER_RIGHT) {
+		if (!radio->touch[1].base.present) {
+			g_print("Rift: %s present (%sactive)\n",
+				radio->touch[1].base.name,
+				message->touch.timestamp ? "" : "in");
+			radio->touch[1].base.present = true;
+		}
+		if (!radio->touch[1].base.active && message->touch.timestamp)
+			rift_radio_activate(&radio->touch[1].base, fd);
+		rift_decode_touch_message(&radio->touch[1], message);
+	} else {
+		g_print("%s: unknown device %02x:", radio->name,
+			message->device_type);
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
+void rift_decode_radio_report(struct rift_radio *radio, int fd,
+			      const unsigned char *buf, size_t len)
+{
+	const struct rift_radio_report *report = (const void *)buf;
+	int ret;
+	int i;
+
+	if (report->id == RIFT_RADIO_REPORT_ID) {
+		for (i = 0; i < 2; i++) {
+			ret = rift_decode_radio_message(radio, fd,
+							&report->message[i]);
+			if (ret < 0) {
+				rift_dump_report(buf, len);
+				return;
 			}
-			rift_decode_remote_message(&radio->remote, message);
-		} else if (message->device_type == RIFT_TOUCH_CONTROLLER_LEFT) {
-			if (!radio->touch[0].base.present) {
-				g_print("Rift: %s present (%sactive)\n",
-					radio->touch[0].base.name,
-					message->touch.timestamp ? "" : "in");
-				radio->touch[0].base.present = true;
-			}
-			if (!radio->touch[0].base.active &&
-			    message->touch.timestamp)
-				rift_radio_activate(&radio->touch[0].base, fd);
-			rift_decode_touch_message(&radio->touch[0], message);
-		} else if (message->device_type == RIFT_TOUCH_CONTROLLER_RIGHT) {
-			if (!radio->touch[1].base.present) {
-				g_print("Rift: %s present (%sactive)\n",
-					radio->touch[1].base.name,
-					message->touch.timestamp ? "" : "in");
-				radio->touch[1].base.present = true;
-			}
-			if (!radio->touch[1].base.active &&
-			    message->touch.timestamp)
-				rift_radio_activate(&radio->touch[1].base, fd);
-			rift_decode_touch_message(&radio->touch[1], message);
-		} else {
-			g_print("%s: unknown device %02x:", radio->name,
-				message->device_type);
-			rift_dump_message(buf, len);
 		}
 	} else {
 		unsigned int i;
@@ -543,8 +556,7 @@ void rift_decode_radio_message(struct rift_radio *radio, int fd,
 		for (i = 1; i < len && !buf[i]; i++);
 		if (i != len) {
 			g_print("%s: unknown message:", radio->name);
-			rift_dump_message(buf, len);
-			return;
+			rift_dump_report(buf, len);
 		}
 	}
 }

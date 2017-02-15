@@ -45,8 +45,8 @@ struct rift_radio {
 int rift_radio_get_address(int fd, uint32_t *address);
 int rift_get_firmware_version(int fd);
 
-void rift_decode_radio_message(struct rift_radio *radio, int fd,
-			       const unsigned char *buf, size_t len);
+void rift_decode_radio_report(struct rift_radio *radio, int fd,
+			      const unsigned char *buf, size_t len);
 void rift_radio_init(struct rift_radio *radio);
 
 #endif /* __RIFT_RADIO_H__ */
