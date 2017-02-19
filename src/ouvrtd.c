@@ -23,6 +23,7 @@
 #include "psvr.h"
 #include "rift.h"
 #include "camera-dk2.h"
+#include "telemetry.h"
 #include "vive-headset.h"
 #include "vive-headset-mainboard.h"
 #include "vive-controller.h"
@@ -498,6 +499,7 @@ int main(int argc, char *argv[])
 	setlocale(LC_CTYPE, "");
 
 	gst_init(&argc, &argv);
+	telemetry_init(&argc, &argv);
 
 	do {
 		ret = getopt_long(argc, argv, "h", ouvrtd_options, &longind);
@@ -526,6 +528,7 @@ int main(int argc, char *argv[])
 	g_bus_unown_name(owner_id);
 	udev_unref(udev);
 	g_main_loop_unref(loop);
+	telemetry_deinit();
 	gst_deinit();
 
 	return 0;
