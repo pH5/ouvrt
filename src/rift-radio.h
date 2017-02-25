@@ -16,9 +16,9 @@ struct rift_wireless_device {
 	uint8_t id;
 	bool present;
 	bool active;
-	char firmware_date[11];
-	char firmware_version[10];
-	char serial[14];
+	char firmware_date[11+1];
+	char firmware_version[10+1];
+	char serial[14+1];
 };
 
 struct rift_remote {
