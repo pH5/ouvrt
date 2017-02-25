@@ -22,6 +22,7 @@ struct _OuvrtPSVRPrivate {
 	uint8_t state;
 	uint8_t last_seq;
 	uint32_t last_timestamp;
+	struct imu_state imu;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtPSVR, ouvrt_psvr, OUVRT_TYPE_DEVICE)
@@ -155,7 +156,7 @@ void psvr_decode_sensor_message(OuvrtPSVR *self, const unsigned char *buf,
 		imu.angular_velocity.z = raw.gyro[2] * -(16.0 / 16384);
 		imu.time = 1e-6 * raw.time;
 
-		(void)imu;
+		pose_update(1e-6 * dt, &self->priv->imu.pose, &imu);
 
 		self->priv->last_timestamp = raw.time;
 	}
@@ -273,6 +274,7 @@ static void ouvrt_psvr_init(OuvrtPSVR *self)
 	self->priv->power = false;
 	self->priv->vrmode = false;
 	self->priv->state = PSVR_STATE_POWER_OFF;
+	self->priv->imu.pose.rotation.w = 1.0;
 }
 
 /*
