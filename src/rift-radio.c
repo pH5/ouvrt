@@ -290,46 +290,51 @@ static void rift_decode_touch_message(struct rift_touch_controller *touch,
 	}
 	touch->last_timestamp = timestamp;
 
-	const double ax = 9.81 / 2048 * accel[0];
-	const double ay = 9.81 / 2048 * accel[1];
-	const double az = 9.81 / 2048 * accel[2];
-	const double gx = 1.0 / 2048 * gyro[0];
-	const double gy = 1.0 / 2048 * gyro[1];
-	const double gz = 1.0 / 2048 * gyro[2];
+	if (!(timestamp ||
+	    accel[0] || accel[1] || accel[2] ||
+	    gyro[0] || gyro[1] || gyro[2]))
+		return;
 
-	touch->imu.linear_acceleration.x = ax;
-	touch->imu.linear_acceleration.y = ay;
-	touch->imu.linear_acceleration.z = az;
+	struct imu_sample *sample = &touch->imu.sample;
+	struct rift_touch_calibration *c = &touch->calibration;
+	const double a[3] = {
+		9.81 / 2048 * accel[0],
+		9.81 / 2048 * accel[1],
+		9.81 / 2048 * accel[2],
+	};
+	const double g[3] = {
+		2.0 / 2048 * gyro[0],
+		2.0 / 2048 * gyro[1],
+		2.0 / 2048 * gyro[2],
+	};
+	const double ax = c->acc_calibration[0] * a[0] +
+			  c->acc_calibration[1] * a[1] +
+			  c->acc_calibration[2] * a[2];
+	const double ay = c->acc_calibration[3] * a[0] +
+			  c->acc_calibration[4] * a[1] +
+			  c->acc_calibration[5] * a[2];
+	const double az = c->acc_calibration[6] * a[0] +
+			  c->acc_calibration[7] * a[1] +
+			  c->acc_calibration[8] * a[2];
+	const double gx = c->gyro_calibration[0] * g[0] +
+			  c->gyro_calibration[1] * g[1] +
+			  c->gyro_calibration[2] * g[2];
+	const double gy = c->gyro_calibration[3] * g[0] +
+			  c->gyro_calibration[4] * g[1] +
+			  c->gyro_calibration[5] * g[2];
+	const double gz = c->gyro_calibration[6] * g[0] +
+			  c->gyro_calibration[7] * g[1] +
+			  c->gyro_calibration[8] * g[2];
 
-	touch->imu.angular_velocity.x = gx;
-	touch->imu.angular_velocity.y = gy;
-	touch->imu.angular_velocity.z = gz;
+	sample->time = timestamp;
+	sample->acceleration.x = ax;
+	sample->acceleration.y = ay;
+	sample->acceleration.z = az;
+	sample->angular_velocity.x = gx;
+	sample->angular_velocity.y = gy;
+	sample->angular_velocity.z = gz;
 
-	/* Advance */
 	const double dt_s = 1e-6 * dt;
-	double scale = dt_s * 0.5;
-	dquat *q = &touch->imu.pose.rotation;
-	dquat dq;
-
-	dq.w = scale * (-q->x * gx - q->y * gy - q->z * gz);
-	dq.x = scale * (q->w * gx + q->y * gz - q->z * gy);
-	dq.y = scale * (q->w * gy - q->x * gz + q->z * gx);
-	dq.z = scale * (q->w * gz + q->x * gy - q->y * gx);
-
-	q->w += dq.w;
-	q->x += dq.x;
-	q->y += dq.y;
-	q->z += dq.z;
-
-	scale = 1.0 / sqrt(q->w * q->w + q->x * q->x + q->y * q->y + q->z * q->z);
-	q->w *= scale;
-	q->x *= scale;
-	q->y *= scale;
-	q->z *= scale;
-
-	touch->imu.linear_velocity.x += ax;
-	touch->imu.linear_velocity.y += ay;
-	touch->imu.linear_velocity.z += az;
 
 	switch (message->touch.adc_channel) {
 	case RIFT_TOUCH_CONTROLLER_ADC_A_X:
