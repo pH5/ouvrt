@@ -63,6 +63,7 @@ struct rift_touch_controller {
 	uint16_t cap_rest;
 	uint16_t cap_stick;
 	uint16_t cap_trigger;
+	uint8_t haptic_counter;
 };
 
 struct rift_radio {

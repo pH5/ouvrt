@@ -388,6 +388,8 @@ struct rift_remote_message {
 #define RIFT_TOUCH_CONTROLLER_ADC_A_X		0x04
 #define RIFT_TOUCH_CONTROLLER_ADC_REST		0x08
 
+#define RIFT_TOUCH_CONTROLLER_HAPTIC_COUNTER	0x23
+
 struct rift_touch_message {
 	__le32 timestamp;
 	__le16 accel[3];

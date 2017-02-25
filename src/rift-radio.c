@@ -337,6 +337,14 @@ static void rift_decode_touch_message(struct rift_touch_controller *touch,
 	const double dt_s = 1e-6 * dt;
 
 	switch (message->touch.adc_channel) {
+	case RIFT_TOUCH_CONTROLLER_HAPTIC_COUNTER:
+		/*
+		 * The haptic counter seems to be used as read pointer into a
+		 * 256-byte ringbuffer. It is incremented about 5 times per
+		 * 16 ms interval (312.5 Hz).
+		 */
+		touch->haptic_counter = adc_value;
+		break;
 	case RIFT_TOUCH_CONTROLLER_ADC_A_X:
 		touch->cap_a_x = adc_value;
 		break;
