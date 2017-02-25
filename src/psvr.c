@@ -181,6 +181,8 @@ static int psvr_start(OuvrtDevice *dev)
 	psvr_set_headset_power(dev->fds[1], true);
 	g_print("PSVR: Sent power on message\n");
 
+	dev->serial = g_strdup("PSVR");
+
 	return 0;
 }
 
