@@ -15,6 +15,7 @@
 #include "device.h"
 #include "hidraw.h"
 #include "imu.h"
+#include "telemetry.h"
 
 struct _OuvrtPSVRPrivate {
 	bool power;
@@ -98,8 +99,20 @@ void psvr_decode_sensor_message(OuvrtPSVR *self, const unsigned char *buf,
 	int32_t dt;
 	int i;
 
-	if (message->button != self->priv->button)
+	if (message->button != self->priv->button) {
+		int i;
+		int num_buttons = 0;
+		uint8_t btns[4];
+		for (i = 0; i < 4; i++) {
+			if ((self->priv->button ^ message->button) & (1 << i)) {
+				btns[num_buttons++] = i |
+					((message->button & (1 << i)) ? 0x80 : 0);
+			}
+		}
+		telemetry_send_buttons(self->dev.id, btns, num_buttons);
+
 		self->priv->button = message->button;
+	}
 
 	if (message->state != self->priv->state) {
 		self->priv->state = message->state;
@@ -129,6 +142,8 @@ void psvr_decode_sensor_message(OuvrtPSVR *self, const unsigned char *buf,
 		raw.gyro[0] = (int16_t)__le16_to_cpu(sample->gyro[0]);
 		raw.gyro[1] = (int16_t)__le16_to_cpu(sample->gyro[1]);
 		raw.gyro[2] = (int16_t)__le16_to_cpu(sample->gyro[2]);
+
+		telemetry_send_raw_imu_sample(self->dev.id, &raw);
 
 		dt = raw.time - self->priv->last_timestamp;
 		if (dt < 0)
@@ -160,7 +175,11 @@ void psvr_decode_sensor_message(OuvrtPSVR *self, const unsigned char *buf,
 		imu.angular_velocity.z = raw.gyro[2] * -(16.0 / 16384);
 		imu.time = 1e-6 * raw.time;
 
+		telemetry_send_imu_sample(self->dev.id, &imu);
+
 		pose_update(1e-6 * dt, &self->priv->imu.pose, &imu);
+
+		telemetry_send_pose(self->dev.id, &self->priv->imu.pose);
 
 		self->priv->last_timestamp = raw.time;
 	}
