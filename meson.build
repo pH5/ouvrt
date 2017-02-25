@@ -62,6 +62,7 @@ ouvrtd_sources = [
 	'src/debug.h',
 	'src/device.c',
 	'src/device.h',
+	'src/imu.c',
 	'src/imu.h',
 	'src/json.c',
 	'src/json.h',

@@ -55,4 +55,6 @@ struct imu_state {
 	vec3 linear_acceleration;
 };
 
+void pose_update(double dt, struct dpose *pose, struct imu_sample *sample);
+
 #endif /* __IMU_H__ */
