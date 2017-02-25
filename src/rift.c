@@ -789,6 +789,18 @@ static void rift_thread(OuvrtDevice *dev)
 
 			rift_decode_radio_report(&rift->priv->radio, dev->fds[1],
 						 buf, sizeof(buf));
+
+			struct rift_wireless_device *c;
+
+			c = &rift->priv->radio.remote.base;
+			if (c->active && !c->dev_id)
+				c->dev_id = ouvrt_device_claim_id(dev, c->serial);
+			c = &rift->priv->radio.touch[0].base;
+			if (c->active && !c->dev_id)
+				c->dev_id = ouvrt_device_claim_id(dev, c->serial);
+			c = &rift->priv->radio.touch[1].base;
+			if (c->active && !c->dev_id)
+				c->dev_id = ouvrt_device_claim_id(dev, c->serial);
 		}
 	}
 }

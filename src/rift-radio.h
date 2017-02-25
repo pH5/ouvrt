@@ -10,6 +10,7 @@
 #include <stdbool.h>
 
 struct rift_wireless_device {
+	unsigned long dev_id;
 	const char *name;
 	uint32_t address;
 	uint8_t id;
