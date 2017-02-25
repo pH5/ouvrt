@@ -7,12 +7,14 @@
 #include <errno.h>
 #include <poll.h>
 #include <stdbool.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "psvr.h"
 #include "psvr-hid-reports.h"
 #include "device.h"
 #include "hidraw.h"
+#include "imu.h"
 
 struct _OuvrtPSVRPrivate {
 	bool power;
@@ -87,19 +89,11 @@ void psvr_decode_sensor_message(OuvrtPSVR *self, const unsigned char *buf,
 {
 	const struct psvr_sensor_message *message = (void *)buf;
 	uint16_t volume = __le16_to_cpu(message->volume);
-	uint32_t timestamp = __le32_to_cpu(message->sample[0].timestamp);
-	int16_t gyro[3] = {
-		__le16_to_cpu(message->sample[0].gyro[0]),
-		__le16_to_cpu(message->sample[0].gyro[1]),
-		__le16_to_cpu(message->sample[0].gyro[2])
-	};
-	int16_t accel[3] = {
-		__le16_to_cpu(message->sample[0].accel[0]),
-		__le16_to_cpu(message->sample[0].accel[1]),
-		__le16_to_cpu(message->sample[0].accel[2])
-	};
 	uint16_t button_raw = __be16_to_cpu(message->button_raw);
 	uint16_t proximity = __le16_to_cpu(message->proximity);
+	struct raw_imu_sample raw;
+	int32_t dt;
+	int i;
 
 	if (message->state != self->priv->state) {
 		self->priv->state = message->state;
@@ -117,13 +111,34 @@ void psvr_decode_sensor_message(OuvrtPSVR *self, const unsigned char *buf,
 			self->priv->vrmode = false;
 	}
 
-	self->priv->last_timestamp = timestamp;
+	for (i = 0; i < 2; i++) {
+		const struct psvr_imu_sample *sample = &message->sample[i];
+
+		raw.time = __le32_to_cpu(sample->timestamp);
+		raw.acc[0] = (int16_t)__le16_to_cpu(sample->accel[0]);
+		raw.acc[1] = (int16_t)__le16_to_cpu(sample->accel[1]);
+		raw.acc[2] = (int16_t)__le16_to_cpu(sample->accel[2]);
+		raw.gyro[0] = (int16_t)__le16_to_cpu(sample->gyro[0]);
+		raw.gyro[1] = (int16_t)__le16_to_cpu(sample->gyro[1]);
+		raw.gyro[2] = (int16_t)__le16_to_cpu(sample->gyro[2]);
+
+		dt = raw.time - self->priv->last_timestamp;
+		if (dt < 0)
+			dt += (1 << 24);
+
+		if (dt < 440 || dt > 560) {
+			if (self->priv->last_timestamp == 0) {
+				self->priv->last_timestamp = raw.time;
+				break;
+			}
+		}
+
+		self->priv->last_timestamp = raw.time;
+	}
+
 	self->priv->last_seq = message->sequence;
 
 	(void)volume;
-	(void)timestamp;
-	(void)gyro;
-	(void)accel;
 	(void)button_raw;
 	(void)proximity;
 }
