@@ -230,7 +230,8 @@ static void vive_controller_usb_thread(OuvrtDevice *dev)
 				continue;
 			}
 			if (ret == 52 && buf[0] == VIVE_IMU_REPORT_ID) {
-				vive_imu_decode_message(&self->priv->imu, buf, ret);
+				vive_imu_decode_message(dev, &self->priv->imu,
+							buf, ret);
 			} else {
 				g_print("%s: Error, invalid %d-byte report 0x%02x\n",
 					dev->name, ret, buf[0]);

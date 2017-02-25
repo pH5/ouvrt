@@ -68,7 +68,8 @@ int vive_imu_get_range_modes(OuvrtDevice *dev, struct vive_imu *imu)
  * Decodes the periodic IMU sensor message sent by the Vive headset and wired
  * controllers.
  */
-void vive_imu_decode_message(struct vive_imu *imu, const void *buf, size_t len)
+void vive_imu_decode_message(OuvrtDevice *dev, struct vive_imu *imu,
+			     const void *buf, size_t len)
 {
 	const struct vive_imu_report *report = buf;
 	const struct vive_imu_sample *sample = report->sample;

@@ -21,6 +21,7 @@ struct vive_imu {
 };
 
 int vive_imu_get_range_modes(OuvrtDevice *dev, struct vive_imu *imu);
-void vive_imu_decode_message(struct vive_imu *imu, const void *buf, size_t len);
+void vive_imu_decode_message(OuvrtDevice *dev, struct vive_imu *imu,
+			     const void *buf, size_t len);
 
 #endif /* __VIVE_IMU_H__ */

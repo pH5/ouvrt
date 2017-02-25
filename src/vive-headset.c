@@ -253,7 +253,7 @@ static void vive_headset_thread(OuvrtDevice *dev)
 				continue;
 			}
 
-			vive_imu_decode_message(&self->priv->imu, buf, 52);
+			vive_imu_decode_message(dev, &self->priv->imu, buf, 52);
 		}
 		if (fds[1].revents & POLLIN) {
 			ret = read(dev->fds[1], buf, sizeof(buf));
