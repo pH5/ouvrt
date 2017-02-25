@@ -92,6 +92,7 @@ void psvr_decode_sensor_message(OuvrtPSVR *self, const unsigned char *buf,
 	uint16_t button_raw = __be16_to_cpu(message->button_raw);
 	uint16_t proximity = __le16_to_cpu(message->proximity);
 	struct raw_imu_sample raw;
+	struct imu_sample imu;
 	int32_t dt;
 	int i;
 
@@ -110,6 +111,8 @@ void psvr_decode_sensor_message(OuvrtPSVR *self, const unsigned char *buf,
 		    self->priv->vrmode)
 			self->priv->vrmode = false;
 	}
+
+	memset(&imu, 0, sizeof(imu));
 
 	for (i = 0; i < 2; i++) {
 		const struct psvr_imu_sample *sample = &message->sample[i];
@@ -132,6 +135,27 @@ void psvr_decode_sensor_message(OuvrtPSVR *self, const unsigned char *buf,
 				break;
 			}
 		}
+
+		/*
+		 * Transform from IMU coordinate system into common coordinate
+		 * system:
+		 *
+		 *    x                                y
+		 *    |          ⎡ 0  1  0 ⎤ ⎡x⎤       |
+		 *    +-- y  ->  ⎢ 1  0  0 ⎥ ⎢y⎥  ->   +-- x
+		 *   /           ⎣ 0  0 -1 ⎦ ⎣z⎦      /
+		 * -z                                z
+		 *
+		 */
+		imu.acceleration.x = raw.acc[1] *  (9.81 / 16384);
+		imu.acceleration.y = raw.acc[0] *  (9.81 / 16384);
+		imu.acceleration.z = raw.acc[2] * -(9.81 / 16384);
+		imu.angular_velocity.x = raw.gyro[1] *  (16.0 / 16384);
+		imu.angular_velocity.y = raw.gyro[0] *  (16.0 / 16384);
+		imu.angular_velocity.z = raw.gyro[2] * -(16.0 / 16384);
+		imu.time = 1e-6 * raw.time;
+
+		(void)imu;
 
 		self->priv->last_timestamp = raw.time;
 	}
