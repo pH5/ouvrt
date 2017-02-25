@@ -247,7 +247,7 @@ static void psvr_thread(OuvrtDevice *dev)
 static void psvr_stop(OuvrtDevice *dev)
 {
 	psvr_set_headset_power(dev->fds[1], false);
-	psvr_set_processing_box_power(dev->fds[1], false);
+//	psvr_set_processing_box_power(dev->fds[1], false);
 	g_print("PSVR: Sent power off message\n");
 }
 
