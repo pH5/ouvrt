@@ -21,6 +21,7 @@
 #include "imu.h"
 #include "math.h"
 #include "leds.h"
+#include "telemetry.h"
 #include "tracker.h"
 
 /* 44 LEDs + 1 IMU on CV1 */
@@ -45,6 +46,7 @@ struct _OuvrtRift {
 	gboolean flicker;
 	uint32_t last_sample_timestamp;
 	struct rift_radio radio;
+	struct imu_state imu;
 };
 
 G_DEFINE_TYPE(OuvrtRift, ouvrt_rift, OUVRT_TYPE_DEVICE)
@@ -516,7 +518,7 @@ static void rift_decode_sensor_message(OuvrtRift *rift,
 	uint16_t exposure_count;
 	uint32_t exposure_timestamp;
 
-	struct imu_state state;
+	struct imu_sample sample;
 	int32_t dt;
 	int i;
 
@@ -527,11 +529,11 @@ static void rift_decode_sensor_message(OuvrtRift *rift,
 	sample_count = __le16_to_cpu(message->sample_count);
 	/* 10⁻²°C */
 	temperature = __le16_to_cpu(message->temperature);
-	state.sample.temperature = 0.01f * temperature;
+	sample.temperature = 0.01f * temperature;
 
 	sample_timestamp = __le32_to_cpu(message->timestamp);
 	/* µs, wraps every ~72 min */
-	state.sample.time = 1e-6 * sample_timestamp;
+	sample.time = 1e-6 * sample_timestamp;
 
 	dt = sample_timestamp - rift->last_sample_timestamp;
 	rift->last_sample_timestamp = sample_timestamp;
@@ -551,9 +553,9 @@ static void rift_decode_sensor_message(OuvrtRift *rift,
 	mag[0] = __le16_to_cpu(message->mag[0]);
 	mag[1] = __le16_to_cpu(message->mag[1]);
 	mag[2] = __le16_to_cpu(message->mag[2]);
-	state.sample.magnetic_field.x = 0.0001f * mag[0];
-	state.sample.magnetic_field.y = 0.0001f * mag[1];
-	state.sample.magnetic_field.z = 0.0001f * mag[2];
+	sample.magnetic_field.x = 1e-4f * mag[0];
+	sample.magnetic_field.y = 1e-4f * mag[1];
+	sample.magnetic_field.z = 1e-4f * mag[2];
 
 	frame_count = __le16_to_cpu(message->frame_count);
 	frame_timestamp = __le32_to_cpu(message->frame_timestamp);
@@ -566,12 +568,18 @@ static void rift_decode_sensor_message(OuvrtRift *rift,
 	for (i = 0; i < num_samples; i++) {
 		/* 10⁻⁴ m/s² */
 		unpack_3x21bit(1e-4f, &message->sample[i].accel,
-			       &state.sample.acceleration);
+			       &sample.acceleration);
 		/* 10⁻⁴ rad/s */
 		unpack_3x21bit(1e-4f, &message->sample[i].gyro,
-			       &state.sample.angular_velocity);
+			       &sample.angular_velocity);
 
-		debug_imu_fifo_in(&state, 1);
+		telemetry_send_imu_sample(rift->dev.id, &sample);
+
+		pose_update(1e-6 * dt, &rift->imu.pose, &sample);
+
+		telemetry_send_pose(rift->dev.id, &rift->imu.pose);
+
+		debug_imu_fifo_in(&rift->imu, 1);
 	}
 
 	(void)exposure_timestamp;
@@ -879,6 +887,7 @@ static void ouvrt_rift_init(OuvrtRift *self)
 	self->flicker = false;
 	self->last_sample_timestamp = 0;
 	rift_radio_init(&self->radio);
+	self->imu.pose.rotation.w = 1.0;
 }
 
 /*
