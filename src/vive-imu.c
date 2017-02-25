@@ -12,6 +12,7 @@
 #include "vive-hid-reports.h"
 #include "hidraw.h"
 #include "imu.h"
+#include "telemetry.h"
 
 static inline int oldest_sequence_index(uint8_t a, uint8_t b, uint8_t c)
 {
@@ -115,6 +116,8 @@ void vive_imu_decode_message(OuvrtDevice *dev, struct vive_imu *imu,
 		dt = time - (uint32_t)imu->time;
 		raw.time = imu->time + dt;
 
+		telemetry_send_raw_imu_sample(dev->id, &raw);
+
 		scale = imu->accel_range / 32768.0;
 		s.acceleration.x = -scale * imu->acc_scale.x * raw.acc[0] -
 				   imu->acc_bias.x;
@@ -133,11 +136,14 @@ void vive_imu_decode_message(OuvrtDevice *dev, struct vive_imu *imu,
 
 		s.time = (double)raw.time / 48e6;
 
-		(void)s;
+		telemetry_send_imu_sample(dev->id, &s);
 
 		if ((dt > 47950 && dt < 48050) ||
-		    (dt > 190000 && dt < 194000))
+		    (dt > 190000 && dt < 194000)) {
 			pose_update(dt / 48e6, &imu->state.pose, &s);
+
+			telemetry_send_pose(dev->id, &imu->state.pose);
+		}
 
 		imu->sequence = seq;
 		imu->time = raw.time;

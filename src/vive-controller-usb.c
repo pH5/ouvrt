@@ -23,6 +23,7 @@
 #include "lighthouse.h"
 #include "math.h"
 #include "usb-ids.h"
+#include "telemetry.h"
 
 struct _OuvrtViveControllerUSBPrivate {
 	JsonNode *config;
@@ -144,12 +145,26 @@ void vive_controller_decode_button_message(OuvrtViveControllerUSB *self,
 					   const unsigned char *buf, size_t len)
 {
 	struct vive_controller_button_report *report = (void *)buf;
-	uint32_t buttons = report->buttons;
+	uint32_t buttons = __le32_to_cpu(report->buttons);
 
 	(void)len;
 
-	if (buttons != self->priv->buttons)
+	if (report->battery && !report->buttons)
+		return;
+
+	if (buttons != self->priv->buttons) {
+		int i;
+		int num_buttons = 0;
+		uint8_t btns[32];
+
+		for (i = 0; i < 32; i++) {
+			if ((self->priv->buttons ^ buttons) & (1 << i))
+				btns[num_buttons++] = i | ((buttons & (1 << i)) ? 0x80 : 0);
+		}
+		telemetry_send_buttons(self->dev.id, btns, num_buttons);
+
 		self->priv->buttons = buttons;
+	}
 }
 
 /*
@@ -184,6 +199,8 @@ static void vive_controller_usb_thread(OuvrtDevice *dev)
 	unsigned char buf[64];
 	struct pollfd fds[3];
 	int ret;
+
+	self->priv->watchman.id = dev->id;
 
 	while (dev->active) {
 		fds[0].fd = dev->fds[0];
