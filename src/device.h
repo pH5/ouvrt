@@ -34,6 +34,7 @@ typedef struct _OuvrtDevicePrivate	OuvrtDevicePrivate;
 struct _OuvrtDevice {
 	GObject parent_instance;
 
+	unsigned long id;
 	enum device_type type;
 	union {
 		char *devnode;
@@ -61,6 +62,7 @@ struct _OuvrtDeviceClass {
 
 GType ouvrt_device_get_type(void);
 
+unsigned long ouvrt_device_claim_id(OuvrtDevice *dev, const char *serial);
 int ouvrt_device_start(OuvrtDevice *dev);
 void ouvrt_device_stop(OuvrtDevice *dev);
 

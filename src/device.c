@@ -18,6 +18,8 @@ struct _OuvrtDevicePrivate {
 
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtDevice, ouvrt_device, G_TYPE_OBJECT)
 
+static GHashTable *serial_to_id_table;
+
 /*
  * Stops the device before disposing of it
  */
@@ -82,6 +84,31 @@ static gpointer device_start_routine(gpointer data)
 }
 
 /*
+ * Creates or returns an existing stable id for a given serial number.
+ */
+unsigned long ouvrt_device_claim_id(OuvrtDevice *dev, const char *serial)
+{
+	unsigned long id;
+
+	if (!serial_to_id_table)
+		serial_to_id_table = g_hash_table_new(g_str_hash, g_str_equal);
+
+	if (!g_hash_table_lookup_extended(serial_to_id_table, serial, NULL,
+					  (gpointer *)&id)) {
+		id = g_hash_table_size(serial_to_id_table);
+		g_hash_table_replace(serial_to_id_table, g_strdup(serial),
+				     (gpointer)id);
+		g_print("%s: acquired new id %lu for serial %s\n", dev->name,
+			id, serial);
+	} else {
+		g_print("%s: reclaimed id %lu for serial %s\n", dev->name, id,
+			serial);
+	}
+
+	return id;
+}
+
+/*
  * Starts the device and its worker thread.
  */
 int ouvrt_device_start(OuvrtDevice *dev)
@@ -106,6 +133,9 @@ int ouvrt_device_start(OuvrtDevice *dev)
 	ret = OUVRT_DEVICE_GET_CLASS(dev)->start(dev);
 	if (ret < 0)
 		return ret;
+
+	if (dev->serial)
+		dev->id = ouvrt_device_claim_id(dev, dev->serial);
 
 	dev->active = TRUE;
 	dev->priv->thread = g_thread_new(NULL, device_start_routine, dev);
