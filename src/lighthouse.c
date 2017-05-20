@@ -10,6 +10,7 @@
 #include <zlib.h>
 #include "lighthouse.h"
 #include "math.h"
+#include "telemetry.h"
 
 struct lighthouse_ootx_report {
 	__le16 version;
@@ -247,6 +248,15 @@ static void lighthouse_base_handle_frame(struct lighthouse_watchman *watchman,
 		return;
 
 	frame->frame_duration = sync_timestamp - frame->sync_timestamp;
+
+	/*
+	 * If a single base station is running in 'B' mode, skipped frames
+	 * will still contain old data.
+	 */
+	if (frame->frame_duration > 1000000)
+		return;
+
+	telemetry_send_lighthouse_frame(watchman->id, frame);
 }
 
 /*
