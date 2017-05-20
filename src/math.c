@@ -51,7 +51,7 @@ float f16_to_float(uint16_t f16)
 	return u.f32;
 }
 
-void dquat_from_axis_angle(dquat *q, dvec3 *axis, double angle)
+void dquat_from_axis_angle(dquat *q, const dvec3 *axis, double angle)
 {
 	const double half_angle = angle * 0.5;
 	const double sin_half_angle = sin(half_angle);
