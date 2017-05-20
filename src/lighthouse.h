@@ -6,11 +6,12 @@
 #ifndef __LIGHTHOUSE_H__
 #define __LIGHTHOUSE_H__
 
-#include <string.h>
+#include <math.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
-#include <math.h>
 
 #include "math.h"
 #include "tracking-model.h"
@@ -70,16 +71,16 @@ struct lighthouse_sensor {
 
 struct lighthouse_watchman {
 	unsigned int id;
-	const gchar *name;
+	const char *name;
 	struct tracking_model model;
-	gboolean base_visible;
+	bool base_visible;
 	struct lighthouse_base base[2];
 	struct lighthouse_base *active_base;
 	uint32_t seen_by;
 	uint32_t last_timestamp;
 	struct lighthouse_sensor sensor[32];
 	struct lighthouse_pulse last_sync;
-	gboolean sync_lock;
+	bool sync_lock;
 };
 
 void lighthouse_watchman_handle_pulse(struct lighthouse_watchman *watchman,
