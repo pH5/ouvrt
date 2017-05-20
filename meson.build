@@ -10,7 +10,7 @@ glib_dep = dependency('glib-2.0')
 gobj_dep = dependency('gobject-2.0', version : '>= 2.44')
 gst_dep = dependency('gstreamer-1.0', required : get_option('gstreamer'))
 json_glib_dep = dependency('json-glib-1.0', version : '>= 1.2')
-opencv_dep = dependency('opencv', required : false)
+opencv_dep = dependency('opencv', required : get_option('opencv'))
 thread_dep = dependency('threads')
 udev_dep = dependency('libudev')
 zlib_dep = dependency('zlib')
@@ -18,9 +18,13 @@ cc = meson.get_compiler('c')
 m_dep = cc.find_library('m', required : false)
 
 build_gst = gst_dep.found() and get_option('gstreamer')
+build_opencv = opencv_dep.found() and get_option('opencv')
 
 if build_gst
 	add_global_arguments('-DHAVE_GST=1', language : 'c')
+endif
+if build_opencv
+	add_global_arguments('-DHAVE_OPENCV=1', language : 'c')
 endif
 
 gdbus_codegen = find_program('gdbus-codegen')
@@ -110,7 +114,7 @@ ouvrtd_sources = [
 if build_gst
 	ouvrtd_sources += [ 'src/debug-gst.c' ]
 endif
-if opencv_dep.found()
+if build_opencv
 	ouvrtd_sources += [ 'src/opencv.cpp' ]
 endif
 ouvrtd_deps = [
@@ -118,13 +122,15 @@ ouvrtd_deps = [
 	gio_dep,
 	json_glib_dep,
 	m_dep,
-	opencv_dep,
 	thread_dep,
 	udev_dep,
 	zlib_dep
 ]
 if build_gst
 	ouvrtd_deps += gst_dep
+endif
+if build_opencv
+	ouvrtd_deps += opencv_dep
 endif
 executable('ouvrtd', ouvrtd_sources,
 	dependencies : ouvrtd_deps,

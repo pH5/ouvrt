@@ -1,1 +1,2 @@
 option('gstreamer', type : 'boolean', value : true, description : 'Use GStreamer')
+option('opencv', type : 'boolean', value : true, description : 'Use OpenCV')

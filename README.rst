@@ -66,11 +66,11 @@ build procedure::
   $ cd builddir
   $ ninja
 
-To build without the GStreamer dependency, disable the corresponding option
-before calling ninja::
+To build without GStreamer or OpenCV dependency, disable the corresponding
+options before calling ninja::
 
   $ cd builddir
-  $ meson configure -D gstreamer=false
+  $ meson configure -D gstreamer=false -D opencv=false
 
 3. ouvrtd
 ---------
