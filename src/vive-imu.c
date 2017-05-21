@@ -93,6 +93,7 @@ void vive_imu_decode_message(OuvrtDevice *dev, struct vive_imu *imu,
 		uint32_t time;
 		double scale;
 		uint8_t seq;
+		int32_t dt;
 
 		sample = report->sample + i;
 		seq = sample->seq;
@@ -111,24 +112,32 @@ void vive_imu_decode_message(OuvrtDevice *dev, struct vive_imu *imu,
 		raw.gyro[2] = (int16_t)__le16_to_cpu(sample->gyro[2]);
 
 		time = __le32_to_cpu(sample->time);
-		raw.time = imu->time & ~0xffffffff;
-		if (time < (imu->time & 0xffffffff))
-			raw.time += 0x100000000;
-		raw.time |= time;
+		dt = time - (uint32_t)imu->time;
+		raw.time = imu->time + dt;
 
 		scale = imu->accel_range / 32768.0;
-		s.acceleration.x = scale * raw.acc[0];
-		s.acceleration.y = scale * raw.acc[1];
-		s.acceleration.z = scale * raw.acc[2];
+		s.acceleration.x = -scale * imu->acc_scale.x * raw.acc[0] -
+				   imu->acc_bias.x;
+		s.acceleration.z = -scale * imu->acc_scale.y * raw.acc[1] -
+				   imu->acc_bias.y;
+		s.acceleration.y = -scale * imu->acc_scale.z * raw.acc[2] -
+				   imu->acc_bias.z;
 
 		scale = imu->gyro_range / 32768.0;
-		s.angular_velocity.x = scale * raw.gyro[0];
-		s.angular_velocity.y = scale * raw.gyro[1];
-		s.angular_velocity.z = scale * raw.gyro[2];
+		s.angular_velocity.x = -scale * imu->gyro_scale.x * raw.gyro[0] -
+				       imu->gyro_bias.x;
+		s.angular_velocity.z = -scale * imu->gyro_scale.y * raw.gyro[1] -
+				       imu->gyro_bias.y;
+		s.angular_velocity.y = -scale * imu->gyro_scale.z * raw.gyro[2] -
+				       imu->gyro_bias.z;
 
 		s.time = (double)raw.time / 48e6;
 
 		(void)s;
+
+		if ((dt > 47950 && dt < 48050) ||
+		    (dt > 190000 && dt < 194000))
+			pose_update(dt / 48e6, &imu->state.pose, &s);
 
 		imu->sequence = seq;
 		imu->time = raw.time;
