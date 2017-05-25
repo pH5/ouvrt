@@ -14,6 +14,7 @@
 #include "hidraw.h"
 #include "imu.h"
 #include "json.h"
+#include "telemetry.h"
 #include "tracking-model.h"
 
 static void rift_dump_report(const unsigned char *buf, size_t len)
@@ -334,9 +335,13 @@ static void rift_decode_touch_message(struct rift_touch_controller *touch,
 	sample->angular_velocity.y = gy;
 	sample->angular_velocity.z = gz;
 
+	telemetry_send_imu_sample(touch->base.dev_id, sample);
+
 	const double dt_s = 1e-6 * dt;
 
 	pose_update(dt_s, &touch->imu.pose, sample);
+
+	telemetry_send_pose(touch->base.dev_id, &touch->imu.pose);
 
 	float t;
 	if (trigger < c->trigger_mid_range) {
@@ -346,8 +351,10 @@ static void rift_decode_touch_message(struct rift_touch_controller *touch,
 		t = 0.5f - ((float)trigger - c->trigger_mid_range) /
 		    (c->trigger_max_range - c->trigger_mid_range) * 0.5f;
 	}
-	if (t != touch->trigger)
+	if (t != touch->trigger) {
 		touch->trigger = t;
+		telemetry_send_axis(touch->base.dev_id, 1, &touch->trigger, 1);
+	}
 
 	float gr;
 	if (grip < c->middle_mid_range) {
@@ -357,8 +364,10 @@ static void rift_decode_touch_message(struct rift_touch_controller *touch,
 		gr = 0.5f - ((float)grip - c->middle_mid_range) /
 		     (c->middle_max_range - c->middle_mid_range) * 0.5f;
 	}
-	if (gr != touch->grip)
+	if (gr != touch->grip) {
 		touch->grip = gr;
+		telemetry_send_axis(touch->base.dev_id, 2, &touch->grip, 1);
+	}
 
 	float joy[2];
 	if (stick[0] >= c->joy_x_dead_min && stick[0] <= c->joy_x_dead_max &&
@@ -374,6 +383,8 @@ static void rift_decode_touch_message(struct rift_touch_controller *touch,
 	if (joy[0] != touch->stick[0] || joy[1] != touch->stick[1]) {
 		touch->stick[0] = joy[0];
 		touch->stick[1] = joy[1];
+
+		telemetry_send_axis(touch->base.dev_id, 0, touch->stick, 2);
 	}
 
 	switch (message->touch.adc_channel) {
@@ -388,28 +399,45 @@ static void rift_decode_touch_message(struct rift_touch_controller *touch,
 	case RIFT_TOUCH_CONTROLLER_ADC_STICK:
 		touch->cap_stick = ((float)adc_value - c->cap_sense_min[0]) /
 				   (c->cap_sense_touch[0] - c->cap_sense_min[0]);
+		telemetry_send_axis(touch->base.dev_id, 3, &touch->cap_stick, 1);
 		break;
 	case RIFT_TOUCH_CONTROLLER_ADC_B_Y:
 		touch->cap_b_y = ((float)adc_value - c->cap_sense_min[1]) /
 				 (c->cap_sense_touch[1] - c->cap_sense_min[1]);
+		telemetry_send_axis(touch->base.dev_id, 4, &touch->cap_b_y, 1);
 		break;
 	case RIFT_TOUCH_CONTROLLER_ADC_TRIGGER:
 		touch->cap_trigger = ((float)adc_value - c->cap_sense_min[2]) /
 				     (c->cap_sense_touch[2] - c->cap_sense_min[2]);
+		telemetry_send_axis(touch->base.dev_id, 5, &touch->cap_trigger, 1);
 		break;
 	case RIFT_TOUCH_CONTROLLER_ADC_A_X:
 		touch->cap_a_x = ((float)adc_value - c->cap_sense_min[3]) /
 				 (c->cap_sense_touch[3] - c->cap_sense_min[3]);
+		telemetry_send_axis(touch->base.dev_id, 6, &touch->cap_a_x, 1);
 		break;
 	case RIFT_TOUCH_CONTROLLER_ADC_REST:
 		touch->cap_rest = ((float)adc_value - c->cap_sense_min[7]) /
 				  (c->cap_sense_touch[7] - c->cap_sense_min[7]);
+		telemetry_send_axis(touch->base.dev_id, 7, &touch->cap_a_x, 1);
 		break;
 	}
 
 	uint8_t buttons = message->touch.buttons;
-	if (touch->buttons != buttons)
+	if (touch->buttons != buttons) {
+		int i;
+		int num_buttons = 0;
+		uint8_t btns[4];
+		for (i = 0; i < 4; i++) {
+			if ((touch->buttons ^ buttons) & (1 << i)) {
+				btns[num_buttons++] = i |
+					((buttons & (1 << i)) ? 0x80 : 0);
+			}
+		}
+		telemetry_send_buttons(touch->base.dev_id, btns, num_buttons);
+
 		touch->buttons = buttons;
+	}
 }
 
 static int rift_touch_parse_calibration(struct rift_touch_controller *touch,
