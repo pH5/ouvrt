@@ -19,6 +19,7 @@
 struct _OuvrtPSVRPrivate {
 	bool power;
 	bool vrmode;
+	uint8_t button;
 	uint8_t state;
 	uint8_t last_seq;
 	uint32_t last_timestamp;
@@ -96,6 +97,9 @@ void psvr_decode_sensor_message(OuvrtPSVR *self, const unsigned char *buf,
 	struct imu_sample imu;
 	int32_t dt;
 	int i;
+
+	if (message->button != self->priv->button)
+		self->priv->button = message->button;
 
 	if (message->state != self->priv->state) {
 		self->priv->state = message->state;
