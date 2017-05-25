@@ -338,6 +338,44 @@ static void rift_decode_touch_message(struct rift_touch_controller *touch,
 
 	pose_update(dt_s, &touch->imu.pose, sample);
 
+	float t;
+	if (trigger < c->trigger_mid_range) {
+		t = 1.0f - ((float)trigger - c->trigger_min_range) /
+		    (c->trigger_mid_range - c->trigger_min_range) * 0.5f;
+	} else {
+		t = 0.5f - ((float)trigger - c->trigger_mid_range) /
+		    (c->trigger_max_range - c->trigger_mid_range) * 0.5f;
+	}
+	if (t != touch->trigger)
+		touch->trigger = t;
+
+	float gr;
+	if (grip < c->middle_mid_range) {
+		gr = 1.0f - ((float)grip - c->middle_min_range) /
+		     (c->middle_mid_range - c->middle_min_range) * 0.5f;
+	} else {
+		gr = 0.5f - ((float)grip - c->middle_mid_range) /
+		     (c->middle_max_range - c->middle_mid_range) * 0.5f;
+	}
+	if (gr != touch->grip)
+		touch->grip = gr;
+
+	float joy[2];
+	if (stick[0] >= c->joy_x_dead_min && stick[0] <= c->joy_x_dead_max &&
+	    stick[1] >= c->joy_y_dead_min && stick[1] <= c->joy_y_dead_max) {
+		joy[0] = 0.0f;
+		joy[1] = 0.0f;
+	} else {
+		joy[0] = ((float)stick[0] - c->joy_x_range_min) /
+			 (c->joy_x_range_max - c->joy_x_range_min) * 2.0f - 1.0f;
+		joy[1] = ((float)stick[1] - c->joy_y_range_min) /
+			 (c->joy_y_range_max - c->joy_y_range_min) * 2.0f - 1.0f;
+	}
+	if (joy[0] != touch->stick[0] || joy[1] != touch->stick[1]) {
+		touch->stick[0] = joy[0];
+		touch->stick[1] = joy[1];
+	}
+
 	switch (message->touch.adc_channel) {
 	case RIFT_TOUCH_CONTROLLER_HAPTIC_COUNTER:
 		/*
@@ -347,26 +385,31 @@ static void rift_decode_touch_message(struct rift_touch_controller *touch,
 		 */
 		touch->haptic_counter = adc_value;
 		break;
-	case RIFT_TOUCH_CONTROLLER_ADC_A_X:
-		touch->cap_a_x = adc_value;
+	case RIFT_TOUCH_CONTROLLER_ADC_STICK:
+		touch->cap_stick = ((float)adc_value - c->cap_sense_min[0]) /
+				   (c->cap_sense_touch[0] - c->cap_sense_min[0]);
 		break;
 	case RIFT_TOUCH_CONTROLLER_ADC_B_Y:
-		touch->cap_b_y = adc_value;
-		break;
-	case RIFT_TOUCH_CONTROLLER_ADC_REST:
-		touch->cap_rest = adc_value;
-		break;
-	case RIFT_TOUCH_CONTROLLER_ADC_STICK:
-		touch->cap_stick = adc_value;
+		touch->cap_b_y = ((float)adc_value - c->cap_sense_min[1]) /
+				 (c->cap_sense_touch[1] - c->cap_sense_min[1]);
 		break;
 	case RIFT_TOUCH_CONTROLLER_ADC_TRIGGER:
-		touch->cap_trigger = adc_value;
+		touch->cap_trigger = ((float)adc_value - c->cap_sense_min[2]) /
+				     (c->cap_sense_touch[2] - c->cap_sense_min[2]);
+		break;
+	case RIFT_TOUCH_CONTROLLER_ADC_A_X:
+		touch->cap_a_x = ((float)adc_value - c->cap_sense_min[3]) /
+				 (c->cap_sense_touch[3] - c->cap_sense_min[3]);
+		break;
+	case RIFT_TOUCH_CONTROLLER_ADC_REST:
+		touch->cap_rest = ((float)adc_value - c->cap_sense_min[7]) /
+				  (c->cap_sense_touch[7] - c->cap_sense_min[7]);
 		break;
 	}
 
-	(void)trigger;
-	(void)grip;
-	(void)stick;
+	uint8_t buttons = message->touch.buttons;
+	if (touch->buttons != buttons)
+		touch->buttons = buttons;
 }
 
 static int rift_touch_parse_calibration(struct rift_touch_controller *touch,

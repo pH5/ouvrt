@@ -58,12 +58,16 @@ struct rift_touch_controller {
 	struct tracking_model model;
 	struct imu_state imu;
 	uint32_t last_timestamp;
-	uint16_t cap_a_x;
-	uint16_t cap_b_y;
-	uint16_t cap_rest;
-	uint16_t cap_stick;
-	uint16_t cap_trigger;
+	float trigger;
+	float grip;
+	float stick[2];
+	float cap_a_x;
+	float cap_b_y;
+	float cap_rest;
+	float cap_stick;
+	float cap_trigger;
 	uint8_t haptic_counter;
+	uint8_t buttons;
 };
 
 struct rift_radio {
