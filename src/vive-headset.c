@@ -304,6 +304,7 @@ static void ouvrt_vive_headset_init(OuvrtViveHeadset *self)
 	self->priv = ouvrt_vive_headset_get_instance_private(self);
 	self->priv->imu.sequence = 0;
 	self->priv->imu.time = 0;
+	self->priv->imu.state.pose.rotation.w = 1.0;
 	lighthouse_watchman_init(&self->priv->watchman);
 }
 

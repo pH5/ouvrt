@@ -8,10 +8,12 @@
 
 #include "device.h"
 #include "math.h"
+#include "imu.h"
 
 struct vive_imu {
 	uint64_t time;
 	uint8_t sequence;
+	struct imu_state state;
 	double gyro_range;
 	double accel_range;
 	vec3 acc_bias;

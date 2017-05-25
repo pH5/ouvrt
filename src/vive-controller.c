@@ -515,6 +515,7 @@ static void ouvrt_vive_controller_init(OuvrtViveController *self)
 	self->priv->connected = FALSE;
 	self->priv->imu.sequence = 0;
 	self->priv->imu.time = 0;
+	self->priv->imu.state.pose.rotation.w = 1.0;
 	lighthouse_watchman_init(&self->priv->watchman);
 }
 
