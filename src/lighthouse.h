@@ -88,4 +88,4 @@ void lighthouse_watchman_handle_pulse(struct lighthouse_watchman *watchman,
 				      uint32_t timestamp);
 void lighthouse_watchman_init(struct lighthouse_watchman *watchman);
 
-#endif
+#endif /* __LIGHTHOUSE_H__ */
