@@ -30,6 +30,6 @@ void estimate_initial_pose(struct blob *blobs, int num_blobs,
 	(void)trans;
 	(void)use_extrinsic_guess;
 }
-#endif
+#endif /* HAVE_OPENCV */
 
 #endif /* __OPENCV_H__ */
