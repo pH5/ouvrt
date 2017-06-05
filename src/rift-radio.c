@@ -11,6 +11,7 @@
 
 #include "rift-hid-reports.h"
 #include "rift-radio.h"
+#include "buttons.h"
 #include "hidraw.h"
 #include "imu.h"
 #include "json.h"
@@ -246,14 +247,43 @@ static int rift_radio_get_firmware_version(int fd, int device_type,
 	return 0;
 }
 
+static const struct button_map remote_button_map[9] = {
+	{ RIFT_REMOTE_BUTTON_UP, OUVRT_BUTTON_UP },
+	{ RIFT_REMOTE_BUTTON_DOWN, OUVRT_BUTTON_DOWN },
+	{ RIFT_REMOTE_BUTTON_LEFT, OUVRT_BUTTON_LEFT },
+	{ RIFT_REMOTE_BUTTON_RIGHT, OUVRT_BUTTON_RIGHT },
+	{ RIFT_REMOTE_BUTTON_OK, OUVRT_BUTTON_THUMB },
+	{ RIFT_REMOTE_BUTTON_PLUS, OUVRT_BUTTON_PLUS },
+	{ RIFT_REMOTE_BUTTON_MINUS, OUVRT_BUTTON_MINUS },
+	{ RIFT_REMOTE_BUTTON_OCULUS, OUVRT_BUTTON_SYSTEM },
+	{ RIFT_REMOTE_BUTTON_BACK, OUVRT_BUTTON_BACK },
+};
+
 static void rift_decode_remote_message(struct rift_remote *remote,
 				       const struct rift_radio_message *message)
 {
 	int16_t buttons = __le16_to_cpu(message->remote.buttons);
 
-	if (remote->buttons != buttons)
+	if (remote->buttons != buttons) {
+		ouvrt_handle_buttons(remote->base.dev_id, buttons,
+				     remote->buttons, 9, remote_button_map);
 		remote->buttons = buttons;
+	}
 }
+
+static const struct button_map touch_left_button_map[4] = {
+	{ RIFT_TOUCH_CONTROLLER_BUTTON_X, OUVRT_BUTTON_X },
+	{ RIFT_TOUCH_CONTROLLER_BUTTON_Y, OUVRT_BUTTON_Y },
+	{ RIFT_TOUCH_CONTROLLER_BUTTON_MENU, OUVRT_BUTTON_MENU },
+	{ RIFT_TOUCH_CONTROLLER_BUTTON_STICK, OUVRT_BUTTON_JOYSTICK },
+};
+
+static const struct button_map touch_right_button_map[4] = {
+	{ RIFT_TOUCH_CONTROLLER_BUTTON_A, OUVRT_BUTTON_A },
+	{ RIFT_TOUCH_CONTROLLER_BUTTON_B, OUVRT_BUTTON_B },
+	{ RIFT_TOUCH_CONTROLLER_BUTTON_OCULUS, OUVRT_BUTTON_SYSTEM },
+	{ RIFT_TOUCH_CONTROLLER_BUTTON_STICK, OUVRT_BUTTON_JOYSTICK },
+};
 
 static void rift_decode_touch_message(struct rift_touch_controller *touch,
 				      const struct rift_radio_message *message)
@@ -425,18 +455,14 @@ static void rift_decode_touch_message(struct rift_touch_controller *touch,
 	}
 
 	uint8_t buttons = message->touch.buttons;
-	if (touch->buttons != buttons) {
-		int i;
-		int num_buttons = 0;
-		uint8_t btns[4];
-		for (i = 0; i < 4; i++) {
-			if ((touch->buttons ^ buttons) & (1 << i)) {
-				btns[num_buttons++] = i |
-					((buttons & (1 << i)) ? 0x80 : 0);
-			}
-		}
-		telemetry_send_buttons(touch->base.dev_id, btns, num_buttons);
+	if (buttons != touch->buttons) {
+		const struct button_map *map;
 
+		map = (touch->base.id == RIFT_TOUCH_CONTROLLER_LEFT) ?
+		      touch_left_button_map : touch_right_button_map;
+
+		ouvrt_handle_buttons(touch->base.id, buttons, touch->buttons,
+				     4, map);
 		touch->buttons = buttons;
 	}
 }
