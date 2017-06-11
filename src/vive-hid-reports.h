@@ -113,6 +113,21 @@ struct vive_firmware_version_report {
 	__u8 reserved[13];
 } __attribute__((packed));
 
+#define VIVE_CONFIG_START_REPORT_ID			0x10
+
+struct vive_config_start_report {
+	__u8 id;
+	__u8 unused[63];
+} __attribute__((packed));
+
+#define VIVE_CONFIG_READ_REPORT_ID			0x11
+
+struct vive_config_read_report {
+	__u8 id;
+	__u8 len;
+	__u8 payload[62];
+} __attribute__((packed));
+
 #define VIVE_IMU_REPORT_ID				0x20
 
 struct vive_imu_sample {

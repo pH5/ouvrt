@@ -9,21 +9,27 @@
 
 #include "device.h"
 #include "hidraw.h"
+#include "vive-hid-reports.h"
 
 /*
  * Downloads configuration data stored in the Vive headset and controller.
  */
 char *ouvrt_vive_get_config(OuvrtDevice *dev)
 {
-	unsigned char buf[64];
+	struct vive_config_start_report start_report = {
+		.id = VIVE_CONFIG_START_REPORT_ID,
+	};
+	struct vive_config_read_report read_report = {
+		.id = VIVE_CONFIG_READ_REPORT_ID,
+	};
 	unsigned char *config_json;
 	void *config_z;
 	z_stream strm;
 	int count = 0;
 	int ret;
 
-	buf[0] = 0x10;
-	ret = hid_get_feature_report_timeout(dev->fd, buf, sizeof(buf), 100);
+	ret = hid_get_feature_report_timeout(dev->fd, &start_report,
+					     sizeof(start_report), 100);
 	if (ret < 0) {
 		g_print("%s: Read error 0x10: %d\n", dev->name, errno);
 		return NULL;
@@ -31,9 +37,9 @@ char *ouvrt_vive_get_config(OuvrtDevice *dev)
 
 	config_z = g_malloc(4096);
 
-	buf[0] = 0x11;
 	do {
-		ret = hid_get_feature_report_timeout(dev->fd, buf, sizeof(buf), 100);
+		ret = hid_get_feature_report_timeout(dev->fd, &read_report,
+						     sizeof(read_report), 100);
 		if (ret < 0) {
 			g_print("%s: Read error after %d bytes: %d\n",
 				dev->name, count, errno);
@@ -41,23 +47,23 @@ char *ouvrt_vive_get_config(OuvrtDevice *dev)
 			return NULL;
 		}
 
-		if (buf[1] > 62) {
+		if (read_report.len > 62) {
 			g_print("%s: Invalid configuration data at %d\n",
 				dev->name, count);
 			g_free(config_z);
 			return NULL;
 		}
 
-		if (count + buf[1] > 4096) {
+		if (count + read_report.len > 4096) {
 			g_print("%s: Configuration data too large\n",
 				dev->name);
 			g_free(config_z);
 			return NULL;
 		}
 
-		memcpy(config_z + count, buf + 2, buf[1]);
-		count += buf[1];
-	} while (buf[1]);
+		memcpy(config_z + count, read_report.payload, read_report.len);
+		count += read_report.len;
+	} while (read_report.len);
 
 	g_debug("%s: Read configuration data: %d bytes\n", dev->name,
 		count);
