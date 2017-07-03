@@ -336,6 +336,8 @@ static void rift_decode_touch_message(struct rift_touch_controller *touch,
 
 	const double dt_s = 1e-6 * dt;
 
+	pose_update(dt_s, &touch->imu.pose, sample);
+
 	switch (message->touch.adc_channel) {
 	case RIFT_TOUCH_CONTROLLER_HAPTIC_COUNTER:
 		/*
