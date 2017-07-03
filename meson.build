@@ -6,8 +6,6 @@ project('ouvrt', ['c', 'cpp'],
 add_global_arguments('-Wall', language : 'c')
 
 gio_dep = dependency('gio-unix-2.0')
-gl_dep = dependency('gl')
-glfw_dep = dependency('glfw3')
 glib_dep = dependency('glib-2.0')
 gobj_dep = dependency('gobject-2.0')
 gst_dep = dependency('gstreamer-1.0')
