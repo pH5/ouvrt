@@ -110,6 +110,7 @@ ouvrtd_deps = [
 	gio_dep,
 	gst_dep,
 	json_glib_dep,
+	m_dep,
 	opencv_dep,
 	thread_dep,
 	udev_dep,
