@@ -644,11 +644,16 @@ int rift_decode_pairing_message(struct rift_radio *radio, int fd,
 	    message->unknown[1] != 0x00 ||
 	    message->device_type != 0x03 ||
 	    message->pairing.unknown_1 != 0x01 ||
-	    message->pairing.unknown_0 != 0x00 ||
-	    message->pairing.unknown[0] != 0x8c ||
-	    message->pairing.unknown[1] != 0x00) {
+	    message->pairing.unknown_0 != 0x00) {
 		g_print("Rift: Unexpected pairing message!\n");
 		return -EINVAL;
+	}
+	if ((message->pairing.unknown[0] != 0x8c &&
+	     message->pairing.unknown[0] != 0x00) ||
+	    message->pairing.unknown[1] != 0x00) {
+		g_print("Rift: Unexpected field in pairing message: unknown = { 0x%02x, 0x%02x }\n",
+			message->pairing.unknown[0],
+			message->pairing.unknown[1]);
 	}
 
 	switch (device_type) {
