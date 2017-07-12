@@ -6,6 +6,8 @@ libouvrt_sources = [
   'blobwatch.h',
   'esp570.c',
   'esp570.h',
+  'esp770u.c',
+  'esp770u.h',
   'flicker.c',
   'flicker.h',
   'mt9v034.c',
