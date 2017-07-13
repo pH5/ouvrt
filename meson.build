@@ -133,7 +133,8 @@ if build_opencv
 endif
 executable('ouvrtd', ouvrtd_sources,
 	dependencies : ouvrtd_deps,
-	link_with : libouvrt)
+	link_with : libouvrt,
+	install : true)
 
 executable('dump-eeprom', 'tools/dump-eeprom.c',
 	include_directories : include_directories('src'),
