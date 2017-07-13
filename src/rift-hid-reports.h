@@ -403,7 +403,7 @@ struct rift_touch_message {
 struct rift_pairing_message {
 	__u8 unknown_1;
 	__u8 maybe_rssi;
-	__u8 unknown_0;
+	__u8 buttons;
 	__u8 device_type;
 	__le32 id[2];
 	__u8 unknown[2];

@@ -643,11 +643,17 @@ int rift_decode_pairing_message(struct rift_radio *radio, int fd,
 	if (message->unknown[0] != 0x1a ||
 	    message->unknown[1] != 0x00 ||
 	    message->device_type != 0x03 ||
-	    message->pairing.unknown_1 != 0x01 ||
-	    message->pairing.unknown_0 != 0x00) {
+	    message->pairing.unknown_1 != 0x01) {
 		g_print("Rift: Unexpected pairing message!\n");
 		return -EINVAL;
 	}
+
+	if (message->pairing.buttons & ~(RIFT_TOUCH_CONTROLLER_BUTTON_Y |
+					 RIFT_TOUCH_CONTROLLER_BUTTON_STICK)) {
+		g_print("Rift: Unexpected buttons in pairing message: 0x%02x\n",
+			message->pairing.buttons);
+	}
+
 	if ((message->pairing.unknown[0] != 0x8c &&
 	     message->pairing.unknown[0] != 0x00) ||
 	    message->pairing.unknown[1] != 0x00) {
