@@ -639,6 +639,14 @@ int rift_decode_pairing_message(struct rift_radio *radio, int fd,
 	struct rift_wireless_device *dev;
 	uint16_t maybe_channel;
 	int ret;
+	int i;
+
+	for (i = 0; i < sizeof *message; i++) {
+		if (((char *)message)[i])
+			break;
+	}
+	if (i == sizeof *message)
+		return 0;
 
 	if (message->unknown[0] != 0x1a ||
 	    message->unknown[1] != 0x00 ||
