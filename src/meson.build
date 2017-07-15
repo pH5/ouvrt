@@ -2,6 +2,8 @@
 # SPDX-License-Identifier:	GPL-2.0+
 
 libouvrt_sources = [
+  'ar0134.c',
+  'ar0134.h',
   'blobwatch.c',
   'blobwatch.h',
   'esp570.c',
