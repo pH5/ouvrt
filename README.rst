@@ -80,12 +80,14 @@ corresponding to the Rift DK2 and the DK2 Positional Tracker. Then run ouvrtd::
 
   $ ./ouvrtd
 
-The daemon will create a shared memory socket /tmp/ouvrtd-gst and write frames
-into it as soon as a GStreamer shmsrc connects to it. To see the captured
-frames, run::
+If compiled with GStreamer support, the daemon will create a shared memory
+socket /tmp/ouvrtd-gst and, if a DK2 Positional Tracker is connected, write
+frames into it as soon as a GStreamer shmsrc connects to it. To see the
+captured frames, run::
 
-  $ gst-launch-1.0 shmsrc socket-path=/tmp/ouvrtd-gst ! \
-    video/x-raw,format=BGRx,width=752,height=480,framerate=60/1 ! autovideosink
+  $ gst-launch-1.0 shmsrc socket-path=/tmp/ouvrtd-gst is-live=true ! \
+    video/x-raw,format=GRAY8,width=752,height=480,framerate=60/1 ! \
+    videoconvert ! autovideosink
 
 4. Tools
 --------
