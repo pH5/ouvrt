@@ -195,9 +195,11 @@ static void ouvrt_camera_v4l2_thread(OuvrtDevice *dev)
 		buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 		ret = ioctl(dev->fd, VIDIOC_DQBUF, &buf);
 		if (ret < 0) {
-			g_print("v4l2: DQBUF error: %d, disabling camera\n",
-			       errno);
-			dev->active = FALSE;
+			if (errno == ENODEV)
+				g_print("v4l2: camera disconnected, disabling\n");
+			else
+				g_print("v4l2: DQBUF error: %d, disabling camera\n",
+				        errno);
 			break;
 		}
 
@@ -306,11 +308,11 @@ static void ouvrt_camera_v4l2_stop(OuvrtDevice *dev)
 	}
 
 	ret = ioctl(dev->fd, VIDIOC_STREAMOFF, &reqbufs.type);
-	if (ret < 0)
+	if (ret < 0 && errno != ENODEV)
 		g_print("v4l2: STREAMOFF error: %d\n", errno);
 
 	ret = ioctl(dev->fd, VIDIOC_REQBUFS, &reqbufs);
-	if (ret < 0)
+	if (ret < 0 && errno != ENODEV)
 		g_print("v4l2: REQBUFS error: %d\n", errno);
 
 	g_print("v4l2: Stopped streaming\n");
