@@ -520,11 +520,17 @@ static void rift_decode_sensor_message(OuvrtRift *rift,
 
 	dt = sample_timestamp - rift->priv->last_sample_timestamp;
 	rift->priv->last_sample_timestamp = sample_timestamp;
-	if ((dt < rift->priv->report_interval - 60) ||
-	    (dt > rift->priv->report_interval + 60) ||
-	    (1000 * num_samples != rift->priv->report_interval)) {
-		g_print("Rift: got %d samples after %d µs\n", num_samples,
-			dt);
+	if (dt + 1 >= (num_samples + 1) * rift->priv->report_interval) {
+		g_print("Rift: got %u samples after %d µs, %u samples lost\n",
+			num_samples, dt,
+			(dt + 1) / rift->priv->report_interval - num_samples);
+		return;
+	}
+	if ((dt < num_samples * rift->priv->report_interval - 75) ||
+	    (dt > num_samples * rift->priv->report_interval + 75)) {
+		g_print("Rift: got %u samples after %d µs, too much jitter\n",
+			num_samples, dt);
+		return;
 	}
 
 	mag[0] = __le16_to_cpu(message->mag[0]);
@@ -693,7 +699,7 @@ static int rift_start(OuvrtDevice *dev)
 	if (ret < 0)
 		return ret;
 
-	ret = rift_set_report_rate(rift, 500);
+	ret = rift_set_report_rate(rift, 1000);
 	if (ret < 0)
 		return ret;
 
