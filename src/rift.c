@@ -818,8 +818,7 @@ static void rift_stop(OuvrtDevice *dev)
 	int fd = rift->dev.fd;
 
 	ouvrt_tracker_unregister_leds(rift->tracker, &rift->leds);
-	g_object_unref(rift->tracker);
-	rift->tracker = NULL;
+	g_clear_object(&rift->tracker);
 
 	if (rift->type == RIFT_CV1) {
 		rift_cv1_power_down(rift, RIFT_CV1_POWER_DISPLAY |
@@ -841,7 +840,7 @@ static void ouvrt_rift_finalize(GObject *object)
 {
 	OuvrtRift *rift = OUVRT_RIFT(object);
 
-	g_object_unref(rift->tracker);
+	g_clear_object(&rift->tracker);
 	G_OBJECT_CLASS(ouvrt_rift_parent_class)->finalize(object);
 }
 
