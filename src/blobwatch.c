@@ -20,10 +20,29 @@ struct leds;
 #define THRESHOLD 0x9f
 
 #define NUM_FRAMES_HISTORY	2
+#define MAX_EXTENTS_PER_LINE	11
 
 #define abs(x) ((x) >= 0 ? (x) : -(x))
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
+
+struct extent {
+	uint16_t start;
+	uint16_t end;
+	/* inherited parameters */
+	uint16_t top;
+	uint16_t left;
+	uint16_t right;
+	uint8_t index;
+	uint32_t area;
+};
+
+struct extent_line {
+	struct extent extents[MAX_EXTENTS_PER_LINE];
+	uint16_t num;
+	uint16_t padding[3];
+};
+
 
 /*
  * Blob detector internal state

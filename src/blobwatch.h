@@ -11,25 +11,7 @@
 
 struct leds;
 
-#define MAX_EXTENTS_PER_LINE 11
 #define MAX_BLOBS_PER_FRAME  42
-
-struct extent {
-	uint16_t start;
-	uint16_t end;
-	/* inherited parameters */
-	uint16_t top;
-	uint16_t left;
-	uint16_t right;
-	uint8_t index;
-	uint32_t area;
-};
-
-struct extent_line {
-	struct extent extents[MAX_EXTENTS_PER_LINE];
-	uint16_t num;
-	uint16_t padding[3];
-};
 
 struct blob {
 	/* center of bounding box */
