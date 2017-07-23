@@ -52,7 +52,7 @@ struct blobwatch {
 	int height;
 	int last_observation;
 	struct blobservation history[NUM_FRAMES_HISTORY];
-	struct extent_line el[480];
+	struct extent_line *el;
 	bool debug;
 	struct flicker *fl;
 };
@@ -83,6 +83,7 @@ struct blobwatch *blobwatch_new(int width, int height)
 	bw->last_observation = -1;
 	bw->debug = true;
 	bw->fl = flicker_new();
+	bw->el = calloc(height, sizeof(*bw->el));
 
 	return bw;
 }
