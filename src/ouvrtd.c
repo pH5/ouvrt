@@ -173,6 +173,40 @@ static gint ouvrt_device_cmp_serial(OuvrtDevice *dev, const char *serial)
 }
 
 /*
+ * Links Rift DK2 HMD and Tracker DK2 camera.
+ */
+static void ouvrt_link_rift_dk2(OuvrtDevice *dev)
+{
+	GList *link;
+	OuvrtRift *rift;
+	OuvrtCameraDK2 *camera;
+
+	link = g_list_find_custom(device_list, dev->serial,
+				  (GCompareFunc)ouvrt_device_cmp_serial);
+	if (!link)
+		return;
+
+	if (OUVRT_IS_RIFT(dev) &&
+	    OUVRT_IS_CAMERA_DK2(link->data)) {
+		g_print("Associate %s and %s\n", dev->devnode,
+			OUVRT_DEVICE(link->data)->devnode);
+		rift = OUVRT_RIFT(dev);
+		camera = OUVRT_CAMERA_DK2(link->data);
+	} else if (OUVRT_IS_CAMERA_DK2(dev) &&
+		   OUVRT_IS_RIFT(link->data)) {
+		camera = OUVRT_CAMERA_DK2(dev);
+		rift = OUVRT_RIFT(link->data);
+	} else {
+		return;
+	}
+
+	g_print("Associate %s and %s\n", dev->devnode,
+		OUVRT_DEVICE(link->data)->devnode);
+
+	ouvrt_camera_dk2_set_tracker(camera, ouvrt_rift_get_tracker(rift));
+}
+
+/*
  * Check if an added device matches the table of known hardware, if yes create
  * a new device structure and start the device.
  */
@@ -354,38 +388,9 @@ static void ouvrtd_device_add(struct udev_device *dev)
 			d->serial = strdup(serial);
 	}
 	if (d->serial) {
-		GList *link;
-
 		g_print("%s: Serial %s\n", device_matches[i].name, d->serial);
 
-		link = g_list_find_custom(device_list, d->serial,
-					  (GCompareFunc)ouvrt_device_cmp_serial);
-		if (link) {
-			OuvrtRift *rift = NULL;
-			OuvrtCameraDK2 *camera = NULL;
-
-			if (OUVRT_IS_RIFT(d) &&
-			    OUVRT_IS_CAMERA_DK2(link->data)) {
-				g_print("Associate %s and %s\n", d->devnode,
-					OUVRT_DEVICE(link->data)->devnode);
-				rift = OUVRT_RIFT(d);
-				camera = OUVRT_CAMERA_DK2(link->data);
-			}
-			if (OUVRT_IS_CAMERA_DK2(d) &&
-			    OUVRT_IS_RIFT(link->data)) {
-				camera = OUVRT_CAMERA_DK2(d);
-				rift = OUVRT_RIFT(link->data);
-			}
-			if (rift && camera) {
-				OuvrtTracker *tracker;
-
-				g_print("Associate %s and %s\n", d->devnode,
-					OUVRT_DEVICE(link->data)->devnode);
-
-				tracker = ouvrt_rift_get_tracker(rift);
-				ouvrt_camera_dk2_set_tracker(camera, tracker);
-			}
-		}
+		ouvrt_link_rift_dk2(d);
 	}
 
 	device_list = g_list_append(device_list, d);
