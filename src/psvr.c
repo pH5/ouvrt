@@ -17,7 +17,9 @@
 #include "imu.h"
 #include "telemetry.h"
 
-typedef struct {
+struct _OuvrtPSVR {
+	OuvrtDevice dev;
+
 	bool power;
 	bool vrmode;
 	uint8_t button;
@@ -25,14 +27,9 @@ typedef struct {
 	uint8_t last_seq;
 	uint32_t last_timestamp;
 	struct imu_state imu;
-} OuvrtPSVRPrivate;
-
-struct _OuvrtPSVR {
-	OuvrtDevice dev;
-	OuvrtPSVRPrivate *priv;
 };
 
-G_DEFINE_TYPE_WITH_PRIVATE(OuvrtPSVR, ouvrt_psvr, OUVRT_TYPE_DEVICE)
+G_DEFINE_TYPE(OuvrtPSVR, ouvrt_psvr, OUVRT_TYPE_DEVICE)
 
 void psvr_set_processing_box_power(int fd, bool power)
 {
@@ -104,35 +101,35 @@ void psvr_decode_sensor_message(OuvrtPSVR *self, const unsigned char *buf,
 	int32_t dt;
 	int i;
 
-	if (message->button != self->priv->button) {
+	if (message->button != self->button) {
 		int i;
 		int num_buttons = 0;
 		uint8_t btns[4];
 		for (i = 0; i < 4; i++) {
-			if ((self->priv->button ^ message->button) & (1 << i)) {
+			if ((self->button ^ message->button) & (1 << i)) {
 				btns[num_buttons++] = i |
 					((message->button & (1 << i)) ? 0x80 : 0);
 			}
 		}
 		telemetry_send_buttons(self->dev.id, btns, num_buttons);
 
-		self->priv->button = message->button;
+		self->button = message->button;
 	}
 
-	if (message->state != self->priv->state) {
-		self->priv->state = message->state;
+	if (message->state != self->state) {
+		self->state = message->state;
 
-		if (self->priv->state == PSVR_STATE_RUNNING &&
-		    !self->priv->vrmode) {
+		if (self->state == PSVR_STATE_RUNNING &&
+		    !self->vrmode) {
 			g_print("PSVR: Switch to VR mode\n");
 			psvr_set_mode(self->dev.fds[1], PSVR_MODE_VR);
 			psvr_enable_vr_tracking(self->dev.fds[1]);
 
-			self->priv->vrmode = true;
+			self->vrmode = true;
 		}
-		if (self->priv->state != PSVR_STATE_RUNNING &&
-		    self->priv->vrmode)
-			self->priv->vrmode = false;
+		if (self->state != PSVR_STATE_RUNNING &&
+		    self->vrmode)
+			self->vrmode = false;
 	}
 
 	memset(&imu, 0, sizeof(imu));
@@ -150,13 +147,13 @@ void psvr_decode_sensor_message(OuvrtPSVR *self, const unsigned char *buf,
 
 		telemetry_send_raw_imu_sample(self->dev.id, &raw);
 
-		dt = raw.time - self->priv->last_timestamp;
+		dt = raw.time - self->last_timestamp;
 		if (dt < 0)
 			dt += (1 << 24);
 
 		if (dt < 440 || dt > 560) {
-			if (self->priv->last_timestamp == 0) {
-				self->priv->last_timestamp = raw.time;
+			if (self->last_timestamp == 0) {
+				self->last_timestamp = raw.time;
 				break;
 			}
 		}
@@ -182,14 +179,14 @@ void psvr_decode_sensor_message(OuvrtPSVR *self, const unsigned char *buf,
 
 		telemetry_send_imu_sample(self->dev.id, &imu);
 
-		pose_update(1e-6 * dt, &self->priv->imu.pose, &imu);
+		pose_update(1e-6 * dt, &self->imu.pose, &imu);
 
-		telemetry_send_pose(self->dev.id, &self->priv->imu.pose);
+		telemetry_send_pose(self->dev.id, &self->imu.pose);
 
-		self->priv->last_timestamp = raw.time;
+		self->last_timestamp = raw.time;
 	}
 
-	self->priv->last_seq = message->sequence;
+	self->last_seq = message->sequence;
 
 	(void)volume;
 	(void)button_raw;
@@ -231,8 +228,8 @@ static void psvr_thread(OuvrtDevice *dev)
 			continue;
 		}
 		if (ret == 0) {
-			if (psvr->priv->power) {
-				if (psvr->priv->state == PSVR_STATE_POWER_OFF) {
+			if (psvr->power) {
+				if (psvr->state == PSVR_STATE_POWER_OFF) {
 					/*
 					 * A poll timeout after powering off is
 					 * expected.
@@ -241,7 +238,7 @@ static void psvr_thread(OuvrtDevice *dev)
 				} else {
 					g_print("PSVR: Poll timeout\n");
 				}
-				psvr->priv->power = false;
+				psvr->power = false;
 			}
 			continue;
 		}
@@ -261,9 +258,9 @@ static void psvr_thread(OuvrtDevice *dev)
 				continue;
 			}
 
-			if (!psvr->priv->power) {
+			if (!psvr->power) {
 				g_print("PSVR: Powered on\n");
-				psvr->priv->power = true;
+				psvr->power = true;
 			}
 
 			psvr_decode_sensor_message(psvr, buf, sizeof(buf));
@@ -300,11 +297,10 @@ static void ouvrt_psvr_class_init(OuvrtPSVRClass *klass)
 static void ouvrt_psvr_init(OuvrtPSVR *self)
 {
 	self->dev.type = DEVICE_TYPE_HMD;
-	self->priv = ouvrt_psvr_get_instance_private(self);
-	self->priv->power = false;
-	self->priv->vrmode = false;
-	self->priv->state = PSVR_STATE_POWER_OFF;
-	self->priv->imu.pose.rotation.w = 1.0;
+	self->power = false;
+	self->vrmode = false;
+	self->state = PSVR_STATE_POWER_OFF;
+	self->imu.pose.rotation.w = 1.0;
 }
 
 /*
