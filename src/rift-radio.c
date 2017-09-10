@@ -391,8 +391,9 @@ static void rift_decode_touch_message(struct rift_touch_controller *touch,
 	case RIFT_TOUCH_CONTROLLER_HAPTIC_COUNTER:
 		/*
 		 * The haptic counter seems to be used as read pointer into a
-		 * 256-byte ringbuffer. It is incremented about 5 times per
-		 * 16 ms interval (312.5 Hz).
+		 * 256-byte ringbuffer. It is incremented 320 times per second:
+		 *
+		 * https://developer.oculus.com/documentation/pcsdk/latest/concepts/dg-input-touch-haptic/
 		 */
 		touch->haptic_counter = adc_value;
 		break;
