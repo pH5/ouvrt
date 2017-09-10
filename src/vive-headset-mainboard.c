@@ -15,8 +15,13 @@
 #include "device.h"
 #include "hidraw.h"
 
-struct _OuvrtViveHeadsetMainboardPrivate {
+typedef struct {
 	uint16_t ipd;
+} OuvrtViveHeadsetMainboardPrivate;
+
+struct _OuvrtViveHeadsetMainboard {
+	OuvrtDevice dev;
+	OuvrtViveHeadsetMainboardPrivate *priv;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveHeadsetMainboard, \

@@ -24,10 +24,15 @@
 #include "math.h"
 #include "usb-ids.h"
 
-struct _OuvrtViveHeadsetPrivate {
+typedef struct {
 	JsonNode *config;
 	struct vive_imu imu;
 	struct lighthouse_watchman watchman;
+} OuvrtViveHeadsetPrivate;
+
+struct _OuvrtViveHeadset {
+	OuvrtDevice dev;
+	OuvrtViveHeadsetPrivate *priv;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveHeadset, ouvrt_vive_headset, \

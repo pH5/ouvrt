@@ -25,11 +25,16 @@
 #include "usb-ids.h"
 #include "telemetry.h"
 
-struct _OuvrtViveControllerUSBPrivate {
+typedef struct {
 	JsonNode *config;
 	struct vive_imu imu;
 	struct lighthouse_watchman watchman;
 	uint32_t buttons;
+} OuvrtViveControllerUSBPrivate;
+
+struct _OuvrtViveControllerUSB {
+	OuvrtDevice dev;
+	OuvrtViveControllerUSBPrivate *priv;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveControllerUSB, ouvrt_vive_controller_usb, \

@@ -24,7 +24,7 @@
 #include "math.h"
 #include "usb-ids.h"
 
-struct _OuvrtViveControllerPrivate {
+typedef struct {
 	JsonNode *config;
 	const gchar *serial;
 	gboolean connected;
@@ -36,6 +36,12 @@ struct _OuvrtViveControllerPrivate {
 	uint8_t buttons;
 	int16_t touch_pos[2];
 	uint8_t squeeze;
+} OuvrtViveControllerPrivate;
+
+struct _OuvrtViveController {
+	OuvrtDevice dev;
+
+	OuvrtViveControllerPrivate *priv;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveController, ouvrt_vive_controller, \
