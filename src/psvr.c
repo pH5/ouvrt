@@ -17,7 +17,7 @@
 #include "imu.h"
 #include "telemetry.h"
 
-struct _OuvrtPSVRPrivate {
+typedef struct {
 	bool power;
 	bool vrmode;
 	uint8_t button;
@@ -25,6 +25,11 @@ struct _OuvrtPSVRPrivate {
 	uint8_t last_seq;
 	uint32_t last_timestamp;
 	struct imu_state imu;
+} OuvrtPSVRPrivate;
+
+struct _OuvrtPSVR {
+	OuvrtDevice dev;
+	OuvrtPSVRPrivate *priv;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtPSVR, ouvrt_psvr, OUVRT_TYPE_DEVICE)
