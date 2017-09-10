@@ -7,7 +7,7 @@ add_global_arguments('-Wall', language : 'c')
 
 gio_dep = dependency('gio-unix-2.0')
 glib_dep = dependency('glib-2.0')
-gobj_dep = dependency('gobject-2.0')
+gobj_dep = dependency('gobject-2.0', version : '>= 2.44')
 gst_dep = dependency('gstreamer-1.0')
 json_glib_dep = dependency('json-glib-1.0', version : '>= 1.2')
 opencv_dep = dependency('opencv', required : false)
