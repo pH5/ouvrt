@@ -15,17 +15,14 @@
 #include "device.h"
 #include "hidraw.h"
 
-typedef struct {
-	uint16_t ipd;
-} OuvrtViveHeadsetMainboardPrivate;
-
 struct _OuvrtViveHeadsetMainboard {
 	OuvrtDevice dev;
-	OuvrtViveHeadsetMainboardPrivate *priv;
+
+	uint16_t ipd;
 };
 
-G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveHeadsetMainboard, \
-			   ouvrt_vive_headset_mainboard, OUVRT_TYPE_DEVICE)
+G_DEFINE_TYPE(OuvrtViveHeadsetMainboard, ouvrt_vive_headset_mainboard, \
+	      OUVRT_TYPE_DEVICE)
 
 #define VIVE_HEADSET_BUTTON_SYSTEM	1
 
@@ -55,8 +52,8 @@ vive_headset_mainboard_decode_message(OuvrtViveHeadsetMainboard *self,
 	}
 
 	ipd = __le16_to_cpu(report->ipd);
-	if (ipd != self->priv->ipd) {
-		self->priv->ipd = ipd;
+	if (ipd != self->ipd) {
+		self->ipd = ipd;
 		g_print("IPD %4.1f mm\n", 1e-2 * ipd);
 	}
 }
@@ -230,7 +227,6 @@ ouvrt_vive_headset_mainboard_class_init(OuvrtViveHeadsetMainboardClass *klass)
 static void ouvrt_vive_headset_mainboard_init(OuvrtViveHeadsetMainboard *self)
 {
 	self->dev.type = DEVICE_TYPE_HMD;
-	self->priv = ouvrt_vive_headset_mainboard_get_instance_private(self);
 }
 
 /*

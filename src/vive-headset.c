@@ -24,19 +24,15 @@
 #include "math.h"
 #include "usb-ids.h"
 
-typedef struct {
+struct _OuvrtViveHeadset {
+	OuvrtDevice dev;
+
 	JsonNode *config;
 	struct vive_imu imu;
 	struct lighthouse_watchman watchman;
-} OuvrtViveHeadsetPrivate;
-
-struct _OuvrtViveHeadset {
-	OuvrtDevice dev;
-	OuvrtViveHeadsetPrivate *priv;
 };
 
-G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveHeadset, ouvrt_vive_headset, \
-			   OUVRT_TYPE_DEVICE)
+G_DEFINE_TYPE(OuvrtViveHeadset, ouvrt_vive_headset, OUVRT_TYPE_DEVICE)
 
 /*
  * Downloads the configuration data stored in the headset
@@ -45,7 +41,7 @@ static int vive_headset_get_config(OuvrtViveHeadset *self)
 {
 	char *config_json;
 	JsonObject *object;
-	struct vive_imu *imu = &self->priv->imu;
+	struct vive_imu *imu = &self->imu;
 	const char *device_class;
 	gint64 device_pid, device_vid;
 	const char *serial;
@@ -54,15 +50,15 @@ static int vive_headset_get_config(OuvrtViveHeadset *self)
 	if (!config_json)
 		return -1;
 
-	self->priv->config = json_from_string(config_json, NULL);
+	self->config = json_from_string(config_json, NULL);
 	g_free(config_json);
-	if (!self->priv->config) {
+	if (!self->config) {
 		g_print("%s: Parsing JSON configuration data failed\n",
 			self->dev.name);
 		return -1;
 	}
 
-	object = json_node_get_object(self->priv->config);
+	object = json_node_get_object(self->config);
 
 	json_object_get_vec3_member(object, "acc_bias", &imu->acc_bias);
 	json_object_get_vec3_member(object, "acc_scale", &imu->acc_scale);
@@ -94,8 +90,8 @@ static int vive_headset_get_config(OuvrtViveHeadset *self)
 	json_object_get_vec3_member(object, "gyro_scale", &imu->gyro_scale);
 
 	json_object_get_lighthouse_config_member(object, "lighthouse_config",
-						 &self->priv->watchman.model);
-	if (!self->priv->watchman.model.num_points) {
+						 &self->watchman.model);
+	if (!self->watchman.model.num_points) {
 		g_print("%s: Failed to parse Lighthouse configuration\n",
 			self->dev.name);
 	}
@@ -161,7 +157,7 @@ static void vive_headset_decode_pulse_report(OuvrtViveHeadset *self,
 
 		duration = __le16_to_cpu(pulse->duration);
 
-		lighthouse_watchman_handle_pulse(&self->priv->watchman,
+		lighthouse_watchman_handle_pulse(&self->watchman,
 						 sensor_id, duration,
 						 timestamp);
 	}
@@ -195,7 +191,7 @@ static int vive_headset_start(OuvrtDevice *dev)
 		return ret;
 	}
 
-	self->priv->watchman.name = dev->name;
+	self->watchman.name = dev->name;
 
 	return 0;
 }
@@ -236,8 +232,8 @@ static void vive_headset_thread(OuvrtDevice *dev)
 			break;
 		}
 
-		if (self->priv->imu.gyro_range == 0.0) {
-			ret = vive_imu_get_range_modes(dev, &self->priv->imu);
+		if (self->imu.gyro_range == 0.0) {
+			ret = vive_imu_get_range_modes(dev, &self->imu);
 			if (ret < 0) {
 				g_print("%s: Failed to get gyro/accelerometer range modes\n",
 					dev->name);
@@ -258,7 +254,7 @@ static void vive_headset_thread(OuvrtDevice *dev)
 				continue;
 			}
 
-			vive_imu_decode_message(dev, &self->priv->imu, buf, 52);
+			vive_imu_decode_message(dev, &self->imu, buf, 52);
 		}
 		if (fds[1].revents & POLLIN) {
 			ret = read(dev->fds[1], buf, sizeof(buf));
@@ -306,11 +302,10 @@ static void ouvrt_vive_headset_class_init(OuvrtViveHeadsetClass *klass)
 static void ouvrt_vive_headset_init(OuvrtViveHeadset *self)
 {
 	self->dev.type = DEVICE_TYPE_HMD;
-	self->priv = ouvrt_vive_headset_get_instance_private(self);
-	self->priv->imu.sequence = 0;
-	self->priv->imu.time = 0;
-	self->priv->imu.state.pose.rotation.w = 1.0;
-	lighthouse_watchman_init(&self->priv->watchman);
+	self->imu.sequence = 0;
+	self->imu.time = 0;
+	self->imu.state.pose.rotation.w = 1.0;
+	lighthouse_watchman_init(&self->watchman);
 }
 
 /*

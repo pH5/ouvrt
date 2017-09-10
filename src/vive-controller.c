@@ -24,7 +24,9 @@
 #include "math.h"
 #include "usb-ids.h"
 
-typedef struct {
+struct _OuvrtViveController {
+	OuvrtDevice dev;
+
 	JsonNode *config;
 	const gchar *serial;
 	gboolean connected;
@@ -36,16 +38,9 @@ typedef struct {
 	uint8_t buttons;
 	int16_t touch_pos[2];
 	uint8_t squeeze;
-} OuvrtViveControllerPrivate;
-
-struct _OuvrtViveController {
-	OuvrtDevice dev;
-
-	OuvrtViveControllerPrivate *priv;
 };
 
-G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveController, ouvrt_vive_controller, \
-			   OUVRT_TYPE_DEVICE)
+G_DEFINE_TYPE(OuvrtViveController, ouvrt_vive_controller, OUVRT_TYPE_DEVICE)
 
 /*
  * Downloads the configuration data stored in the controller
@@ -54,7 +49,7 @@ static int vive_controller_get_config(OuvrtViveController *self)
 {
 	char *config_json;
 	JsonObject *object;
-	struct vive_imu *imu = &self->priv->imu;
+	struct vive_imu *imu = &self->imu;
 	const char *device_class;
 	gint64 device_pid, device_vid;
 
@@ -62,15 +57,15 @@ static int vive_controller_get_config(OuvrtViveController *self)
 	if (!config_json)
 		return -1;
 
-	self->priv->config = json_from_string(config_json, NULL);
+	self->config = json_from_string(config_json, NULL);
 	g_free(config_json);
-	if (!self->priv->config) {
+	if (!self->config) {
 		g_print("%s: Parsing JSON configuration data failed\n",
 			self->dev.name);
 		return -1;
 	}
 
-	object = json_node_get_object(self->priv->config);
+	object = json_node_get_object(self->config);
 
 	json_object_get_vec3_member(object, "acc_bias", &imu->acc_bias);
 	json_object_get_vec3_member(object, "acc_scale", &imu->acc_scale);
@@ -87,7 +82,7 @@ static int vive_controller_get_config(OuvrtViveController *self)
 			device_pid);
 	}
 
-	self->priv->serial = json_object_get_string_member(object,
+	self->serial = json_object_get_string_member(object,
 							   "device_serial_number");
 
 	device_vid = json_object_get_int_member(object, "device_vid");
@@ -100,8 +95,8 @@ static int vive_controller_get_config(OuvrtViveController *self)
 	json_object_get_vec3_member(object, "gyro_scale", &imu->gyro_scale);
 
 	json_object_get_lighthouse_config_member(object, "lighthouse_config",
-						 &self->priv->watchman.model);
-	if (!self->priv->watchman.model.num_points) {
+						 &self->watchman.model);
+	if (!self->watchman.model.num_points) {
 		g_print("%s: Failed to parse Lighthouse configuration\n",
 			self->dev.name);
 	}
@@ -139,8 +134,8 @@ static void vive_controller_handle_battery(OuvrtViveController *self,
 	uint8_t charge_percent = battery & VIVE_CONTROLLER_BATTERY_CHARGE_MASK;
 	gboolean charging = battery & VIVE_CONTROLLER_BATTERY_CHARGING;
 
-	if (battery != self->priv->battery)
-		self->priv->battery = battery;
+	if (battery != self->battery)
+		self->battery = battery;
 
 	(void)charge_percent;
 	(void)charging;
@@ -149,8 +144,8 @@ static void vive_controller_handle_battery(OuvrtViveController *self,
 static void vive_controller_handle_buttons(OuvrtViveController *self,
 					   uint8_t buttons)
 {
-	if (buttons != self->priv->buttons)
-		self->priv->buttons = buttons;
+	if (buttons != self->buttons)
+		self->buttons = buttons;
 }
 
 static void vive_controller_handle_touch_position(OuvrtViveController *self,
@@ -159,25 +154,25 @@ static void vive_controller_handle_touch_position(OuvrtViveController *self,
 	int16_t x = __le16_to_cpup((__le16 *)buf);
 	int16_t y = __le16_to_cpup((__le16 *)(buf + 2));
 
-	if (x != self->priv->touch_pos[0] ||
-	    y != self->priv->touch_pos[1]) {
-		self->priv->touch_pos[0] = x;
-		self->priv->touch_pos[1] = y;
+	if (x != self->touch_pos[0] ||
+	    y != self->touch_pos[1]) {
+		self->touch_pos[0] = x;
+		self->touch_pos[1] = y;
 	}
 }
 
 static void vive_controller_handle_analog_trigger(OuvrtViveController *self,
 						  uint8_t squeeze)
 {
-	if (squeeze != self->priv->squeeze)
-		self->priv->squeeze = squeeze;
+	if (squeeze != self->squeeze)
+		self->squeeze = squeeze;
 }
 
 static void vive_controller_handle_imu_sample(OuvrtViveController *self,
 					      uint8_t *buf)
 {
 	/* Time in 48 MHz ticks, but we are missing the low byte */
-	uint32_t timestamp = self->priv->timestamp | *buf;
+	uint32_t timestamp = self->timestamp | *buf;
 	int16_t accel[3] = {
 		__le16_to_cpup((__le16 *)(buf + 1)),
 		__le16_to_cpup((__le16 *)(buf + 3)),
@@ -226,8 +221,8 @@ vive_controller_decode_message(OuvrtViveController *self,
 	gboolean silent = TRUE;
 	int i;
 
-	self->priv->timestamp = (message->timestamp_hi << 24) |
-				(message->timestamp_lo << 16);
+	self->timestamp = (message->timestamp_hi << 24) |
+			  (message->timestamp_lo << 16);
 
 	/*
 	 * Handle button, touch, and IMU events. The first byte of each event
@@ -342,14 +337,14 @@ vive_controller_decode_message(OuvrtViveController *self,
 		uint32_t ts1 = ((message->timestamp_hi - 1) << 24) | start[i];
 		uint32_t ts2 = (message->timestamp_hi << 24) | start[i];
 		uint32_t ts3 = ((message->timestamp_hi + 1) << 24) | start[i];
-		uint32_t ref = self->priv->timestamp;
+		uint32_t ref = self->timestamp;
 		uint32_t timestamp;
 
 		timestamp = (abs(ts1 - ref) < abs(ts2 - ref)) ? ts1 :
 			    (abs(ts2 - ref) < abs(ts3 - ref)) ? ts2 :
 								ts3;
 
-		lighthouse_watchman_handle_pulse(&self->priv->watchman,
+		lighthouse_watchman_handle_pulse(&self->watchman,
 						 buf[i] >> 3, duration[i],
 						 timestamp);
 	}
@@ -366,7 +361,7 @@ static int vive_controller_start(OuvrtDevice *dev)
 	self->dev.name = g_strdup_printf("Vive Wireless Receiver %s",
 					 dev->serial);
 
-	self->priv->watchman.name = self->dev.name;
+	self->watchman.name = self->dev.name;
 
 	return 0;
 }
@@ -389,12 +384,12 @@ static void vive_controller_thread(OuvrtDevice *dev)
 		ret = vive_controller_get_config(self);
 		if (!ret) {
 			g_print("%s: Controller %s connected\n", dev->name,
-				self->priv->serial);
+				self->serial);
 			g_free(dev->name);
 			dev->name = g_strdup_printf("Vive Controller %s",
-						    self->priv->serial);
-			self->priv->watchman.name = dev->name;
-			self->priv->connected = TRUE;
+						    self->serial);
+			self->watchman.name = dev->name;
+			self->connected = TRUE;
 		}
 	}
 
@@ -410,7 +405,7 @@ static void vive_controller_thread(OuvrtDevice *dev)
 		}
 
 		if (ret == 0) {
-			if (self->priv->connected)
+			if (self->connected)
 				g_print("%s: Poll timeout\n", dev->name);
 			continue;
 		}
@@ -424,7 +419,7 @@ static void vive_controller_thread(OuvrtDevice *dev)
 			continue;
 		}
 
-		if (!self->priv->connected) {
+		if (!self->connected) {
 			ret = vive_get_firmware_version(dev);
 			if (ret < 0)
 				continue;
@@ -434,18 +429,18 @@ static void vive_controller_thread(OuvrtDevice *dev)
 				continue;
 
 			g_print("%s: Controller %s connected\n", dev->name,
-				self->priv->serial);
+				self->serial);
 			g_free(dev->name);
 			dev->name = g_strdup_printf("Vive Controller %s",
-						    self->priv->serial);
-			self->priv->watchman.name = dev->name;
-			self->priv->connected = TRUE;
+						    self->serial);
+			self->watchman.name = dev->name;
+			self->connected = TRUE;
 
 			vive_controller_haptic_pulse(self);
 		}
 
-		if (self->priv->imu.gyro_range == 0.0) {
-			ret = vive_imu_get_range_modes(dev, &self->priv->imu);
+		if (self->imu.gyro_range == 0.0) {
+			ret = vive_imu_get_range_modes(dev, &self->imu);
 			if (ret < 0) {
 				g_print("%s: Failed to get gyro/accelerometer range modes\n",
 					dev->name);
@@ -475,10 +470,10 @@ static void vive_controller_thread(OuvrtDevice *dev)
 			g_free(dev->name);
 			dev->name = g_strdup_printf("Vive Wireless Receiver %s",
 						    dev->serial);
-			self->priv->watchman.name = dev->name;
+			self->watchman.name = dev->name;
 			g_print("%s: Controller %s disconnected\n", dev->name,
-				self->priv->serial);
-			self->priv->connected = FALSE;
+				self->serial);
+			self->connected = FALSE;
 		} else {
 			g_print("%s: Error, invalid %d-byte report 0x%02x\n",
 				dev->name, ret, buf[0]);
@@ -515,14 +510,12 @@ static void ouvrt_vive_controller_class_init(OuvrtViveControllerClass *klass)
 static void ouvrt_vive_controller_init(OuvrtViveController *self)
 {
 	self->dev.type = DEVICE_TYPE_CONTROLLER;
-	self->priv = ouvrt_vive_controller_get_instance_private(self);
-
-	self->priv->config = NULL;
-	self->priv->connected = FALSE;
-	self->priv->imu.sequence = 0;
-	self->priv->imu.time = 0;
-	self->priv->imu.state.pose.rotation.w = 1.0;
-	lighthouse_watchman_init(&self->priv->watchman);
+	self->config = NULL;
+	self->connected = FALSE;
+	self->imu.sequence = 0;
+	self->imu.time = 0;
+	self->imu.state.pose.rotation.w = 1.0;
+	lighthouse_watchman_init(&self->watchman);
 }
 
 /*

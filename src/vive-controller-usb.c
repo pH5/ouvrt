@@ -25,20 +25,17 @@
 #include "usb-ids.h"
 #include "telemetry.h"
 
-typedef struct {
+struct _OuvrtViveControllerUSB {
+	OuvrtDevice dev;
+
 	JsonNode *config;
 	struct vive_imu imu;
 	struct lighthouse_watchman watchman;
 	uint32_t buttons;
-} OuvrtViveControllerUSBPrivate;
-
-struct _OuvrtViveControllerUSB {
-	OuvrtDevice dev;
-	OuvrtViveControllerUSBPrivate *priv;
 };
 
-G_DEFINE_TYPE_WITH_PRIVATE(OuvrtViveControllerUSB, ouvrt_vive_controller_usb, \
-			   OUVRT_TYPE_DEVICE)
+G_DEFINE_TYPE(OuvrtViveControllerUSB, ouvrt_vive_controller_usb, \
+	      OUVRT_TYPE_DEVICE)
 
 /*
  * Downloads the configuration data stored in the controller
@@ -47,7 +44,7 @@ static int vive_controller_usb_get_config(OuvrtViveControllerUSB *self)
 {
 	char *config_json;
 	JsonObject *object;
-	struct vive_imu *imu = &self->priv->imu;
+	struct vive_imu *imu = &self->imu;
 	const char *device_class;
 	gint64 device_pid, device_vid;
 	const char *serial;
@@ -56,15 +53,15 @@ static int vive_controller_usb_get_config(OuvrtViveControllerUSB *self)
 	if (!config_json)
 		return -1;
 
-	self->priv->config = json_from_string(config_json, NULL);
+	self->config = json_from_string(config_json, NULL);
 	g_free(config_json);
-	if (!self->priv->config) {
+	if (!self->config) {
 		g_print("%s: Parsing JSON configuration data failed\n",
 			self->dev.name);
 		return -1;
 	}
 
-	object = json_node_get_object(self->priv->config);
+	object = json_node_get_object(self->config);
 
 	json_object_get_vec3_member(object, "acc_bias", &imu->acc_bias);
 	json_object_get_vec3_member(object, "acc_scale", &imu->acc_scale);
@@ -96,8 +93,8 @@ static int vive_controller_usb_get_config(OuvrtViveControllerUSB *self)
 	json_object_get_vec3_member(object, "gyro_scale", &imu->gyro_scale);
 
 	json_object_get_lighthouse_config_member(object, "lighthouse_config",
-						 &self->priv->watchman.model);
-	if (!self->priv->watchman.model.num_points) {
+						 &self->watchman.model);
+	if (!self->watchman.model.num_points) {
 		g_print("%s: Failed to parse Lighthouse configuration\n",
 			self->dev.name);
 	}
@@ -140,9 +137,8 @@ static void vive_controller_decode_pulse_report(OuvrtViveControllerUSB *self,
 		timestamp = __le32_to_cpu(pulse->timestamp);
 		duration = __le16_to_cpu(pulse->duration);
 
-		lighthouse_watchman_handle_pulse(&self->priv->watchman,
-						 sensor_id, duration,
-						 timestamp);
+		lighthouse_watchman_handle_pulse(&self->watchman, sensor_id,
+						 duration, timestamp);
 	}
 }
 
@@ -157,18 +153,18 @@ void vive_controller_decode_button_message(OuvrtViveControllerUSB *self,
 	if (report->battery && !report->buttons)
 		return;
 
-	if (buttons != self->priv->buttons) {
+	if (buttons != self->buttons) {
 		int i;
 		int num_buttons = 0;
 		uint8_t btns[32];
 
 		for (i = 0; i < 32; i++) {
-			if ((self->priv->buttons ^ buttons) & (1 << i))
+			if ((self->buttons ^ buttons) & (1 << i))
 				btns[num_buttons++] = i | ((buttons & (1 << i)) ? 0x80 : 0);
 		}
 		telemetry_send_buttons(self->dev.id, btns, num_buttons);
 
-		self->priv->buttons = buttons;
+		self->buttons = buttons;
 	}
 }
 
@@ -183,7 +179,7 @@ static int vive_controller_usb_start(OuvrtDevice *dev)
 	g_free(dev->name);
 	dev->name = g_strdup_printf("Vive Controller %s USB", dev->serial);
 
-	self->priv->watchman.name = dev->name;
+	self->watchman.name = dev->name;
 
 	ret = vive_get_firmware_version(dev);
 	if (ret < 0 && errno == EPIPE) {
@@ -205,7 +201,7 @@ static void vive_controller_usb_thread(OuvrtDevice *dev)
 	struct pollfd fds[3];
 	int ret;
 
-	self->priv->watchman.id = dev->id;
+	self->watchman.id = dev->id;
 
 	while (dev->active) {
 		fds[0].fd = dev->fds[0];
@@ -236,8 +232,8 @@ static void vive_controller_usb_thread(OuvrtDevice *dev)
 			break;
 		}
 
-		if (self->priv->imu.gyro_range == 0.0) {
-			ret = vive_imu_get_range_modes(dev, &self->priv->imu);
+		if (self->imu.gyro_range == 0.0) {
+			ret = vive_imu_get_range_modes(dev, &self->imu);
 			if (ret < 0) {
 				g_print("%s: Failed to get gyro/accelerometer range modes\n",
 					dev->name);
@@ -252,8 +248,8 @@ static void vive_controller_usb_thread(OuvrtDevice *dev)
 				continue;
 			}
 			if (ret == 52 && buf[0] == VIVE_IMU_REPORT_ID) {
-				vive_imu_decode_message(dev, &self->priv->imu,
-							buf, ret);
+				vive_imu_decode_message(dev, &self->imu, buf,
+							ret);
 			} else {
 				g_print("%s: Error, invalid %d-byte report 0x%02x\n",
 					dev->name, ret, buf[0]);
@@ -317,13 +313,11 @@ static void ouvrt_vive_controller_usb_class_init(OuvrtViveControllerUSBClass *kl
 static void ouvrt_vive_controller_usb_init(OuvrtViveControllerUSB *self)
 {
 	self->dev.type = DEVICE_TYPE_CONTROLLER;
-	self->priv = ouvrt_vive_controller_usb_get_instance_private(self);
-
-	self->priv->config = NULL;
-	self->priv->imu.sequence = 0;
-	self->priv->imu.time = 0;
-	self->priv->imu.state.pose.rotation.w = 1.0;
-	lighthouse_watchman_init(&self->priv->watchman);
+	self->config = NULL;
+	self->imu.sequence = 0;
+	self->imu.time = 0;
+	self->imu.state.pose.rotation.w = 1.0;
+	lighthouse_watchman_init(&self->watchman);
 }
 
 /*
