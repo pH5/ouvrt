@@ -26,7 +26,7 @@
 #define OUVRT_CAMERA_V4L2_GET_CLASS(obj) \
 					(G_TYPE_INSTANCE_GET_CLASS((obj), \
 					 OUVRT_TYPE_CAMERA_V4L2, \
-					 OuvrtCameraClass))
+					 OuvrtCameraV4L2Class))
 
 typedef struct _OuvrtCameraV4L2		OuvrtCameraV4L2;
 typedef struct _OuvrtCameraV4L2Class	OuvrtCameraV4L2Class;
