@@ -259,6 +259,17 @@ void psvr_dump_reply(unsigned char *buf, int len)
 		g_print("\n");
 }
 
+void psvr_handle_serial_report(OuvrtPSVR *psvr,
+			       struct psvr_serial_report *report)
+{
+	psvr->dev.serial = g_strndup((const gchar *)report->serial,
+				     sizeof(report->serial));
+	g_print("Serial number: %s\n", psvr->dev.serial);
+	g_print("Firmware version: %u.%u\n",
+		report->firmware_version_major,
+		report->firmware_version_minor);
+}
+
 static void psvr_handle_status_report(OuvrtPSVR *psvr,
 				      struct psvr_status_report *report)
 {
@@ -305,6 +316,9 @@ static void psvr_handle_control_reply(OuvrtPSVR *psvr, unsigned char *buf,
 	} else if (buf[3] != len - 4) {
 		g_print("PSVR: Unexpected length byte at offset 3:\n");
 		psvr_dump_reply(buf, len);
+	} else if (buf[0] == PSVR_SERIAL_REPORT_ID &&
+		   len == PSVR_SERIAL_REPORT_SIZE) {
+		psvr_handle_serial_report(psvr, (void *)buf);
 	} else if (buf[0] == PSVR_STATUS_REPORT_ID &&
 		   len == PSVR_STATUS_REPORT_SIZE) {
 		psvr_handle_status_report(psvr, (void *)buf);
@@ -430,6 +444,7 @@ static int psvr_start(OuvrtDevice *dev)
 	OuvrtPSVR *psvr = OUVRT_PSVR(dev);
 	libusb_device_handle *devh;
 	uint8_t bEndpointAddress;
+	unsigned char buf[64];
 	int ret;
 	int i;
 
@@ -453,6 +468,43 @@ static int psvr_start(OuvrtDevice *dev)
 		g_print("PSVR: Failed to claim control interface: %d\n", ret);
 		return ret;
 	}
+
+	int actual_length;
+	struct psvr_device_info_request request = {
+		.id = PSVR_DEVICE_INFO_REQUEST_ID,
+		.magic = PSVR_CONTROL_MAGIC,
+		.payload_length = 8,
+		.request = PSVR_SERIAL_REPORT_ID,
+	};
+
+	bEndpointAddress = psvr->control_endpoint | LIBUSB_ENDPOINT_OUT;
+	ret = libusb_bulk_transfer(devh, bEndpointAddress, (void *)&request,
+				   sizeof(request), &actual_length, 0);
+	if (ret < 0) {
+		g_print("PSVR: Failed to request serial number: %d (%s)\n",
+			ret, libusb_strerror(ret));
+		return ret;
+	}
+
+	do {
+		memset(buf, 0, sizeof(buf));
+		bEndpointAddress = psvr->control_endpoint | LIBUSB_ENDPOINT_IN;
+		ret = libusb_bulk_transfer(devh, bEndpointAddress, buf,
+					   sizeof(buf), &actual_length, 0);
+		if (ret) {
+			g_print("Failed to read: %d\n", errno);
+			return ret;
+		}
+
+		int len = buf[3] + 4;
+		if (len > 64 || len != actual_length) {
+			g_print("Invalid %d-byte report 0x%02x\n",
+				actual_length, buf[0]);
+			continue;
+		}
+
+		psvr_handle_control_reply(psvr, buf, len);
+	} while (buf[0] != PSVR_SERIAL_REPORT_ID);
 
 	ret = libusb_claim_interface(devh, PSVR_INTERFACE_SENSOR);
 	if (ret < 0) {
@@ -488,8 +540,6 @@ static int psvr_start(OuvrtDevice *dev)
 			return ret;
 		}
 	}
-
-	dev->serial = g_strdup("PSVR");
 
 	return 0;
 }
