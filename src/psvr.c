@@ -5,10 +5,10 @@
  */
 #include <asm/byteorder.h>
 #include <errno.h>
-#include <poll.h>
+#include <libusb.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "psvr.h"
 #include "psvr-hid-reports.h"
@@ -16,9 +16,24 @@
 #include "hidraw.h"
 #include "imu.h"
 #include "telemetry.h"
+#include "usb-ids.h"
+
+#define PSVR_CONFIG_DESCRIPTOR		1
+
+#define PSVR_INTERFACE_SENSOR		4
+#define PSVR_INTERFACE_CONTROL		5
+
+#define PSVR_ENDPOINT_SENSOR		3
+#define PSVR_ENDPOINT_CONTROL		4
 
 struct _OuvrtPSVR {
 	OuvrtDevice dev;
+
+	libusb_device_handle *devh;
+	int num_transfers;
+	struct libusb_transfer **transfer;
+	uint8_t sensor_endpoint;
+	uint8_t control_endpoint;
 
 	bool power;
 	bool vrmode;
@@ -27,11 +42,36 @@ struct _OuvrtPSVR {
 	uint8_t last_seq;
 	uint32_t last_timestamp;
 	struct imu_state imu;
+
+	uint8_t status_flags;
+	uint8_t volume;
 };
 
-G_DEFINE_TYPE(OuvrtPSVR, ouvrt_psvr, OUVRT_TYPE_DEVICE)
+G_DEFINE_TYPE(OuvrtPSVR, ouvrt_psvr, OUVRT_TYPE_USB_DEVICE)
 
-void psvr_set_processing_box_power(int fd, bool power)
+static int psvr_control_send(OuvrtPSVR *psvr, void *buf, size_t len)
+{
+	struct libusb_transfer *transfer;
+	uint8_t bEndpointAddress;
+	void *data;
+
+	transfer = libusb_alloc_transfer(0);
+	if (!transfer)
+		return -ENOMEM;
+
+	data = g_memdup(buf, len);
+	if (!data)
+		return -ENOMEM;
+
+	bEndpointAddress = psvr->control_endpoint | LIBUSB_ENDPOINT_OUT;
+	libusb_fill_bulk_transfer(transfer, psvr->devh, bEndpointAddress,
+				  data, len, NULL, NULL, 0);
+	transfer->flags |= LIBUSB_TRANSFER_FREE_BUFFER |
+			   LIBUSB_TRANSFER_FREE_TRANSFER;
+	return libusb_submit_transfer(transfer);
+}
+
+static void psvr_set_processing_box_power(OuvrtPSVR *psvr, bool power)
 {
 	struct psvr_processing_box_power_report report = {
 		.id = PSVR_PROCESSING_BOX_POWER_REPORT_ID,
@@ -40,11 +80,14 @@ void psvr_set_processing_box_power(int fd, bool power)
 		.payload = __cpu_to_le32(power ? PSVR_PROCESSING_BOX_POWER_ON :
 						 PSVR_PROCESSING_BOX_POWER_OFF),
 	};
+	int ret;
 
-	write(fd, &report, sizeof(report));
+	ret = psvr_control_send(psvr, &report, sizeof(report));
+	if (ret < 0)
+		g_print("PSVR: Failed to set processing box power: %d\n", ret);
 }
 
-void psvr_set_headset_power(int fd, bool power)
+static void psvr_set_headset_power(OuvrtPSVR *psvr, bool power)
 {
 	struct psvr_headset_power_report report = {
 		.id = PSVR_HEADSET_POWER_REPORT_ID,
@@ -53,14 +96,17 @@ void psvr_set_headset_power(int fd, bool power)
 		.payload = __cpu_to_le32(power ? PSVR_HEADSET_POWER_ON :
 						 PSVR_HEADSET_POWER_OFF),
 	};
+	int ret;
 
-	write(fd, &report, sizeof(report));
+	ret = psvr_control_send(psvr, &report, sizeof(report));
+	if (ret < 0)
+		g_print("PSVR: Failed to set headset power: %d\n", ret);
 }
 
 /*
  * Switches into VR mode enables the tracking LEDs.
  */
-static void psvr_enable_vr_tracking(int fd)
+static void psvr_enable_vr_tracking(OuvrtPSVR *psvr)
 {
 	struct psvr_enable_vr_tracking_report report = {
 		.id = PSVR_ENABLE_VR_TRACKING_REPORT_ID,
@@ -71,12 +117,14 @@ static void psvr_enable_vr_tracking(int fd)
 			__cpu_to_le32(PSVR_ENABLE_VR_TRACKING_DATA_2),
 		},
 	};
+	int ret;
 
-	write(fd, &report, sizeof(report));
-	g_print("PSVR: Sent enable VR tracking report\n");
+	ret = psvr_control_send(psvr, &report, sizeof(report));
+	if (ret < 0)
+		g_print("PSVR: Failed to enable VR tracking: %d\n", ret);
 }
 
-void psvr_set_mode(int fd, int mode)
+static void psvr_set_mode(OuvrtPSVR *psvr, int mode)
 {
 	struct psvr_set_mode_report report = {
 		.id = PSVR_SET_MODE_REPORT_ID,
@@ -85,12 +133,18 @@ void psvr_set_mode(int fd, int mode)
 		.payload = __cpu_to_le32(mode ? PSVR_MODE_VR :
 						PSVR_MODE_CINEMATIC),
 	};
+	int ret;
 
-	write(fd, &report, sizeof(report));
+	ret = psvr_control_send(psvr, &report, sizeof(report));
+	if (ret < 0) {
+		g_print("PSVR: Failed to set %s mode: %d\n",
+			mode ? "VR" : "cinematic", ret);
+	}
 }
 
-void psvr_decode_sensor_message(OuvrtPSVR *self, const unsigned char *buf,
-				size_t len G_GNUC_UNUSED)
+static void psvr_decode_sensor_message(OuvrtPSVR *self,
+				       const unsigned char *buf,
+				       size_t len G_GNUC_UNUSED)
 {
 	const struct psvr_sensor_message *message = (void *)buf;
 	uint16_t volume = __le16_to_cpu(message->volume);
@@ -122,8 +176,8 @@ void psvr_decode_sensor_message(OuvrtPSVR *self, const unsigned char *buf,
 		if (self->state == PSVR_STATE_RUNNING &&
 		    !self->vrmode) {
 			g_print("PSVR: Switch to VR mode\n");
-			psvr_set_mode(self->dev.fds[1], PSVR_MODE_VR);
-			psvr_enable_vr_tracking(self->dev.fds[1]);
+			psvr_set_mode(self, PSVR_MODE_VR);
+			psvr_enable_vr_tracking(self);
 
 			self->vrmode = true;
 		}
@@ -193,14 +247,247 @@ void psvr_decode_sensor_message(OuvrtPSVR *self, const unsigned char *buf,
 	(void)proximity;
 }
 
+void psvr_dump_reply(unsigned char *buf, int len)
+{
+	int i;
+	for (i = 0; i < len; i++) {
+		g_print("%02x ", buf[i]);
+		if (i == 3 || i % 16 == 3)
+			g_print("\n");
+	}
+	if (i % 16 != 4)
+		g_print("\n");
+}
+
+static void psvr_handle_status_report(OuvrtPSVR *psvr,
+				      struct psvr_status_report *report)
+{
+	uint8_t changed = psvr->status_flags ^ report->flags;
+	bool mic_mute = report->flags & PSVR_STATUS_FLAG_MIC_MUTE;
+	bool headphones = report->flags & PSVR_STATUS_FLAG_HEADPHONES_CONNECTED;
+	bool cinematic = report->flags & PSVR_STATUS_FLAG_CINEMATIC_MODE;
+	bool worn = report->flags & PSVR_STATUS_FLAG_WORN;
+	bool display_on = report->flags & PSVR_STATUS_FLAG_DISPLAY_ON;
+
+	psvr->status_flags = report->flags;
+
+	if (changed & PSVR_STATUS_FLAG_MIC_MUTE)
+		g_print("PSVR: Mic %s\n", mic_mute ? "muted" : "enabled");
+	if (changed & PSVR_STATUS_FLAG_HEADPHONES_CONNECTED)
+		g_print("PSVR: Headphones %sconnected\n", headphones ? "" : "dis");
+	if (changed & PSVR_STATUS_FLAG_CINEMATIC_MODE)
+		g_print("PSVR: %s mode\n", cinematic ? "Cinematic" : "VR");
+	if (changed & PSVR_STATUS_FLAG_WORN)
+		g_print("PSVR: Headset %s\n", worn ? "worn" : "removed");
+	if (changed & PSVR_STATUS_FLAG_DISPLAY_ON)
+		g_print("PSVR: Display powered %s\n", display_on ? "on" : "off");
+	if (psvr->volume != report->volume) {
+		psvr->volume = report->volume;
+		g_print("PSVR: Volume:%d\n", report->volume);
+	}
+}
+
+void psvr_handle_command_reply(OuvrtPSVR *psvr,
+			       struct psvr_command_reply *reply)
+{
+	if (reply->error) {
+		g_print("PSVR: Command %02x error: %02x \"%s\"\n",
+			reply->command, reply->error, reply->message);
+	}
+}
+
+static void psvr_handle_control_reply(OuvrtPSVR *psvr, unsigned char *buf,
+				      int len)
+{
+	if (buf[2] != PSVR_CONTROL_MAGIC) {
+		g_print("PSVR: Unexpected magic byte at offset 2:\n");
+		psvr_dump_reply(buf, len);
+	} else if (buf[3] != len - 4) {
+		g_print("PSVR: Unexpected length byte at offset 3:\n");
+		psvr_dump_reply(buf, len);
+	} else if (buf[0] == PSVR_STATUS_REPORT_ID &&
+		   len == PSVR_STATUS_REPORT_SIZE) {
+		psvr_handle_status_report(psvr, (void *)buf);
+	} else if (buf[0] == PSVR_COMMAND_REPLY_ID &&
+			len == PSVR_COMMAND_REPLY_SIZE) {
+		psvr_handle_command_reply(psvr, (void *)buf);
+	} else {
+		g_print("PSVR: Unknown report:\n");
+		psvr_dump_reply(buf, len);
+	}
+}
+
+static void psvr_control_transfer_callback(struct libusb_transfer *transfer)
+{
+	OuvrtPSVR *psvr = transfer->user_data;
+	int ret;
+
+	if (transfer->status != LIBUSB_TRANSFER_COMPLETED) {
+		if (transfer->status == LIBUSB_TRANSFER_NO_DEVICE) {
+			g_print("PSVR: Device vanished\n");
+			psvr->dev.active = false;
+		} else {
+			g_print("PSVR: Control transfer error: %d (%s)\n",
+				transfer->status,
+				libusb_error_name(transfer->status));
+		}
+		return;
+	}
+
+	if (transfer->buffer[2] != 0xaa) {
+		g_print("PSVR: Missing magic\n");
+	}
+	if (transfer->buffer[3] + 4 != transfer->actual_length) {
+		g_print("PSVR: Invalid length\n");
+	}
+
+	psvr_handle_control_reply(psvr, transfer->buffer,
+				  transfer->actual_length);
+
+	/* Resubmit transfer */
+	ret = libusb_submit_transfer(transfer);
+	if (ret < 0) {
+		g_print("PSVR: Failed to resubmit control transfer: %d\n", ret);
+	}
+}
+
+static void psvr_sensor_transfer_callback(struct libusb_transfer *transfer)
+{
+	OuvrtPSVR *psvr = transfer->user_data;
+	int ret;
+
+	if (transfer->status != LIBUSB_TRANSFER_COMPLETED) {
+		if (transfer->status == LIBUSB_TRANSFER_NO_DEVICE) {
+			g_print("PSVR: Device vanished\n");
+			psvr->dev.active = false;
+		} else {
+			g_print("PSVR: Sensor transfer error: %d (%s)\n",
+				transfer->status,
+				libusb_error_name(transfer->status));
+		}
+		return;
+	}
+
+	psvr_decode_sensor_message(psvr, transfer->buffer,
+				   transfer->actual_length);
+
+	/* Resubmit transfer */
+	ret = libusb_submit_transfer(transfer);
+	if (ret < 0) {
+		g_print("PSVR: Failed to resubmit sensor transfer: %d\n", ret);
+	}
+}
+
+static int psvr_parse_config_descriptor(OuvrtPSVR *psvr)
+{
+	struct libusb_config_descriptor *config;
+	const struct libusb_interface *interface;
+	libusb_device *dev;
+	int ret;
+
+	dev = libusb_get_device(psvr->devh);
+	if (!dev)
+		return -ENODEV;
+
+	ret = libusb_get_config_descriptor_by_value(dev,
+						    PSVR_CONFIG_DESCRIPTOR,
+						    &config);
+	if (ret < 0) {
+		g_print("PSVR: Failed to get config descriptor: %d\n", ret);
+		return ret;
+	}
+
+	if (config->bNumInterfaces < 6)
+		return -EINVAL;
+
+	interface = &config->interface[PSVR_INTERFACE_CONTROL];
+	if (interface->num_altsetting < 1 ||
+	    interface->altsetting[0].bNumEndpoints < 2) {
+		libusb_free_config_descriptor(config);
+		return -EINVAL;
+	}
+	psvr->control_endpoint =
+		interface->altsetting[0].endpoint[1].bEndpointAddress;
+
+	interface = &config->interface[PSVR_INTERFACE_SENSOR];
+	if (interface->num_altsetting < 1 ||
+	    interface->altsetting[0].bNumEndpoints < 1) {
+		libusb_free_config_descriptor(config);
+		return -EINVAL;
+	}
+	psvr->sensor_endpoint =
+		interface->altsetting[0].endpoint[0].bEndpointAddress;
+
+	libusb_free_config_descriptor(config);
+	return 0;
+}
+
 /*
  * Enables the headset.
  */
 static int psvr_start(OuvrtDevice *dev)
 {
-	psvr_set_processing_box_power(dev->fds[1], true);
-	psvr_set_headset_power(dev->fds[1], true);
+	OuvrtPSVR *psvr = OUVRT_PSVR(dev);
+	libusb_device_handle *devh;
+	uint8_t bEndpointAddress;
+	int ret;
+	int i;
+
+	devh = ouvrt_usb_device_get_handle(OUVRT_USB_DEVICE(dev));
+	psvr->devh = devh;
+
+	ret = psvr_parse_config_descriptor(psvr);
+	if (ret) {
+		g_print("PSVR: Failed to parse USB config descriptor: %d\n", ret);
+		return ret;
+	}
+
+	ret = libusb_set_auto_detach_kernel_driver(devh, 1);
+	if (ret) {
+		g_print("PSVR: Failed to detach kernel drivers: %d\n", ret);
+		return ret;
+	}
+
+	ret = libusb_claim_interface(devh, PSVR_INTERFACE_CONTROL);
+	if (ret < 0) {
+		g_print("PSVR: Failed to claim control interface: %d\n", ret);
+		return ret;
+	}
+
+	ret = libusb_claim_interface(devh, PSVR_INTERFACE_SENSOR);
+	if (ret < 0) {
+		g_print("PSVR: Failed to claim sensor interface: %d\n", ret);
+		return ret;
+	}
+
+	psvr_set_processing_box_power(psvr, true);
+	psvr_set_headset_power(psvr, true);
 	g_print("PSVR: Sent power on message\n");
+
+	/* Submit one sensor transfer and one control transfer */
+	psvr->num_transfers = 2;
+	psvr->transfer = calloc(psvr->num_transfers, sizeof(*psvr->transfer));
+	if (!psvr->transfer)
+		return -ENOMEM;
+
+	for (i = 0; i < psvr->num_transfers; i++) {
+		psvr->transfer[i] = libusb_alloc_transfer(0);
+		void *buf = calloc(1, 64);
+		bEndpointAddress = (i ? psvr->control_endpoint :
+					psvr->sensor_endpoint) |
+				   LIBUSB_ENDPOINT_IN;
+		libusb_fill_bulk_transfer(psvr->transfer[i], devh,
+					  bEndpointAddress, buf, 64,
+					  (i ? psvr_control_transfer_callback :
+					       psvr_sensor_transfer_callback),
+					  psvr, 0);
+
+		ret = libusb_submit_transfer(psvr->transfer[i]);
+		if (ret < 0) {
+			g_print("PSVR: Failed to submit bulk transfer %d\n", i);
+			return ret;
+		}
+	}
 
 	dev->serial = g_strdup("PSVR");
 
@@ -208,74 +495,17 @@ static int psvr_start(OuvrtDevice *dev)
 }
 
 /*
- * Handles sensor messages.
- */
-static void psvr_thread(OuvrtDevice *dev)
-{
-	OuvrtPSVR *psvr = OUVRT_PSVR(dev);
-	unsigned char buf[64];
-	struct pollfd fds;
-	int ret;
-
-	while (dev->active) {
-		fds.fd = dev->fds[0];
-		fds.events = POLLIN;
-		fds.revents = 0;
-
-		ret = poll(&fds, 1, 1000);
-		if (ret == -1) {
-			g_print("PSVR: Poll failure\n");
-			continue;
-		}
-		if (ret == 0) {
-			if (psvr->power) {
-				if (psvr->state == PSVR_STATE_POWER_OFF) {
-					/*
-					 * A poll timeout after powering off is
-					 * expected.
-					 */
-					g_print("PSVR: Powered off\n");
-				} else {
-					g_print("PSVR: Poll timeout\n");
-				}
-				psvr->power = false;
-			}
-			continue;
-		}
-
-		if (fds.revents & (POLLERR | POLLHUP | POLLNVAL))
-			break;
-
-		if (fds.revents & POLLIN) {
-			ret = read(dev->fds[0], buf, sizeof(buf));
-			if (ret == -1) {
-				g_print("PSVR: Read error: %d\n", errno);
-				continue;
-			}
-			if (ret != 64) {
-				g_print("PSVR: Error, invalid %d-byte report\n",
-					ret);
-				continue;
-			}
-
-			if (!psvr->power) {
-				g_print("PSVR: Powered on\n");
-				psvr->power = true;
-			}
-
-			psvr_decode_sensor_message(psvr, buf, sizeof(buf));
-		}
-	}
-}
-
-/*
- * Powers off the headset and processing box.
+ * Powers off the headset.
  */
 static void psvr_stop(OuvrtDevice *dev)
 {
-	psvr_set_headset_power(dev->fds[1], false);
-//	psvr_set_processing_box_power(dev->fds[1], false);
+	OuvrtPSVR *psvr = OUVRT_PSVR(dev);
+
+	psvr_set_headset_power(psvr, false);
 	g_print("PSVR: Sent power off message\n");
+
+	libusb_release_interface(psvr->devh, PSVR_INTERFACE_SENSOR);
+	libusb_release_interface(psvr->devh, PSVR_INTERFACE_CONTROL);
 }
 
 /*
@@ -290,17 +520,21 @@ static void ouvrt_psvr_class_init(OuvrtPSVRClass *klass)
 {
 	G_OBJECT_CLASS(klass)->finalize = ouvrt_psvr_finalize;
 	OUVRT_DEVICE_CLASS(klass)->start = psvr_start;
-	OUVRT_DEVICE_CLASS(klass)->thread = psvr_thread;
 	OUVRT_DEVICE_CLASS(klass)->stop = psvr_stop;
 }
 
 static void ouvrt_psvr_init(OuvrtPSVR *self)
 {
+	ouvrt_usb_device_set_vid_pid(OUVRT_USB_DEVICE(self), VID_SONY, PID_PSVR);
+
 	self->dev.type = DEVICE_TYPE_HMD;
 	self->power = false;
 	self->vrmode = false;
 	self->state = PSVR_STATE_POWER_OFF;
 	self->imu.pose.rotation.w = 1.0;
+
+	self->status_flags = 0;
+	self->volume = 0;
 }
 
 /*

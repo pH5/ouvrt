@@ -9,12 +9,12 @@
 #include <glib.h>
 #include <glib-object.h>
 
-#include "device.h"
+#include "usb-device.h"
 
 G_BEGIN_DECLS
 
 #define OUVRT_TYPE_PSVR (ouvrt_psvr_get_type())
-G_DECLARE_FINAL_TYPE(OuvrtPSVR, ouvrt_psvr, OUVRT, PSVR, OuvrtDevice)
+G_DECLARE_FINAL_TYPE(OuvrtPSVR, ouvrt_psvr, OUVRT, PSVR, OuvrtUSBDevice)
 
 OuvrtDevice *psvr_new(const char *devnode);
 

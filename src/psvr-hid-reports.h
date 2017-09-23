@@ -66,6 +66,38 @@ struct psvr_set_mode_report {
 	__le32 payload;
 } __attribute__((packed));
 
+#define PSVR_STATUS_REPORT_ID				0xf0
+#define PSVR_STATUS_REPORT_SIZE				20
+
+#define PSVR_STATUS_FLAG_MIC_MUTE			0x20
+#define PSVR_STATUS_FLAG_HEADPHONES_CONNECTED		0x10
+#define PSVR_STATUS_FLAG_CINEMATIC_MODE			0x04
+#define PSVR_STATUS_FLAG_WORN				0x02
+#define PSVR_STATUS_FLAG_DISPLAY_ON			0x01
+
+struct psvr_status_report {
+	__u8 id;
+	__u8 status;
+	__u8 magic;
+	__u8 payload_length;
+	__u8 flags;
+	__u8 volume;
+	__u8 unknown[14];
+} __attribute__((packed));
+
+#define PSVR_COMMAND_REPLY_ID				0xa0
+#define PSVR_COMMAND_REPLY_SIZE				64
+
+struct psvr_command_reply {
+	__u8 id;
+	__u8 unknown;
+	__u8 magic;
+	__u8 payload_length;
+	__u8 command;
+	__u8 error;
+	__u8 message[58];
+} __attribute__((packed));
+
 #define PSVR_SENSOR_MESSAGE_SIZE			64
 
 /*
@@ -118,6 +150,8 @@ ASSERT_SIZE(psvr_enable_vr_tracking_report, PSVR_ENABLE_VR_TRACKING_REPORT_SIZE)
 ASSERT_SIZE(psvr_headset_power_report, PSVR_HEADSET_POWER_REPORT_SIZE);
 ASSERT_SIZE(psvr_processing_box_power_report, PSVR_PROCESSING_BOX_POWER_REPORT_SIZE);
 ASSERT_SIZE(psvr_set_mode_report, PSVR_SET_MODE_REPORT_SIZE);
+ASSERT_SIZE(psvr_status_report, PSVR_STATUS_REPORT_SIZE);
+ASSERT_SIZE(psvr_command_reply, PSVR_COMMAND_REPLY_SIZE);
 ASSERT_SIZE(psvr_sensor_message, PSVR_SENSOR_MESSAGE_SIZE);
 
 #endif /* __PSVR_HID_REPORTS__ */

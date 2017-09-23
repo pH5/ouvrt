@@ -53,12 +53,8 @@ static const struct device_match device_matches[NUM_MATCHES] = {
 	{
 		.vid = VID_SONY,
 		.pid = PID_PSVR,
+		.subsystem = "usb",
 		.name = "PSVR",
-		.interfaces = (const struct interface_match[]){
-			{ 4, .subsystem = "hidraw", .name = "IMU" },
-			{ 5, .subsystem = "hidraw", .name = "Control" },
-		},
-		.num_interfaces = 2,
 		.new = psvr_new,
 	}, {
 		.vid = VID_OCULUSVR,
