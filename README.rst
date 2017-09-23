@@ -46,17 +46,18 @@ The following prerequisite libraries and development packages are necessary
 to build ouvrt:
 
 - GLib/GObject/GIO
-- GStreamer
+- GStreamer (optional)
 - JSON-GLib
 - OpenCV (optional)
 - libudev
 - Meson
 - zlib
 
-On a Debian stretch system these can be installed with the following command::
+On a Debian stretch system these can be installed with the following commands::
 
-  $ apt-get install build-essential libglib2.0-dev libgstreamer1.0-dev \
-    libjson-glib-dev libudev-dev meson pkg-config
+  $ apt-get install build-essential libglib2.0-dev libjson-glib-dev \
+    libudev-dev meson pkg-config
+  $ apt-get install libgstreamer-1.0-dev libopencv-dev
 
 To configure the build system and build everything, follow the standard Meson
 build procedure::
@@ -64,6 +65,12 @@ build procedure::
   $ meson builddir
   $ cd builddir
   $ ninja
+
+To build without the GStreamer dependency, disable the corresponding option
+before calling ninja::
+
+  $ cd builddir
+  $ meson configure -D gstreamer=false
 
 3. ouvrtd
 ---------

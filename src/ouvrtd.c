@@ -6,7 +6,6 @@
 #include <errno.h>
 #include <getopt.h>
 #include <glib.h>
-#include <gst/gst.h>
 #include <libudev.h>
 #include <locale.h>
 #include <poll.h>
@@ -19,6 +18,7 @@
 #include "debug.h"
 #include "device.h"
 #include "gdbus-generated.h"
+#include "gst-optional.h"
 #include "usb-ids.h"
 #include "psvr.h"
 #include "rift.h"
@@ -498,7 +498,9 @@ int main(int argc, char *argv[])
 
 	setlocale(LC_CTYPE, "");
 
+#if HAVE_GST
 	gst_init(&argc, &argv);
+#endif
 	telemetry_init(&argc, &argv);
 
 	do {
@@ -529,7 +531,9 @@ int main(int argc, char *argv[])
 	udev_unref(udev);
 	g_main_loop_unref(loop);
 	telemetry_deinit();
+#if HAVE_GST
 	gst_deinit();
+#endif
 
 	return 0;
 }

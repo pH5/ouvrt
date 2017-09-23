@@ -8,7 +8,7 @@ add_global_arguments('-Wall', language : 'c')
 gio_dep = dependency('gio-unix-2.0')
 glib_dep = dependency('glib-2.0')
 gobj_dep = dependency('gobject-2.0', version : '>= 2.44')
-gst_dep = dependency('gstreamer-1.0')
+gst_dep = dependency('gstreamer-1.0', required : get_option('gstreamer'))
 json_glib_dep = dependency('json-glib-1.0', version : '>= 1.2')
 opencv_dep = dependency('opencv', required : false)
 thread_dep = dependency('threads')
@@ -16,6 +16,12 @@ udev_dep = dependency('libudev')
 zlib_dep = dependency('zlib')
 cc = meson.get_compiler('c')
 m_dep = cc.find_library('m', required : false)
+
+build_gst = gst_dep.found() and get_option('gstreamer')
+
+if build_gst
+	add_global_arguments('-DHAVE_GST=1', language : 'c')
+endif
 
 gdbus_codegen = find_program('gdbus-codegen')
 sed = find_program('sed')
@@ -55,7 +61,6 @@ ouvrtd_sources = [
 	'src/dbus.c',
 	'src/dbus.h',
 	'src/debug.c',
-	'src/debug-gst.c',
 	'src/debug-gst.h',
 	'src/debug.h',
 	'src/device.c',
@@ -102,13 +107,15 @@ ouvrtd_sources = [
 	'src/vive-imu.c',
 	'src/vive-imu.h'
 ]
+if build_gst
+	ouvrtd_sources += [ 'src/debug-gst.c' ]
+endif
 if opencv_dep.found()
 	ouvrtd_sources += [ 'src/opencv.cpp' ]
 endif
 ouvrtd_deps = [
 	glib_dep,
 	gio_dep,
-	gst_dep,
 	json_glib_dep,
 	m_dep,
 	opencv_dep,
@@ -116,6 +123,9 @@ ouvrtd_deps = [
 	udev_dep,
 	zlib_dep
 ]
+if build_gst
+	ouvrtd_deps += gst_dep
+endif
 executable('ouvrtd', ouvrtd_sources,
 	dependencies : ouvrtd_deps,
 	link_with : libouvrt)
