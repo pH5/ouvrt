@@ -155,19 +155,24 @@ static void ouvrtd_device_add(struct udev_device *dev)
 	if (!subsystem)
 		return;
 
-	parent = udev_device_get_parent_with_subsystem_devtype(dev,
-						"usb", "usb_interface");
-	if (!parent)
-		return;
+	if (g_strcmp0(subsystem, "usb") == 0) {
+		parent = dev;
+		iface = 0;
+	} else {
+		parent = udev_device_get_parent_with_subsystem_devtype(dev,
+							"usb", "usb_interface");
+		if (!parent)
+			return;
 
-	value = udev_device_get_sysattr_value(parent, "bInterfaceNumber");
-	if (!value)
-		return;
-	iface = atoi(value);
+		value = udev_device_get_sysattr_value(parent, "bInterfaceNumber");
+		if (!value)
+			return;
+		iface = atoi(value);
 
-	parent = udev_device_get_parent(parent);
-	if (!parent)
-		return;
+		parent = udev_device_get_parent(parent);
+		if (!parent)
+			return;
+	}
 
 	parent_devpath = udev_device_get_devpath(parent);
 	if (!parent_devpath)
@@ -346,6 +351,7 @@ static int ouvrtd_enumerate(struct udev *udev)
 	struct udev_list_entry *devices, *dev_list_entry;
 
 	enumerate = udev_enumerate_new(udev);
+	udev_enumerate_add_match_subsystem(enumerate, "usb");
 	udev_enumerate_add_match_subsystem(enumerate, "hidraw");
 	udev_enumerate_add_match_subsystem(enumerate, "video4linux");
 	udev_enumerate_scan_devices(enumerate);
@@ -442,6 +448,7 @@ static void ouvrtd_startup(struct udev *udev)
 
 	/* Set up monitoring udev events for hidraw and video4linux devices */
 	monitor = udev_monitor_new_from_netlink(udev, "udev");
+	udev_monitor_filter_add_match_subsystem_devtype(monitor, "usb", NULL);
 	udev_monitor_filter_add_match_subsystem_devtype(monitor, "hidraw",
 							NULL);
 	udev_monitor_filter_add_match_subsystem_devtype(monitor, "video4linux",

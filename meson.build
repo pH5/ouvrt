@@ -13,6 +13,7 @@ json_glib_dep = dependency('json-glib-1.0', version : '>= 1.2')
 opencv_dep = dependency('opencv', required : get_option('opencv'))
 thread_dep = dependency('threads')
 udev_dep = dependency('libudev')
+usb_dep = dependency('libusb-1.0', version : '>= 1.0.16')
 zlib_dep = dependency('zlib')
 cc = meson.get_compiler('c')
 m_dep = cc.find_library('m', required : false)
@@ -94,6 +95,8 @@ ouvrtd_sources = [
 	'src/tracker.h',
 	'src/tracking-model.c',
 	'src/tracking-model.h',
+	'src/usb-device.c',
+	'src/usb-device.h',
 	'src/usb-ids.h',
 	'src/vive-config.c',
 	'src/vive-config.h',
@@ -123,6 +126,7 @@ ouvrtd_deps = [
 	m_dep,
 	thread_dep,
 	udev_dep,
+	usb_dep,
 	zlib_dep
 ]
 if build_gst
