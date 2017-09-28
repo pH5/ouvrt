@@ -55,9 +55,11 @@ struct _OuvrtDevice {
 struct _OuvrtDeviceClass {
 	GObjectClass parent_class;
 
+	int (*open)(OuvrtDevice *dev);
 	int (*start)(OuvrtDevice *dev);
 	void (*thread)(OuvrtDevice *dev);
 	void (*stop)(OuvrtDevice *dev);
+	void (*close)(OuvrtDevice *dev);
 };
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC(OuvrtDevice, g_object_unref);
@@ -65,7 +67,9 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC(OuvrtDevice, g_object_unref);
 GType ouvrt_device_get_type(void);
 
 unsigned long ouvrt_device_claim_id(OuvrtDevice *dev, const char *serial);
+int ouvrt_device_open(OuvrtDevice *dev);
 int ouvrt_device_start(OuvrtDevice *dev);
 void ouvrt_device_stop(OuvrtDevice *dev);
+void ouvrt_device_close(OuvrtDevice *dev);
 
 #endif /* __DEVICE_H__ */

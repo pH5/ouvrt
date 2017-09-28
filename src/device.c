@@ -46,10 +46,48 @@ static void ouvrt_device_finalize(GObject *object)
 	G_OBJECT_CLASS(ouvrt_device_parent_class)->finalize(object);
 }
 
+/*
+ * Opens all file descriptors related to the device.
+ */
+static int ouvrt_device_open_default(OuvrtDevice *dev)
+{
+	int i;
+
+	for (i = 0; i < 3; i++) {
+		if (dev->fds[i] == -1 && dev->devnodes[i] != NULL) {
+			dev->fds[i] = open(dev->devnodes[i],
+					   O_RDWR | O_NONBLOCK);
+			if (dev->fds[i] == -1) {
+				g_print("%s: Failed to open '%s': %d (%m)\n",
+					dev->name, dev->devnodes[i], errno);
+				return -1;
+			}
+		}
+	}
+
+	return 0;
+}
+
+/*
+ * Closes all file descriptors related to the device.
+ */
+static void ouvrt_device_close_default(OuvrtDevice *dev)
+{
+	int i;
+
+	for (i = 2; i >= 0; i--) {
+		if (dev->fds[i] != -1)
+			close(dev->fds[i]);
+		dev->fds[i] = -1;
+	}
+}
+
 static void ouvrt_device_class_init(OuvrtDeviceClass *klass)
 {
 	G_OBJECT_CLASS(klass)->finalize = ouvrt_device_finalize;
 	G_OBJECT_CLASS(klass)->dispose = ouvrt_device_dispose;
+	klass->open = ouvrt_device_open_default;
+	klass->close = ouvrt_device_close_default;
 }
 
 /*
@@ -109,26 +147,26 @@ unsigned long ouvrt_device_claim_id(OuvrtDevice *dev, const char *serial)
 }
 
 /*
+ * Opens the device.
+ */
+int ouvrt_device_open(OuvrtDevice *dev)
+{
+	return OUVRT_DEVICE_GET_CLASS(dev)->open(dev);
+}
+
+/*
  * Starts the device and its worker thread.
  */
 int ouvrt_device_start(OuvrtDevice *dev)
 {
-	int i, ret;
+	int ret;
 
 	if (dev->active)
 		return 0;
 
-	for (i = 0; i < 3; i++) {
-		if (dev->fds[i] == -1 && dev->devnodes[i] != NULL) {
-			dev->fds[i] = open(dev->devnodes[i],
-					   O_RDWR | O_NONBLOCK);
-			if (dev->fds[i] == -1) {
-				g_print("%s: Failed to open '%s': %d\n",
-					dev->name, dev->devnodes[i], errno);
-				return -1;
-			}
-		}
-	}
+	ret = ouvrt_device_open(dev);
+	if (ret < 0)
+		return ret;
 
 	ret = OUVRT_DEVICE_GET_CLASS(dev)->start(dev);
 	if (ret < 0)
@@ -148,8 +186,6 @@ int ouvrt_device_start(OuvrtDevice *dev)
  */
 void ouvrt_device_stop(OuvrtDevice *dev)
 {
-	int i;
-
 	if (!dev->active)
 		return;
 
@@ -159,10 +195,5 @@ void ouvrt_device_stop(OuvrtDevice *dev)
 	dev->priv->thread = NULL;
 
 	OUVRT_DEVICE_GET_CLASS(dev)->stop(dev);
-
-	for (i = 2; i >= 0; i--) {
-		if (dev->fds[i] != -1)
-			close(dev->fds[i]);
-		dev->fds[i] = -1;
-	}
+	OUVRT_DEVICE_GET_CLASS(dev)->close(dev);
 }
