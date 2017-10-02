@@ -16,7 +16,7 @@ struct _OuvrtDevicePrivate {
 	GThread *thread;
 };
 
-G_DEFINE_TYPE_WITH_PRIVATE(OuvrtDevice, ouvrt_device, G_TYPE_OBJECT)
+G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE(OuvrtDevice, ouvrt_device, G_TYPE_OBJECT)
 
 static GHashTable *serial_to_id_table;
 
