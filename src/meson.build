@@ -9,10 +9,14 @@ libouvrt_sources = [
   'flicker.c',
   'flicker.h',
   'mt9v034.c',
-  'mt9v034.h'
+  'mt9v034.h',
+  'uvc.c',
+  'uvc.h'
 ]
 libouvrt_deps = [
-  m_dep
+  glib_dep,
+  m_dep,
+  usb_dep
 ]
 libouvrt = static_library(
   'libouvrt',
