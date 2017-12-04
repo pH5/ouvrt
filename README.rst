@@ -23,6 +23,7 @@ relevant USB devices and sets them up for tracking.
 
 Currently the following devices can be detected:
 
+- Lenovo Explorer headset (USB)
 - PlayStation VR headset (USB, via PSVR processing box)
 - Rift CV1 headset (USB)
 - Rift DK2 headset (USB)

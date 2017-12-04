@@ -80,6 +80,8 @@ ouvrtd_sources = [
 	'src/json.h',
 	'src/leds.c',
 	'src/leds.h',
+	'src/lenovo-explorer.c',
+	'src/lenovo-explorer.h',
 	'src/lighthouse.c',
 	'src/lighthouse.h',
 	'src/math.c',

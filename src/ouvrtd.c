@@ -25,13 +25,14 @@
 #include "camera-dk2.h"
 #include "hololens-camera.h"
 #include "hololens-imu.h"
+#include "lenovo-explorer.h"
 #include "telemetry.h"
 #include "vive-headset.h"
 #include "vive-headset-mainboard.h"
 #include "vive-controller.h"
 #include "vive-controller-usb.h"
 
-#define NUM_MATCHES	10
+#define NUM_MATCHES	11
 
 struct interface_match {
 	int iface;
@@ -86,6 +87,12 @@ static const struct device_match device_matches[NUM_MATCHES] = {
 		.subsystem = "hidraw",
 		.name = "Vive Headset Mainboard",
 		.new = vive_headset_mainboard_new,
+	}, {
+		.vid = VID_LENOVO,
+		.pid = PID_VR_2511N,
+		.subsystem = "hidraw",
+		.name = "Lenovo Explorer",
+		.new = lenovo_explorer_new,
 	}, {
 		.vid = VID_MICROSOFT,
 		.pid = PID_HOLOLENS_SENSORS,

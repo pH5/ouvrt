@@ -12,6 +12,9 @@
 #define VID_HTC			0x0bb4
 #define PID_VIVE		0x2c87
 
+#define VID_LENOVO		0x17ef
+#define PID_VR_2511N		0xb801
+
 #define VID_MICROSOFT		0x045e
 #define PID_HOLOLENS_SENSORS	0x0659
 
