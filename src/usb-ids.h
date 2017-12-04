@@ -12,6 +12,9 @@
 #define VID_HTC			0x0bb4
 #define PID_VIVE		0x2c87
 
+#define VID_MICROSOFT		0x045e
+#define PID_HOLOLENS_SENSORS	0x0659
+
 #define VID_OCULUSVR		0x2833
 #define PID_RIFT_DK2		0x0021
 #define PID_RIFT_CV1		0x0031

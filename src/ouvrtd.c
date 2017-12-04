@@ -23,13 +23,15 @@
 #include "psvr.h"
 #include "rift.h"
 #include "camera-dk2.h"
+#include "hololens-camera.h"
+#include "hololens-imu.h"
 #include "telemetry.h"
 #include "vive-headset.h"
 #include "vive-headset-mainboard.h"
 #include "vive-controller.h"
 #include "vive-controller-usb.h"
 
-#define NUM_MATCHES	8
+#define NUM_MATCHES	10
 
 struct interface_match {
 	int iface;
@@ -84,6 +86,21 @@ static const struct device_match device_matches[NUM_MATCHES] = {
 		.subsystem = "hidraw",
 		.name = "Vive Headset Mainboard",
 		.new = vive_headset_mainboard_new,
+	}, {
+		.vid = VID_MICROSOFT,
+		.pid = PID_HOLOLENS_SENSORS,
+		.subsystem = "video4linux",
+		.name = "HoloLens Sensors",
+		.new = hololens_camera_new,
+	}, {
+		.vid = VID_MICROSOFT,
+		.pid = PID_HOLOLENS_SENSORS,
+		.name = "HoloLens IMU",
+		.interfaces = (const struct interface_match[]){
+			{ 2, .subsystem = "hidraw", .name = "IMU" },
+		},
+		.num_interfaces = 1,
+		.new = hololens_imu_new,
 	}, {
 		.vid = VID_VALVE,
 		.pid = PID_VIVE_HEADSET,
