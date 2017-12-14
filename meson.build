@@ -28,7 +28,6 @@ if build_opencv
 endif
 
 gdbus_codegen = find_program('gdbus-codegen')
-sed = find_program('sed')
 
 tracker_xml = 'xml/de.phfuenf.ouvrt.Tracker1.xml'
 camera_xml = 'xml/de.phfuenf.ouvrt.Camera1.xml'
