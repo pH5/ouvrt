@@ -7,6 +7,7 @@
 #define __DEBUG_GST_H__
 
 #include "blobwatch.h"
+#include "math.h"
 
 struct debug_gst;
 
