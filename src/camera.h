@@ -45,6 +45,7 @@ struct _OuvrtCamera {
 
 struct _OuvrtCameraClass {
 	OuvrtDeviceClass parent_class;
+	int (*process_frame)(OuvrtCamera *camera, void *frame);
 };
 
 GType ouvrt_camera_get_type(void);

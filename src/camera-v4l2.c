@@ -264,9 +264,12 @@ static void ouvrt_camera_v4l2_thread(OuvrtDevice *dev)
 		clock_gettime(CLOCK_MONOTONIC, &tp);
 		timestamps[3] = tp.tv_sec + 1e-9 * tp.tv_nsec;
 
-		debug_gst_frame_push(camera->debug, raw, camera->sizeimage,
-				     width * height, ob, &rot, &trans,
-				     timestamps);
+		ret = OUVRT_CAMERA_GET_CLASS(dev)->process_frame(camera, raw);
+		if (ret == 0) {
+			debug_gst_frame_push(camera->debug, raw,
+					     camera->sizeimage, width * height,
+					     ob, &rot, &trans, timestamps);
+		}
 
 		ret = ioctl(dev->fd, VIDIOC_QBUF, &buf);
 		if (ret < 0) {

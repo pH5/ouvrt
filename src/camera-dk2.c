@@ -31,6 +31,11 @@ struct _OuvrtCameraDK2Private {
 G_DEFINE_TYPE_WITH_PRIVATE(OuvrtCameraDK2, ouvrt_camera_dk2, \
 			   OUVRT_TYPE_CAMERA_V4L2)
 
+static int camera_dk2_process_frame(OuvrtCamera *camera, void *raw)
+{
+	return 0;
+}
+
 /*
  * Starts streaming and sets up the sensor for the exposure synchronization
  * signal from the Rift DK2.
@@ -83,6 +88,7 @@ static void ouvrt_camera_dk2_class_init(OuvrtCameraDK2Class *klass)
 	G_OBJECT_CLASS(klass)->finalize = ouvrt_camera_dk2_finalize;
 
 	OUVRT_DEVICE_CLASS(klass)->start = camera_dk2_start;
+	OUVRT_CAMERA_CLASS(klass)->process_frame = camera_dk2_process_frame;
 }
 
 static void ouvrt_camera_dk2_init(OuvrtCameraDK2 *self)
