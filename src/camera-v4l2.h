@@ -46,6 +46,8 @@ struct _OuvrtCameraV4L2Class {
 	OuvrtCameraClass parent_class;
 };
 
+G_DEFINE_AUTOPTR_CLEANUP_FUNC(OuvrtCameraV4L2, g_object_unref);
+
 GType ouvrt_camera_v4l2_get_type(void);
 
 #endif /* __CAMERA_V4L2_H__ */
