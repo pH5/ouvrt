@@ -11,35 +11,8 @@
 
 #include "math.h"
 
-#define OUVRT_TYPE_TRACKER		(ouvrt_tracker_get_type())
-#define OUVRT_TRACKER(obj)		(G_TYPE_CHECK_INSTANCE_CAST((obj), \
-					 OUVRT_TYPE_TRACKER, OuvrtTracker))
-#define OUVRT_IS_TRACKER(obj)		(G_TYPE_CHECK_INSTANCE_TYPE((obj), \
-					 OUVRT_TYPE_TRACKER))
-#define OUVRT_TRACKER_CLASS(klass)	(G_TYPE_CHECK_CLASS_CAST((klass), \
-					 OUVRT_TYPE_TRACKER, \
-					 OuvrtTrackerClass))
-#define OUVRT_IS_TRACKER_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE((klass), \
-					 OUVRT_TYPE_TRACKER))
-#define OUVRT_TRACKER_GET_CLASS(obj)	(G_TYPE_INSTANCE_GET_CLASS((obj), \
-					 OUVRT_TYPE_TRACKER, \
-					 OuvrtTrackerClass))
-
-typedef struct _OuvrtTracker		OuvrtTracker;
-typedef struct _OuvrtTrackerClass	OuvrtTrackerClass;
-typedef struct _OuvrtTrackerPrivate	OuvrtTrackerPrivate;
-
-struct _OuvrtTracker {
-	GObject parent_instance;
-
-	OuvrtTrackerPrivate *priv;
-};
-
-struct _OuvrtTrackerClass {
-	GObjectClass parent_class;
-};
-
-GType ouvrt_tracker_get_type(void);
+#define OUVRT_TYPE_TRACKER (ouvrt_tracker_get_type())
+G_DECLARE_FINAL_TYPE(OuvrtTracker, ouvrt_tracker, OUVRT, TRACKER, GObject)
 
 struct leds;
 struct blob;

@@ -13,40 +13,39 @@
 #include "opencv.h"
 #include "tracker.h"
 
-struct _OuvrtTrackerPrivate {
+struct _OuvrtTracker {
+	GObject parent_instance;
 	struct blobwatch *bw;
 	struct leds *leds;
 };
 
-G_DEFINE_TYPE_WITH_PRIVATE(OuvrtTracker, ouvrt_tracker, G_TYPE_OBJECT)
+G_DEFINE_TYPE(OuvrtTracker, ouvrt_tracker, G_TYPE_OBJECT)
 
 void ouvrt_tracker_register_leds(OuvrtTracker *tracker, struct leds *leds)
 {
-	if (!tracker || tracker->priv->leds)
+	if (!tracker || tracker->leds)
 		return;
 
-	tracker->priv->leds = leds;
+	tracker->leds = leds;
 }
 
 void ouvrt_tracker_unregister_leds(OuvrtTracker *tracker, struct leds *leds)
 {
-	if (!tracker || tracker->priv->leds != leds)
+	if (!tracker || tracker->leds != leds)
 		return;
 
-	tracker->priv->leds = NULL;
+	tracker->leds = NULL;
 }
 
 void ouvrt_tracker_process_frame(OuvrtTracker *tracker, uint8_t *frame,
 				 int width, int height, int skipped,
 				 struct blobservation **ob)
 {
-	OuvrtTrackerPrivate *priv = tracker->priv;
+	if (tracker->bw == NULL)
+		tracker->bw = blobwatch_new(width, height);
 
-	if (priv->bw == NULL)
-		priv->bw = blobwatch_new(width, height);
-
-	blobwatch_process(priv->bw, frame, width, height, skipped,
-			  priv->leds, ob);
+	blobwatch_process(tracker->bw, frame, width, height, skipped,
+			  tracker->leds, ob);
 }
 
 void ouvrt_tracker_process_blobs(OuvrtTracker *tracker,
@@ -54,7 +53,7 @@ void ouvrt_tracker_process_blobs(OuvrtTracker *tracker,
 				 dmat3 *camera_matrix, double dist_coeffs[5],
 				 dquat *rot, dvec3 *trans)
 {
-	struct leds *leds = tracker->priv->leds;
+	struct leds *leds = tracker->leds;
 
 	if (leds == NULL)
 		return;
@@ -74,8 +73,7 @@ static void ouvrt_tracker_class_init(OuvrtTrackerClass *klass G_GNUC_UNUSED)
 
 static void ouvrt_tracker_init(OuvrtTracker *self)
 {
-	self->priv = ouvrt_tracker_get_instance_private(self);
-	self->priv->leds = NULL;
+	self->leds = NULL;
 }
 
 OuvrtTracker *ouvrt_tracker_new(void)
