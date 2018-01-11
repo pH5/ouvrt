@@ -313,10 +313,13 @@ static void ouvrtd_device_add(struct udev_device *dev)
 				rift = OUVRT_RIFT(link->data);
 			}
 			if (rift && camera) {
+				OuvrtTracker *tracker;
+
 				g_print("Associate %s and %s\n", d->devnode,
 					OUVRT_DEVICE(link->data)->devnode);
 
-				camera->v4l2.camera.tracker = rift->tracker;
+				tracker = ouvrt_rift_get_tracker(rift);
+				camera->v4l2.camera.tracker = tracker;
 			}
 		}
 	}

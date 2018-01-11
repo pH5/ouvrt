@@ -23,7 +23,22 @@
 #include "leds.h"
 #include "tracker.h"
 
-struct _OuvrtRiftPrivate {
+/* 44 LEDs + 1 IMU on CV1 */
+#define MAX_POSITIONS	45
+
+enum rift_type {
+	RIFT_DK2,
+	RIFT_CV1,
+};
+
+struct _OuvrtRift {
+	OuvrtDevice dev;
+	OuvrtTracker *tracker;
+
+	enum rift_type type;
+	struct leds leds;
+	vec3 imu_position;
+
 	unsigned char uuid[20];
 	int report_rate;
 	int report_interval;
@@ -32,7 +47,7 @@ struct _OuvrtRiftPrivate {
 	struct rift_radio radio;
 };
 
-G_DEFINE_TYPE_WITH_PRIVATE(OuvrtRift, ouvrt_rift, OUVRT_TYPE_DEVICE)
+G_DEFINE_TYPE(OuvrtRift, ouvrt_rift, OUVRT_TYPE_DEVICE)
 
 /*
  * Unpacks three signed 21-bit values packed into a big-endian 64-bit value
@@ -69,8 +84,8 @@ static int rift_get_config(OuvrtRift *rift)
 	g_print("Rift: Got sample rate %d Hz, report rate %d Hz, flags: 0x%x\n",
 		sample_rate, report_rate, report.flags);
 
-	rift->priv->report_rate = report_rate;
-	rift->priv->report_interval = 1000000 / report_rate;
+	rift->report_rate = report_rate;
+	rift->report_interval = 1000000 / report_rate;
 
 	return 0;
 }
@@ -148,8 +163,8 @@ static int rift_set_report_rate(OuvrtRift *rift, int report_rate)
 	if (ret < 0)
 		return ret;
 
-	rift->priv->report_rate = report_rate;
-	rift->priv->report_interval = 1000000 / report_rate;
+	rift->report_rate = report_rate;
+	rift->report_interval = 1000000 / report_rate;
 
 	return 0;
 }
@@ -235,7 +250,7 @@ static int rift_get_positions(OuvrtRift *rift)
 			vec3_normalize(&dir);
 			rift->leds.model.normals[index] = dir;
 		} else if (type == 1) {
-			rift->imu.position = pos;
+			rift->imu_position = pos;
 		}
 
 		/* Break out before reading the first report again */
@@ -339,7 +354,7 @@ static int rift_get_uuid(OuvrtRift *rift)
 	if (ret < 0)
 		return ret;
 
-	memcpy(rift->priv->uuid, report.uuid, 20);
+	memcpy(rift->uuid, report.uuid, 20);
 
 	return 0;
 }
@@ -518,16 +533,16 @@ static void rift_decode_sensor_message(OuvrtRift *rift,
 	/* µs, wraps every ~72 min */
 	state.sample.time = 1e-6 * sample_timestamp;
 
-	dt = sample_timestamp - rift->priv->last_sample_timestamp;
-	rift->priv->last_sample_timestamp = sample_timestamp;
-	if (dt + 1 >= (num_samples + 1) * rift->priv->report_interval) {
+	dt = sample_timestamp - rift->last_sample_timestamp;
+	rift->last_sample_timestamp = sample_timestamp;
+	if (dt + 1 >= (num_samples + 1) * rift->report_interval) {
 		g_print("Rift: got %u samples after %d µs, %u samples lost\n",
 			num_samples, dt,
-			(dt + 1) / rift->priv->report_interval - num_samples);
+			(dt + 1) / rift->report_interval - num_samples);
 		return;
 	}
-	if ((dt < num_samples * rift->priv->report_interval - 75) ||
-	    (dt > num_samples * rift->priv->report_interval + 75)) {
+	if ((dt < num_samples * rift->report_interval - 75) ||
+	    (dt > num_samples * rift->report_interval + 75)) {
 		g_print("Rift: got %u samples after %d µs, too much jitter\n",
 			num_samples, dt);
 		return;
@@ -637,10 +652,10 @@ static int rift_start(OuvrtDevice *dev)
 	if (rift->type == RIFT_CV1) {
 		ret = rift_get_boot_mode(rift);
 		if (ret == RIFT_BOOT_RADIO_PAIRING)
-			rift->priv->radio.pairing = true;
+			rift->radio.pairing = true;
 
 		ret = rift_radio_get_address(dev->fds[0],
-					     &rift->priv->radio.address);
+					     &rift->radio.address);
 		if (ret < 0)
 			return ret;
 	}
@@ -749,7 +764,7 @@ static void rift_thread(OuvrtDevice *dev)
 
 		ret = poll(fds, 2, 1000);
 		if (ret == -1 || ret == 0 ||
-		    count > 9 * rift->priv->report_rate) {
+		    count > 9 * rift->report_rate) {
 			if (ret == -1 || ret == 0)
 				g_print("Rift: Resending keepalive\n");
 			rift_send_keepalive(rift);
@@ -793,18 +808,18 @@ static void rift_thread(OuvrtDevice *dev)
 				continue;
 			}
 
-			rift_decode_radio_report(&rift->priv->radio, dev->fds[1],
+			rift_decode_radio_report(&rift->radio, dev->fds[1],
 						 buf, sizeof(buf));
 
 			struct rift_wireless_device *c;
 
-			c = &rift->priv->radio.remote.base;
+			c = &rift->radio.remote.base;
 			if (c->active && !c->dev_id)
 				c->dev_id = ouvrt_device_claim_id(dev, c->serial);
-			c = &rift->priv->radio.touch[0].base;
+			c = &rift->radio.touch[0].base;
 			if (c->active && !c->dev_id)
 				c->dev_id = ouvrt_device_claim_id(dev, c->serial);
-			c = &rift->priv->radio.touch[1].base;
+			c = &rift->radio.touch[1].base;
 			if (c->active && !c->dev_id)
 				c->dev_id = ouvrt_device_claim_id(dev, c->serial);
 		}
@@ -861,10 +876,9 @@ static void ouvrt_rift_class_init(OuvrtRiftClass *klass)
 static void ouvrt_rift_init(OuvrtRift *self)
 {
 	self->dev.type = DEVICE_TYPE_HMD;
-	self->priv = ouvrt_rift_get_instance_private(self);
-	self->priv->flicker = false;
-	self->priv->last_sample_timestamp = 0;
-	rift_radio_init(&self->priv->radio);
+	self->flicker = false;
+	self->last_sample_timestamp = 0;
+	rift_radio_init(&self->radio);
 }
 
 /*
@@ -899,12 +913,17 @@ OuvrtDevice *rift_cv1_new(const char *devnode G_GNUC_UNUSED)
 
 void ouvrt_rift_set_flicker(OuvrtRift *rift, gboolean flicker)
 {
-	if (rift->priv->flicker == flicker)
+	if (rift->flicker == flicker)
 		return;
 
-	rift->priv->flicker = flicker;
+	rift->flicker = flicker;
 	blobwatch_set_flicker(flicker);
 
 	if (rift->dev.active)
 		rift_send_tracking(rift, flicker);
+}
+
+OuvrtTracker *ouvrt_rift_get_tracker(OuvrtRift *rift)
+{
+	return rift->tracker;
 }
