@@ -348,8 +348,7 @@ struct rift_sensor_message {
 	__u8 frame_id;				/* frame id pixel readback */
 	__u8 led_pattern_phase;
 	__le16 exposure_count;
-	__le16 exposure_timestamp;
-	__le16 reserved;
+	__le32 exposure_timestamp;
 } __attribute__((packed));
 
 #define RIFT_RADIO_REPORT_ID			0x0c
