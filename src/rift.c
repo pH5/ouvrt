@@ -593,7 +593,7 @@ static void rift_decode_sensor_message(OuvrtRift *rift,
 
 		telemetry_send_imu_sample(rift->dev.id, &sample);
 
-		pose_update(1e-6 * dt, &rift->imu.pose, &sample);
+		pose_update(1e-6 / num_samples * dt, &rift->imu.pose, &sample);
 
 		telemetry_send_pose(rift->dev.id, &rift->imu.pose);
 
