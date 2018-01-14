@@ -8,6 +8,7 @@
 #include <poll.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -145,15 +146,171 @@ hololens_imu_handle_control_report(OuvrtHoloLensIMU *self,
 }
 
 /*
+ * Blocks waiting for a reply to a sent command report.
+ */
+int hololens_imu_wait_reply(OuvrtDevice *dev,
+			    struct hololens_control_report *report)
+{
+	struct pollfd fds;
+	int ret;
+
+	fds.fd = dev->fd;
+	fds.events = POLLIN;
+	fds.revents = 0;
+
+	ret = poll(&fds, 1, 1000);
+	if (ret == -1) {
+		g_print("%s: Poll failure: %d\n", dev->name, errno);
+		return -errno;
+	}
+	if (ret == 0) {
+		g_print("%s: Poll failure: 0\n", dev->name);
+		return -EINVAL;
+	}
+
+	if (fds.revents & (POLLERR | POLLHUP | POLLNVAL)) {
+		return -ENODEV;
+	}
+
+	if (!(fds.revents & POLLIN)) {
+		g_print("%s: Unhandled poll event: 0x%x\n", dev->name,
+			fds.revents);
+		return -EINVAL;
+	}
+
+	ret = read(dev->fd, report, sizeof(*report));
+	if (ret == -1)
+		return -errno;
+	if (ret != 33 || report->id != 0x02) {
+		g_print("%s: Unexpected %d-byte read\n", dev->name, ret);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/*
+ * Sends a command to the HoloLens Sensors HID device and synchronously waits
+ * for an answer.
+ */
+static int hololens_imu_command_sync(OuvrtDevice *dev, uint8_t command,
+				     struct hololens_control_report *report)
+{
+	int ret;
+
+	ret = hololens_imu_send_command(dev, command);
+	if (ret < 0) {
+		g_print("Failed issue command 0x%02x: %d\n", command, ret);
+		return ret;
+	}
+
+	ret = hololens_imu_wait_reply(dev, report);
+	if (ret < 0) {
+		g_print("Failed to receive reply: %d\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+/*
+ * Reads the configuration metadata (command == HOLOLENS_COMMAND_CONFIG_META)
+ * or data store (command == HOLOLENS_COMMAND_CONFIG_DATA).
+ */
+static int hololens_imu_config_read(OuvrtDevice *dev, uint8_t command,
+				    uint8_t *buf, size_t count)
+{
+	struct hololens_control_report report;
+	int offset = 0;
+	int ret;
+
+	ret = hololens_imu_command_sync(dev, HOLOLENS_COMMAND_CONFIG_START,
+					&report);
+	if (ret < 0)
+		return ret;
+	if (report.code != 0x04) {
+		g_print("%s: Unexpected reply 0x%02x\n", dev->name,
+			report.code);
+		return -EINVAL;
+	}
+
+	ret = hololens_imu_command_sync(dev, command, &report);
+	if (ret < 0)
+		return ret;
+	if (report.code != 0x00) {
+		g_print("%s: Unexpected reply 0x%02x\n", dev->name,
+			report.code);
+		return -EINVAL;
+	}
+
+	for (;;) {
+		ret = hololens_imu_command_sync(dev,
+						HOLOLENS_COMMAND_CONFIG_READ,
+						&report);
+		if (ret < 0)
+			return ret;
+		if (report.code == 0x02)
+			break;
+		if (report.code != 0x01 || report.len > 30) {
+			g_print("%s: Unexpected reply 0x%02x\n", dev->name,
+				report.code);
+			return -EINVAL;
+		}
+		if (offset + report.len > count) {
+			g_print("%s: Out of space at %d+%u/%lu\n", dev->name,
+				offset, report.len, count);
+			return -ENOSPC;
+		}
+		memcpy(buf + offset, report.data, report.len);
+		offset += report.len;
+	}
+
+	return offset;
+}
+
+/*
  * Opens the HoloLens Sensors HID device and powers up the IMU.
  */
 static int hololens_imu_start(OuvrtDevice *dev)
 {
+	uint8_t config_meta[66];
+	uint16_t config_len;
+	uint8_t *config;
 	int ret;
 
-	g_print("%s: Starting %d\n", dev->name, dev->fd);
+	ret = hololens_imu_config_read(dev, HOLOLENS_COMMAND_CONFIG_META,
+				       config_meta, sizeof(config_meta));
+	if (ret < 0) {
+		g_print("%s: Failed to read configuration metadata: %d\n",
+			dev->name, ret);
+		return ret;
+	}
 
-	ret = hololens_imu_send_command(dev, 0x07);
+	config_len = __le16_to_cpup((__le16 *)config_meta);
+
+	config = calloc(config_len, 1);
+	if (!config)
+		return -ENOMEM;
+
+	ret = hololens_imu_config_read(dev, HOLOLENS_COMMAND_CONFIG_DATA,
+				       config, config_len);
+	if (ret < 0) {
+		g_print("%s: Failed to read configuration data: %d\n",
+			dev->name, ret);
+		return ret;
+	}
+
+	g_print("%s: Manufacturer: %.64s\n", dev->name, config + 8);
+	g_print("%s: Model: %.64s\n", dev->name, config + 0x48);
+	g_print("%s: Serial: %.64s\n", dev->name, config + 0x88);
+	g_print("%s: GUID: %.39s\n", dev->name, config + 0xc8);
+	g_print("%s: Name: %.64s\n", dev->name, config + 0x1c3);
+	g_print("%s: Revision: %.32s\n", dev->name, config + 0x203);
+	g_print("%s: Date: %.32s\n", dev->name, config + 0x223);
+
+	g_free(config);
+
+	ret = hololens_imu_send_command(dev, HOLOLENS_COMMAND_START_IMU);
 	if (ret != 0)
 		g_print("Failed to start\n");
 

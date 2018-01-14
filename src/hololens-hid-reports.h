@@ -28,6 +28,12 @@ struct hololens_imu_report {
 	struct hololens_imu_message message[2];
 } __attribute__((packed));
 
+#define HOLOLENS_COMMAND_CONFIG_START			0x0b
+#define HOLOLENS_COMMAND_CONFIG_META			0x06
+#define HOLOLENS_COMMAND_CONFIG_DATA			0x04
+#define HOLOLENS_COMMAND_CONFIG_READ			0x08
+#define HOLOLENS_COMMAND_START_IMU			0x07
+
 #define HOLOLENS_CONTROL_REPORT_ID			0x02
 #define HOLOLENS_CONTROL_REPORT_SIZE			33
 
