@@ -14,6 +14,17 @@ project('ouvrt', ['c', 'cpp'],
 
 with_gstreamer = get_option('gstreamer')
 with_opencv = get_option('opencv')
+with_pipewire = get_option('pipewire')
+
+if with_gstreamer == 'true' and with_pipewire == 'true'
+  error('GStreamer and PipeWire support can not be enabled at the same time')
+endif
+if with_gstreamer == 'true' and with_pipewire == 'auto'
+  with_pipewire = 'false'
+endif
+if with_pipewire == 'true' and with_gstreamer == 'auto'
+  with_gstreamer = 'false'
+endif
 
 add_global_arguments(['-fno-math-errno'], language : 'c')
 
@@ -31,6 +42,17 @@ if with_opencv != 'false'
 else
   opencv_dep = []
 endif
+if with_pipewire != 'false'
+  pw_dep = dependency('libpipewire-0.2', version : '>= 0.2.2',
+    required : with_pipewire == 'true'
+  )
+  spa_dep = dependency('libspa-0.1', version : '>= 0.2.2',
+    required : with_pipewire == 'true'
+  )
+else
+  pw_dep = []
+  spa_dep = []
+endif
 thread_dep = dependency('threads')
 udev_dep = dependency('libudev')
 usb_dep = dependency('libusb-1.0', version : '>= 1.0.16')
@@ -46,6 +68,11 @@ endforeach
 
 build_gst = with_gstreamer != 'false' and gst_dep.found()
 build_opencv = with_opencv != 'false' and opencv_dep.found()
+build_pw = with_pipewire != 'false' and pw_dep.found() and spa_dep.found()
+if build_pw and build_gst
+  warning('GStreamer and PipeWire support can not be enabled at the same time, GStreamer disabled')
+  build_gst = false
+endif
 
 if build_gst
   add_global_arguments('-DHAVE_GST=1', language : 'c')
@@ -53,6 +80,10 @@ if build_gst
 endif
 if build_opencv
   add_global_arguments('-DHAVE_OPENCV=1', language : 'c')
+endif
+if build_pw
+	add_global_arguments('-DHAVE_PIPEWIRE=1', language : 'c')
+  add_global_arguments('-DHAVE_DEBUG_STREAM=1', language : 'c')
 endif
 
 subdir('xml')

@@ -27,6 +27,7 @@
 #include "hololens-imu.h"
 #include "motion-controller.h"
 #include "lenovo-explorer.h"
+#include "pipewire.h"
 #include "telemetry.h"
 #include "vive-headset.h"
 #include "vive-headset-mainboard.h"
@@ -650,6 +651,7 @@ int main(int argc, char *argv[])
 	setlocale(LC_CTYPE, "");
 
 	debug_stream_init(&argc, &argv);
+	pipewire_init(&argc, &argv);
 	telemetry_init(&argc, &argv);
 
 	do {
@@ -680,6 +682,7 @@ int main(int argc, char *argv[])
 	udev_unref(udev);
 	g_main_loop_unref(loop);
 	telemetry_deinit();
+	pipewire_deinit();
 	debug_stream_deinit();
 
 	return 0;

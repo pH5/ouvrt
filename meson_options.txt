@@ -15,3 +15,10 @@ option(
   choices : ['auto', 'true', 'false'],
   description : 'Use OpenCV'
 )
+option(
+  'pipewire',
+  type : 'combo',
+  value : 'auto',
+  choices : ['auto', 'true', 'false'],
+  description : 'Use PipeWire'
+)

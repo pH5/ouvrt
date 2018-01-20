@@ -28,6 +28,7 @@ struct fraction {
 
 #define FORMAT_GRAY	0x56595559
 #define FORMAT_YUYV	0x59415247
+#define FORMAT_RGBX	0x58424752
 
 struct debug_stream_desc {
 	unsigned int width;

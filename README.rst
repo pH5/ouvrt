@@ -54,12 +54,18 @@ to build ouvrt:
 - Linux kernel headers (hidraw, uvc, v4l2)
 - Meson
 - zlib
+- PipeWire (optional)
 
 On a Debian stretch system these can be installed with the following commands::
 
   $ apt-get install build-essential libglib2.0-dev libjson-glib-dev \
     libudev-dev meson pkg-config
-  $ apt-get install libgstreamer-1.0-dev libopencv-dev
+
+And optionally::
+
+  $ apt-get install libgstreamer-1.0-dev
+  $ apt-get install libopencv-dev
+  $ apt-get install libpipewire-0.2-dev libspa-lib-0.1-dev
 
 To configure the build system and build everything, follow the standard Meson
 build procedure::
@@ -68,11 +74,11 @@ build procedure::
   $ cd builddir
   $ ninja
 
-To build without GStreamer or OpenCV dependency, disable the corresponding
-options before calling ninja::
+To build without an optional dependency, disable the corresponding
+option before calling ninja, for example::
 
   $ cd builddir
-  $ meson configure -D gstreamer=false -D opencv=false
+  $ meson configure -D gstreamer=false -D opencv=false -D pipewire=false
 
 3. ouvrtd
 ---------

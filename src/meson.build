@@ -78,6 +78,7 @@ ouvrtd_sources = [
   'motion-controller.h',
   'opencv.h',
   'ouvrtd.c',
+  'pipewire.h',
   'psvr.c',
   'psvr.h',
   'psvr-hid-reports.h',
@@ -118,6 +119,9 @@ endif
 if build_opencv
   ouvrtd_sources += [ 'opencv.cpp' ]
 endif
+if build_pw
+  ouvrtd_sources += [ 'pipewire.c' ]
+endif
 ouvrtd_deps = [
   glib_dep,
   gio_dep,
@@ -129,7 +133,9 @@ ouvrtd_deps = [
   zlib_dep,
   # optional
   gst_dep,
-  opencv_dep
+  opencv_dep,
+  pw_dep,
+  spa_dep
 ]
 executable(
   'ouvrtd',
