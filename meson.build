@@ -86,6 +86,8 @@ ouvrtd_sources = [
 	'src/lighthouse.h',
 	'src/math.c',
 	'src/math.h',
+	'src/motion-controller.c',
+	'src/motion-controller.h',
 	'src/opencv.h',
 	'src/ouvrtd.c',
 	'src/psvr.c',
