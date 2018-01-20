@@ -166,6 +166,7 @@ static gint ouvrt_device_cmp_serial(OuvrtDevice *dev, const char *serial)
 static void ouvrtd_device_add(struct udev_device *dev)
 {
 	const char *devnode, *parent_devpath, *serial, *subsystem, *value;
+	const char *parent_subsystem;
 	uint16_t vid, pid;
 	struct udev_device *parent;
 	OuvrtDevice *d;
@@ -177,36 +178,86 @@ static void ouvrtd_device_add(struct udev_device *dev)
 
 	if (g_strcmp0(subsystem, "usb") == 0) {
 		parent = dev;
+		parent_subsystem = subsystem;
 		iface = 0;
-	} else {
-		parent = udev_device_get_parent_with_subsystem_devtype(dev,
-							"usb", "usb_interface");
+	} else if (g_strcmp0(subsystem, "hidraw") == 0) {
+		const char *hid_id, *hid_name, *hid_phys, *hid_uniq;
+
+		/* HID subsystem parent */
+		parent = udev_device_get_parent(dev);
 		if (!parent)
 			return;
 
-		value = udev_device_get_sysattr_value(parent, "bInterfaceNumber");
-		if (!value)
+		hid_id = udev_device_get_property_value(parent, "HID_ID");
+		hid_name = udev_device_get_property_value(parent, "HID_NAME");
+		hid_phys = udev_device_get_property_value(parent, "HID_PHYS");
+		hid_uniq = udev_device_get_property_value(parent, "HID_UNIQ");
+		if (!hid_id || !hid_name || !hid_phys || !hid_uniq)
 			return;
-		iface = atoi(value);
 
+		if (strlen(hid_id) != 22)
+			return;
+		if (hid_id[4] != ':' || hid_id[13] != ':')
+			return;
+
+		vid = strtol(hid_id + 6, NULL, 16);
+		pid = strtol(hid_id + 15, NULL, 16);
+
+		/* Bluetooth device or USB interface */
 		parent = udev_device_get_parent(parent);
 		if (!parent)
 			return;
+
+		parent_subsystem = udev_device_get_subsystem(parent);
+
+		if (g_strcmp0(parent_subsystem, "bluetooth") == 0) {
+			iface = 0;
+		} else if (g_strcmp0(parent_subsystem, "usb") == 0) {
+			value = udev_device_get_sysattr_value(parent,
+							      "bInterfaceNumber");
+			if (!value)
+				return;
+			iface = atoi(value);
+
+			/* USB device */
+			parent = udev_device_get_parent(parent);
+			if (!parent)
+				return;
+		} else {
+			return;
+		}
+	} else if (g_strcmp0(subsystem, "video4linux") == 0) {
+		/* video4linux subsystem parent */
+		parent = udev_device_get_parent(dev);
+		if (!parent)
+			return;
+
+		/* USB interface */
+		parent = udev_device_get_parent(parent);
+		if (!parent)
+			return;
+
+		parent_subsystem = udev_device_get_subsystem(parent);
+		iface = 0;
+	} else {
+		return;
 	}
 
 	parent_devpath = udev_device_get_devpath(parent);
 	if (!parent_devpath)
 		return;
 
-	value = udev_device_get_sysattr_value(parent, "idVendor");
-	if (!value)
-		return;
-	vid = strtol(value, NULL, 16);
+	if (g_strcmp0(parent_subsystem, "usb") == 0) {
+		value = udev_device_get_sysattr_value(parent, "idVendor");
+		if (!value)
+			return;
+		vid = strtol(value, NULL, 16);
 
-	value = udev_device_get_sysattr_value(parent, "idProduct");
-	if (!value)
-		return;
-	pid = strtol(value, NULL, 16);
+		value = udev_device_get_sysattr_value(parent, "idProduct");
+		if (!value)
+			return;
+		pid = strtol(value, NULL, 16);
+	}
 
 	for (i = 0; i < NUM_MATCHES; i++) {
 		if (vid != device_matches[i].vid ||
