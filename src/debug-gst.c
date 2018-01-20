@@ -57,9 +57,19 @@ struct debug_gst *debug_gst_new(int width, int height, int framerate)
 {
 	struct debug_gst *gst;
 	GstElement *pipeline, *src, *sink;
+	gchar *filename;
 	GstCaps *caps;
+	guint i;
 
-	unlink("/tmp/ouvrtd-gst");
+	for (i = 0; i < 10; i++) {
+		filename = g_strdup_printf("/tmp/ouvrtd-gst-%u", i);
+		if (!g_file_test(filename, G_FILE_TEST_EXISTS))
+			break;
+		g_free(filename);
+	}
+
+	if (!filename)
+		return NULL;
 
 	pipeline = gst_pipeline_new(NULL);
 
@@ -78,7 +88,8 @@ struct debug_gst *debug_gst_new(int width, int height, int framerate)
 
 	g_object_set(src, "caps", caps, NULL);
 	g_object_set(src, "stream-type", 0, NULL);
-	g_object_set(sink, "socket-path", "/tmp/ouvrtd-gst", NULL);
+	g_object_set(sink, "socket-path", filename, NULL);
+	g_free(filename);
 
 	gst_caps_unref(caps);
 
@@ -154,4 +165,23 @@ void debug_gst_frame_push(struct debug_gst *gst, void *src, size_t size,
 //	GST_BUFFER_DURATION(buffer) = ...
 	g_signal_emit_by_name(gst->appsrc, "push-buffer", buf, &ret);
 	gst_buffer_unref(buf);
+}
+
+void debug_gst_init(int *argc, char **argv[])
+{
+	guint i;
+
+	gst_init(argc, argv);
+
+	for (i = 0; i < 10; i++) {
+		gchar *filename = g_strdup_printf("/tmp/ouvrtd-gst-%u", i);
+		if (g_file_test(filename, G_FILE_TEST_EXISTS))
+			unlink(filename);
+		g_free(filename);
+	}
+}
+
+void debug_gst_deinit(void)
+{
+	gst_deinit();
 }
