@@ -21,6 +21,8 @@ struct tracking_model {
 
 void tracking_model_init(struct tracking_model *model, unsigned int num_points);
 void tracking_model_fini(struct tracking_model *model);
+void tracking_model_copy(struct tracking_model *dst,
+			 struct tracking_model *src);
 
 void tracking_model_dump_obj(struct tracking_model *model, const char *name);
 void tracking_model_dump_struct(struct tracking_model *model);

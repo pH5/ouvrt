@@ -23,4 +23,12 @@ void leds_fini(struct leds *leds)
 	tracking_model_fini(&leds->model);
 }
 
-void leds_fini(struct leds *leds);
+void leds_copy(struct leds *dst, struct leds *src)
+{
+	size_t size = src->model.num_points * sizeof(uint16_t);
+
+	tracking_model_copy(&dst->model, &src->model);
+	free(dst->patterns);
+	dst->patterns = malloc(size);
+	memcpy(dst->patterns, src->patterns, size);
+}

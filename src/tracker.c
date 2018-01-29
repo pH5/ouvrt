@@ -15,7 +15,7 @@
 struct _OuvrtTracker {
 	GObject parent_instance;
 	struct blobwatch *bw;
-	struct leds *leds;
+	struct leds leds;
 	uint32_t radio_address;
 };
 
@@ -23,18 +23,15 @@ G_DEFINE_TYPE(OuvrtTracker, ouvrt_tracker, G_TYPE_OBJECT)
 
 void ouvrt_tracker_register_leds(OuvrtTracker *tracker, struct leds *leds)
 {
-	if (!tracker || tracker->leds)
+	if (!tracker || tracker->leds.model.num_points)
 		return;
 
-	tracker->leds = leds;
+	leds_copy(&tracker->leds, leds);
 }
 
 void ouvrt_tracker_unregister_leds(OuvrtTracker *tracker, struct leds *leds)
 {
-	if (!tracker || tracker->leds != leds)
-		return;
-
-	tracker->leds = NULL;
+//	tracker->leds.gone = true;
 }
 
 void ouvrt_tracker_set_radio_address(OuvrtTracker *tracker, uint32_t address)
@@ -55,7 +52,7 @@ void ouvrt_tracker_process_frame(OuvrtTracker *tracker, uint8_t *frame,
 		tracker->bw = blobwatch_new(width, height);
 
 	blobwatch_process(tracker->bw, frame, width, height, skipped,
-			  tracker->leds, ob);
+			  &tracker->leds, ob);
 }
 
 void ouvrt_tracker_process_blobs(OuvrtTracker *tracker,
@@ -63,7 +60,7 @@ void ouvrt_tracker_process_blobs(OuvrtTracker *tracker,
 				 dmat3 *camera_matrix, double dist_coeffs[5],
 				 dquat *rot, dvec3 *trans)
 {
-	struct leds *leds = tracker->leds;
+	struct leds *leds = &tracker->leds;
 
 	if (leds == NULL)
 		return;
@@ -83,7 +80,7 @@ static void ouvrt_tracker_class_init(OuvrtTrackerClass *klass G_GNUC_UNUSED)
 
 static void ouvrt_tracker_init(OuvrtTracker *self)
 {
-	self->leds = NULL;
+	leds_fini(&self->leds);
 }
 
 OuvrtTracker *ouvrt_tracker_new(void)

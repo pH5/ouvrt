@@ -24,6 +24,15 @@ void tracking_model_fini(struct tracking_model *model)
 	memset(model, 0, sizeof(*model));
 }
 
+void tracking_model_copy(struct tracking_model *dst, struct tracking_model *src)
+{
+	free(dst->points);
+	free(dst->normals);
+	tracking_model_init(dst, src->num_points);
+	memcpy(dst->points, src->points, src->num_points * sizeof(vec3));
+	memcpy(dst->normals, src->points, src->num_points * sizeof(vec3));
+}
+
 void tracking_model_dump_obj(struct tracking_model *model, const char *name)
 {
 	unsigned int i;

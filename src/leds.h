@@ -17,6 +17,7 @@ struct leds {
 
 void leds_init(struct leds *leds, int num_leds);
 void leds_fini(struct leds *leds);
+void leds_copy(struct leds *dst, struct leds *src);
 
 void leds_dump_obj(struct leds *leds);
 
