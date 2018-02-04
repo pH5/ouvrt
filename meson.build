@@ -4,7 +4,8 @@
 project('ouvrt', ['c', 'cpp'],
 	version : '0.1',
 	meson_version : '>= 0.46',
-	license : 'GPL')
+	license : 'GPL',
+	default_options : ['buildtype=debugoptimized'])
 
 with_gstreamer = get_option('gstreamer')
 with_opencv = get_option('opencv')
