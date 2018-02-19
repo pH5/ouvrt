@@ -1,2 +1,5 @@
+# Copyright 2017-2018 Philipp Zabel
+# SPDX-License-Identifier:	GPL-2.0+
+
 option('gstreamer', type : 'boolean', value : true, description : 'Use GStreamer')
 option('opencv', type : 'boolean', value : true, description : 'Use OpenCV')

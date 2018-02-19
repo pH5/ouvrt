@@ -1,3 +1,6 @@
+# Copyright 2016-2018 Philipp Zabel
+# SPDX-License-Identifier:	GPL-2.0+
+
 project('ouvrt', ['c', 'cpp'],
 	version : '0.1',
 	meson_version : '>= 0.35',
