@@ -6,7 +6,7 @@
 #ifndef __OPENCV_H__
 #define __OPENCV_H__
 
-#include "math.h"
+#include "maths.h"
 
 #if HAVE_OPENCV
 void estimate_initial_pose(struct blob *blobs, int num_blobs,

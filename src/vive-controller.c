@@ -21,7 +21,7 @@
 #include "device.h"
 #include "hidraw.h"
 #include "json.h"
-#include "math.h"
+#include "maths.h"
 #include "usb-ids.h"
 
 struct _OuvrtViveController {

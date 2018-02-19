@@ -9,7 +9,7 @@
 #include <string.h>
 #include <zlib.h>
 #include "lighthouse.h"
-#include "math.h"
+#include "maths.h"
 #include "telemetry.h"
 
 struct lighthouse_ootx_report {

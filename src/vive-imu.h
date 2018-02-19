@@ -7,7 +7,7 @@
 #define __VIVE_IMU_H__
 
 #include "device.h"
-#include "math.h"
+#include "maths.h"
 #include "imu.h"
 
 struct vive_imu {

@@ -6,7 +6,7 @@
 #include <math.h>
 
 #include "imu.h"
-#include "math.h"
+#include "maths.h"
 
 enum pose_mode {
 	ACCEL_ONLY,

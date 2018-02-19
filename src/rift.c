@@ -19,7 +19,7 @@
 #include "device.h"
 #include "hidraw.h"
 #include "imu.h"
-#include "math.h"
+#include "maths.h"
 #include "leds.h"
 #include "telemetry.h"
 #include "tracker.h"

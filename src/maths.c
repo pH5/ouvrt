@@ -5,7 +5,7 @@
  */
 #include <math.h>
 
-#include "math.h"
+#include "maths.h"
 
 float f16_to_float(uint16_t f16)
 {

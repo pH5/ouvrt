@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 #include "leds.h"
-#include "math.h"
+#include "maths.h"
 #include "tracking-model.h"
 
 void leds_init(struct leds *leds, int num_leds)

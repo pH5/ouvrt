@@ -9,7 +9,7 @@
 #include "blobwatch.h"
 #include "debug.h"
 #include "leds.h"
-#include "math.h"
+#include "maths.h"
 #include "opencv.h"
 #include "tracker.h"
 

@@ -13,7 +13,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "math.h"
+#include "maths.h"
 #include "tracking-model.h"
 
 struct lighthouse_rotor_calibration {

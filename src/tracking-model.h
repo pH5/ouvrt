@@ -6,7 +6,7 @@
 #ifndef __TRACKING_MODEL_H__
 #define __TRACKING_MODEL_H__
 
-#include "math.h"
+#include "maths.h"
 
 /*
  * The tracking model contains reference points of known position and

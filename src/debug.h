@@ -14,7 +14,7 @@
 
 #include "blobwatch.h"
 #include "imu.h"
-#include "math.h"
+#include "maths.h"
 
 extern int debug_mode;
 

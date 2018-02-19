@@ -8,7 +8,7 @@
 #include <string.h>
 
 #include "tracking-model.h"
-#include "math.h"
+#include "maths.h"
 
 void tracking_model_init(struct tracking_model *model, unsigned int num_points)
 {

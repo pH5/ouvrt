@@ -9,7 +9,7 @@
 #include <glib-object.h>
 #include <stdint.h>
 
-#include "math.h"
+#include "maths.h"
 
 #define OUVRT_TYPE_TRACKER (ouvrt_tracker_get_type())
 G_DECLARE_FINAL_TYPE(OuvrtTracker, ouvrt_tracker, OUVRT, TRACKER, GObject)

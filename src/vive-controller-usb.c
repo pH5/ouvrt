@@ -21,7 +21,7 @@
 #include "imu.h"
 #include "json.h"
 #include "lighthouse.h"
-#include "math.h"
+#include "maths.h"
 #include "usb-ids.h"
 #include "telemetry.h"
 

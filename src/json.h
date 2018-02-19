@@ -8,7 +8,7 @@
 
 #include <json-glib/json-glib.h>
 
-#include "math.h"
+#include "maths.h"
 
 struct tracking_model;
 

@@ -3,8 +3,8 @@
  * Copyright 2015 Philipp Zabel
  * SPDX-License-Identifier:	LGPL-2.0+ or BSL-1.0
  */
-#ifndef __MATH_H__
-#define __MATH_H__
+#ifndef __MATHS_H__
+#define __MATHS_H__
 
 #include <math.h>
 #include <float.h>
@@ -86,4 +86,4 @@ void dquat_from_axis_angle(dquat *quat, const dvec3 *axis, double angle);
 void dquat_from_axes(dquat *q, const vec3 *a, const vec3 *b);
 void dquat_from_gyro(dquat *q, const vec3 *gyro, double dt);
 
-#endif /* __MATH_H__ */
+#endif /* __MATHS_H__ */

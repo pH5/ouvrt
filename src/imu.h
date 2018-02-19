@@ -8,7 +8,7 @@
 
 #include <stdint.h>
 
-#include "math.h"
+#include "maths.h"
 
 /*
  * Raw IMU sample - a single measurement of acceleration, angular

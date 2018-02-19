@@ -10,7 +10,7 @@
 
 #include "device.h"
 #include "tracker.h"
-#include "math.h"
+#include "maths.h"
 
 struct debug_gst;
 

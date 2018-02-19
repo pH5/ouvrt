@@ -10,7 +10,7 @@ extern "C" {
 
 #include "blobwatch.h"
 #include "leds.h"
-#include "math.h"
+#include "maths.h"
 }
 
 
