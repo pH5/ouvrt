@@ -6,14 +6,25 @@ project('ouvrt', ['c', 'cpp'],
 	meson_version : '>= 0.35',
 	license : 'GPL')
 
+with_gstreamer = get_option('gstreamer')
+with_opencv = get_option('opencv')
+
 add_global_arguments('-Wall', language : 'c')
 
 gio_dep = dependency('gio-unix-2.0')
 glib_dep = dependency('glib-2.0')
 gobj_dep = dependency('gobject-2.0', version : '>= 2.44')
-gst_dep = dependency('gstreamer-1.0', required : get_option('gstreamer'))
+if with_gstreamer != 'false'
+  gst_dep = dependency('gstreamer-1.0', required : with_gstreamer == 'true')
+else
+  gst_dep = []
+endif
 json_glib_dep = dependency('json-glib-1.0', version : '>= 1.2')
-opencv_dep = dependency('opencv', required : get_option('opencv'))
+if with_opencv != 'false'
+  opencv_dep = dependency('opencv', required : with_opencv == 'true')
+else
+  opencv_dep = []
+endif
 thread_dep = dependency('threads')
 udev_dep = dependency('libudev')
 usb_dep = dependency('libusb-1.0', version : '>= 1.0.16')
@@ -21,8 +32,8 @@ zlib_dep = dependency('zlib')
 cc = meson.get_compiler('c')
 m_dep = cc.find_library('m', required : false)
 
-build_gst = gst_dep.found() and get_option('gstreamer')
-build_opencv = opencv_dep.found() and get_option('opencv')
+build_gst = with_gstreamer != 'false' and gst_dep.found()
+build_opencv = with_opencv != 'false' and opencv_dep.found()
 
 if build_gst
 	add_global_arguments('-DHAVE_GST=1', language : 'c')
@@ -139,14 +150,11 @@ ouvrtd_deps = [
 	thread_dep,
 	udev_dep,
 	usb_dep,
-	zlib_dep
+	zlib_dep,
+	# optional
+	gst_dep,
+	opencv_dep
 ]
-if build_gst
-	ouvrtd_deps += gst_dep
-endif
-if build_opencv
-	ouvrtd_deps += opencv_dep
-endif
 executable('ouvrtd', ouvrtd_sources,
 	dependencies : ouvrtd_deps,
 	link_with : libouvrt,
