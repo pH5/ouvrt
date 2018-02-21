@@ -12,7 +12,7 @@
 #include "tracker.h"
 #include "maths.h"
 
-struct debug_gst;
+struct debug_stream;
 
 #define OUVRT_TYPE_CAMERA		(ouvrt_camera_get_type())
 #define OUVRT_CAMERA(obj)		(G_TYPE_CHECK_INSTANCE_CAST((obj), \
@@ -40,7 +40,7 @@ struct _OuvrtCamera {
 	double dist_coeffs[5];
 	int sizeimage;
 	int sequence;
-	struct debug_gst *debug;
+	struct debug_stream *debug;
 };
 
 struct _OuvrtCameraClass {

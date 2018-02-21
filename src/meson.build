@@ -31,7 +31,6 @@ ouvrtd_sources = [
   'dbus.c',
   'dbus.h',
   'debug.c',
-  'debug-gst.h',
   'debug.h',
   'device.c',
   'device.h',

@@ -11,9 +11,8 @@
 #include <unistd.h>
 
 #include "debug.h"
-#include "debug-gst.h"
 
-struct debug_gst {
+struct debug_stream {
 	GstElement *pipeline;
 	GstElement *appsrc;
 	gboolean connected;
@@ -27,7 +26,7 @@ static void debug_gst_client_connected(GstElement *sink G_GNUC_UNUSED,
 				       gint arg1 G_GNUC_UNUSED,
 				       gpointer data)
 {
-	struct debug_gst *gst = data;
+	struct debug_stream *gst = data;
 
 	gst->connected = TRUE;
 	printf("debug: connected\n");
@@ -41,7 +40,7 @@ static void debug_gst_client_disconnected(GstElement *sink G_GNUC_UNUSED,
 					  gint arg1 G_GNUC_UNUSED,
 					  gpointer data)
 {
-	struct debug_gst *gst = data;
+	struct debug_stream *gst = data;
 
 	(void)sink;
 	(void)arg1;
@@ -53,9 +52,9 @@ static void debug_gst_client_disconnected(GstElement *sink G_GNUC_UNUSED,
 /*
  * Enables GStreamer debug output of GRAY8 frames into a shmsink.
  */
-struct debug_gst *debug_gst_new(int width, int height, int framerate)
+struct debug_stream *debug_stream_new(int width, int height, int framerate)
 {
-	struct debug_gst *gst;
+	struct debug_stream *gst;
 	GstElement *pipeline, *src, *sink;
 	gchar *filename;
 	GstCaps *caps;
@@ -113,7 +112,7 @@ struct debug_gst *debug_gst_new(int width, int height, int framerate)
 	return gst;
 }
 
-struct debug_gst *debug_gst_unref(struct debug_gst *gst)
+struct debug_stream *debug_stream_unref(struct debug_stream *gst)
 {
 	gst_element_set_state(gst->pipeline, GST_STATE_NULL);
 	gst_object_unref(gst->pipeline);
@@ -126,9 +125,9 @@ struct debug_gst *debug_gst_unref(struct debug_gst *gst)
  * Allocates a GstBuffer that wraps the frame and pushes it into the
  * GStreamer pipeline.
  */
-void debug_gst_frame_push(struct debug_gst *gst, void *src, size_t size,
-			  size_t attach_offset, struct blobservation *ob,
-			  dquat *rot, dvec3 *trans, double timestamps[3])
+void debug_stream_frame_push(struct debug_stream *gst, void *src, size_t size,
+			     size_t attach_offset, struct blobservation *ob,
+			     dquat *rot, dvec3 *trans, double timestamps[3])
 {
 	struct ouvrt_debug_attachment *attach = src + attach_offset;
 	unsigned int num;
@@ -167,7 +166,7 @@ void debug_gst_frame_push(struct debug_gst *gst, void *src, size_t size,
 	gst_buffer_unref(buf);
 }
 
-void debug_gst_init(int *argc, char **argv[])
+void debug_stream_init(int *argc, char **argv[])
 {
 	guint i;
 
@@ -181,7 +180,7 @@ void debug_gst_init(int *argc, char **argv[])
 	}
 }
 
-void debug_gst_deinit(void)
+void debug_stream_deinit(void)
 {
 	gst_deinit();
 }

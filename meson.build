@@ -37,6 +37,7 @@ build_opencv = with_opencv != 'false' and opencv_dep.found()
 
 if build_gst
 	add_global_arguments('-DHAVE_GST=1', language : 'c')
+	add_global_arguments('-DHAVE_DEBUG_STREAM=1', language : 'c')
 endif
 if build_opencv
 	add_global_arguments('-DHAVE_OPENCV=1', language : 'c')

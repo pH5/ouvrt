@@ -16,7 +16,6 @@
 
 #include "dbus.h"
 #include "debug.h"
-#include "debug-gst.h"
 #include "device.h"
 #include "gdbus-generated.h"
 #include "usb-ids.h"
@@ -586,7 +585,7 @@ int main(int argc, char *argv[])
 
 	setlocale(LC_CTYPE, "");
 
-	debug_gst_init(&argc, &argv);
+	debug_stream_init(&argc, &argv);
 	telemetry_init(&argc, &argv);
 
 	do {
@@ -617,7 +616,7 @@ int main(int argc, char *argv[])
 	udev_unref(udev);
 	g_main_loop_unref(loop);
 	telemetry_deinit();
-	debug_gst_deinit();
+	debug_stream_deinit();
 
 	return 0;
 }

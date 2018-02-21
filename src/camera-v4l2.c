@@ -15,7 +15,6 @@
 
 #include "camera-v4l2.h"
 #include "debug.h"
-#include "debug-gst.h"
 #include "tracker.h"
 
 struct _OuvrtCameraV4L2Private {
@@ -134,7 +133,7 @@ static int ouvrt_camera_v4l2_start(OuvrtDevice *dev)
 
 	g_print("v4l2: Started streaming\n");
 
-	camera->debug = debug_gst_new(width, height, camera->framerate);
+	camera->debug = debug_stream_new(width, height, camera->framerate);
 
 	return ret;
 }
@@ -266,9 +265,9 @@ static void ouvrt_camera_v4l2_thread(OuvrtDevice *dev)
 
 		ret = OUVRT_CAMERA_GET_CLASS(dev)->process_frame(camera, raw);
 		if (ret == 0) {
-			debug_gst_frame_push(camera->debug, raw,
-					     camera->sizeimage, width * height,
-					     ob, &rot, &trans, timestamps);
+			debug_stream_frame_push(camera->debug, raw,
+						camera->sizeimage, width * height,
+						ob, &rot, &trans, timestamps);
 		}
 
 		ret = ioctl(dev->fd, VIDIOC_QBUF, &buf);
@@ -321,7 +320,7 @@ static void ouvrt_camera_v4l2_stop(OuvrtDevice *dev)
 	g_print("v4l2: Stopped streaming\n");
 
 	/* TODO: move up to camera */
-	camera->debug = debug_gst_unref(camera->debug);
+	camera->debug = debug_stream_unref(camera->debug);
 }
 
 static void ouvrt_camera_v4l2_class_init(OuvrtCameraV4L2Class *klass)
