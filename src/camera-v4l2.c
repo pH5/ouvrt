@@ -26,6 +26,43 @@ G_DEFINE_TYPE_WITH_PRIVATE(OuvrtCameraV4L2, ouvrt_camera_v4l2,
 			   OUVRT_TYPE_CAMERA)
 
 /*
+ * Opens the V4L2 device and checks that it supports video streaming.
+ */
+static int ouvrt_camera_v4l2_open(OuvrtDevice *dev)
+{
+	struct v4l2_capability cap;
+	int ret;
+
+	ret = OUVRT_DEVICE_CLASS(ouvrt_camera_v4l2_parent_class)->open(dev);
+	if (ret < 0)
+		return ret;
+
+	ret = ioctl(dev->fd, VIDIOC_QUERYCAP, &cap);
+	if (ret < 0) {
+		g_print("v4l2: QUERYCAP error: %d\n", errno);
+		return ret;
+	}
+
+	if (!(cap.capabilities & V4L2_CAP_DEVICE_CAPS)) {
+		g_print("v4l2: Device does not report capabilities\n");
+		return -EINVAL;
+	}
+
+	/* Silently ignore UVC metadata capture devices */
+	if (cap.device_caps & V4L2_CAP_META_CAPTURE) {
+		g_print("v4l2: Ignoring metadata capture device\n");
+		return -ENODEV;
+	}
+
+	if (!(cap.device_caps & V4L2_CAP_VIDEO_CAPTURE)) {
+		g_print("v4l2: Device does not capture video\n");
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
+/*
  * Requests buffers and starts streaming.
  *
  * Returns 0 on success, negative values on error.
@@ -327,6 +364,7 @@ static void ouvrt_camera_v4l2_class_init(OuvrtCameraV4L2Class *klass)
 {
 	OuvrtDeviceClass *device_class = OUVRT_DEVICE_CLASS(klass);
 
+	device_class->open = ouvrt_camera_v4l2_open;
 	device_class->start = ouvrt_camera_v4l2_start;
 	device_class->thread = ouvrt_camera_v4l2_thread;
 	device_class->stop = ouvrt_camera_v4l2_stop;
