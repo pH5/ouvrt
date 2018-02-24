@@ -62,9 +62,10 @@ static int camera_dk2_start(OuvrtDevice *dev)
 		return ret;
 	}
 
-	/* Enable synchronised exposure by default */
-	mt9v034_sensor_enable_sync(fd);
-	self->sync = TRUE;
+	if (self->sync)
+		mt9v034_sensor_enable_sync(fd);
+	else
+		mt9v034_sensor_disable_sync(fd);
 
 	/* I have no idea what this does */
 	esp570_i2c_write(fd, 0x60, 0x05, 0x0001);
@@ -213,5 +214,10 @@ void ouvrt_camera_dk2_set_sync_exposure(OuvrtCameraDK2 *self, gboolean sync)
 
 void ouvrt_camera_dk2_set_tracker(OuvrtCameraDK2 *self, OuvrtTracker *tracker)
 {
+	if (tracker && !self->v4l2.camera.tracker)
+		ouvrt_camera_dk2_set_sync_exposure(self, TRUE);
+	else if (!tracker && self->v4l2.camera.tracker)
+		ouvrt_camera_dk2_set_sync_exposure(self, FALSE);
+
 	g_set_object(&self->v4l2.camera.tracker, tracker);
 }
