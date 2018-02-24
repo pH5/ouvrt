@@ -109,8 +109,10 @@ static int ouvrt_camera_v4l2_start(OuvrtDevice *dev)
 	camera->sizeimage = format.fmt.pix.sizeimage;
 
 	ret = ioctl(fd, VIDIOC_S_FMT, &format);
-	if (ret < 0)
+	if (ret < 0) {
 		g_print("v4l2: S_FMT error: %d\n", errno);
+		return ret;
+	}
 
 	ret = ioctl(fd, VIDIOC_S_PARM, &parm);
 	if (ret < 0)
