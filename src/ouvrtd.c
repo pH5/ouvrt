@@ -206,6 +206,51 @@ static void ouvrt_link_rift_dk2(OuvrtDevice *dev)
 	ouvrt_camera_dk2_set_tracker(camera, ouvrt_rift_get_tracker(rift));
 }
 
+static void ouvrt_link_rift_sensor_to_rift(gpointer data, gpointer user_data)
+{
+	OuvrtRift *rift = OUVRT_RIFT(user_data);
+	OuvrtRiftSensor *camera;
+
+	if (!OUVRT_IS_RIFT_SENSOR(data))
+		return;
+
+	camera = OUVRT_RIFT_SENSOR(data);
+
+	if (!rift || !camera) {
+		rift = OUVRT_RIFT(data);
+		camera = OUVRT_RIFT_SENSOR(user_data);
+	}
+	if (!rift || !camera)
+		return;
+
+	g_print("Associate %s and %s\n", OUVRT_DEVICE(rift)->devnode,
+		OUVRT_DEVICE(camera)->devnode);
+
+	ouvrt_rift_sensor_set_tracker(camera, ouvrt_rift_get_tracker(rift));
+}
+
+/*
+ * Links Rift CV1 HMD and Sensor CV1 cameras.
+ */
+static void ouvrt_link_rift_cv1(OuvrtDevice *dev)
+{
+	if (OUVRT_IS_RIFT(dev)) {
+		g_list_foreach(device_list, ouvrt_link_rift_sensor_to_rift, dev);
+		return;
+	}
+
+	if (OUVRT_IS_RIFT_SENSOR(dev)) {
+		GList *link;
+
+		for (link = device_list; link != NULL; link = link->next) {
+			if (OUVRT_IS_RIFT(link->data)) {
+				ouvrt_link_rift_sensor_to_rift(dev, link->data);
+				return;
+			}
+		}
+	}
+}
+
 /*
  * Check if an added device matches the table of known hardware, if yes create
  * a new device structure and start the device.
@@ -392,6 +437,8 @@ static void ouvrtd_device_add(struct udev_device *dev)
 
 		ouvrt_link_rift_dk2(d);
 	}
+
+	ouvrt_link_rift_cv1(d);
 
 	device_list = g_list_append(device_list, d);
 
