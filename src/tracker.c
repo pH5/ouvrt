@@ -4,7 +4,6 @@
  * SPDX-License-Identifier:	LGPL-2.0+ or BSL-1.0
  */
 #include <stdlib.h>
-#include <stdio.h>
 
 #include "blobwatch.h"
 #include "debug.h"
