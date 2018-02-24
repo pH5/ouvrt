@@ -17,6 +17,7 @@ struct _OuvrtTracker {
 	GObject parent_instance;
 	struct blobwatch *bw;
 	struct leds *leds;
+	uint32_t radio_address;
 };
 
 G_DEFINE_TYPE(OuvrtTracker, ouvrt_tracker, G_TYPE_OBJECT)
@@ -35,6 +36,16 @@ void ouvrt_tracker_unregister_leds(OuvrtTracker *tracker, struct leds *leds)
 		return;
 
 	tracker->leds = NULL;
+}
+
+void ouvrt_tracker_set_radio_address(OuvrtTracker *tracker, uint32_t address)
+{
+	tracker->radio_address = address;
+}
+
+uint32_t ouvrt_tracker_get_radio_address(OuvrtTracker *tracker)
+{
+	return tracker->radio_address;
 }
 
 void ouvrt_tracker_process_frame(OuvrtTracker *tracker, uint8_t *frame,

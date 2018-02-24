@@ -21,6 +21,9 @@ struct blobservation;
 void ouvrt_tracker_register_leds(OuvrtTracker *tracker, struct leds *leds);
 void ouvrt_tracker_unregister_leds(OuvrtTracker *tracker, struct leds *leds);
 
+void ouvrt_tracker_set_radio_address(OuvrtTracker *tracker, uint32_t address);
+uint32_t ouvrt_tracker_get_radio_address(OuvrtTracker *tracker);
+
 void ouvrt_tracker_process_frame(OuvrtTracker *tracker,
 				 uint8_t *frame, int width, int height,
 				 int skipped, struct blobservation **ob);

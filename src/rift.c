@@ -666,6 +666,9 @@ static int rift_start(OuvrtDevice *dev)
 					     &rift->radio.address);
 		if (ret < 0)
 			return ret;
+
+		ouvrt_tracker_set_radio_address(rift->tracker,
+						rift->radio.address);
 	}
 
 	ret = rift_get_uuid(rift);
