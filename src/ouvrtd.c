@@ -376,7 +376,7 @@ static void ouvrtd_device_add(struct udev_device *dev)
 					OUVRT_DEVICE(link->data)->devnode);
 
 				tracker = ouvrt_rift_get_tracker(rift);
-				camera->v4l2.camera.tracker = tracker;
+				ouvrt_camera_dk2_set_tracker(camera, tracker);
 			}
 		}
 	}

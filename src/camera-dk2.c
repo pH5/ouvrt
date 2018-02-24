@@ -23,13 +23,14 @@
 #define HEIGHT		480
 #define FRAMERATE	60
 
-struct _OuvrtCameraDK2Private {
+struct _OuvrtCameraDK2 {
+	OuvrtCameraV4L2 v4l2;
+
 	char *version;
 	bool sync;
 };
 
-G_DEFINE_TYPE_WITH_PRIVATE(OuvrtCameraDK2, ouvrt_camera_dk2, \
-			   OUVRT_TYPE_CAMERA_V4L2)
+G_DEFINE_TYPE(OuvrtCameraDK2, ouvrt_camera_dk2, OUVRT_TYPE_CAMERA_V4L2)
 
 static int camera_dk2_process_frame(OuvrtCamera *camera, void *raw)
 {
@@ -44,9 +45,8 @@ static int camera_dk2_process_frame(OuvrtCamera *camera, void *raw)
  */
 static int camera_dk2_start(OuvrtDevice *dev)
 {
-	OuvrtCameraDK2 *camera = OUVRT_CAMERA_DK2(dev);
-	OuvrtCameraDK2Class *klass = OUVRT_CAMERA_DK2_GET_CLASS(camera);
-	int fd = camera->v4l2.camera.dev.fd;
+	OuvrtCameraDK2 *self = OUVRT_CAMERA_DK2(dev);
+	int fd = self->v4l2.camera.dev.fd;
 	int ret;
 
 	/* Call camera_v4l2_start to start streaming */
@@ -58,13 +58,13 @@ static int camera_dk2_start(OuvrtDevice *dev)
 	ret = mt9v034_sensor_setup(fd);
 	if (ret < 0) {
 		g_print("Camera DK2: Failed to initialize sensor: %d\n", ret);
-		OUVRT_DEVICE_CLASS(klass)->stop(dev);
+		OUVRT_DEVICE_CLASS(ouvrt_camera_dk2_parent_class)->stop(dev);
 		return ret;
 	}
 
 	/* Enable synchronised exposure by default */
 	mt9v034_sensor_enable_sync(fd);
-	camera->priv->sync = TRUE;
+	self->sync = TRUE;
 
 	/* I have no idea what this does */
 	esp570_i2c_write(fd, 0x60, 0x05, 0x0001);
@@ -79,7 +79,7 @@ static int camera_dk2_start(OuvrtDevice *dev)
  */
 static void ouvrt_camera_dk2_finalize(GObject *object)
 {
-	free(OUVRT_CAMERA_DK2(object)->priv->version);
+	free(OUVRT_CAMERA_DK2(object)->version);
 	G_OBJECT_CLASS(ouvrt_camera_dk2_parent_class)->finalize(object);
 }
 
@@ -99,13 +99,12 @@ static void ouvrt_camera_dk2_init(OuvrtCameraDK2 *self)
 	camera->height = HEIGHT;
 	camera->framerate = FRAMERATE;
 	self->v4l2.pixelformat = V4L2_PIX_FMT_GREY;
-	self->priv = ouvrt_camera_dk2_get_instance_private(self);
-	self->priv->sync = FALSE;
+	self->sync = FALSE;
 }
 
-static void camera_dk2_get_calibration(OuvrtCameraDK2 *camera_dk2)
+static void camera_dk2_get_calibration(OuvrtCameraDK2 *self)
 {
-	OuvrtCamera *camera = OUVRT_CAMERA(camera_dk2);
+	OuvrtCamera *camera = OUVRT_CAMERA(self);
 	OuvrtDevice *dev = &camera->dev;
 	double * const A = camera->camera_matrix.m;
 	double * const k = camera->dist_coeffs;
@@ -182,7 +181,7 @@ OuvrtDevice *camera_dk2_new(const char *devnode)
 
 	ret = esp570_eeprom_read(fd, 0x0ff0, 0x10, buf);
 	if (ret == 0x10)
-		camera->priv->version = g_strdup(buf);
+		camera->version = g_strdup(buf);
 
 	ret = esp570_eeprom_read(fd, 0x2800, 0x20, buf);
 	if (ret == 0x20)
@@ -193,16 +192,16 @@ OuvrtDevice *camera_dk2_new(const char *devnode)
 	return &camera->v4l2.camera.dev;
 }
 
-void ouvrt_camera_dk2_set_sync_exposure(OuvrtCameraDK2 *camera, gboolean sync)
+void ouvrt_camera_dk2_set_sync_exposure(OuvrtCameraDK2 *self, gboolean sync)
 {
-	int fd = camera->v4l2.camera.dev.fd;
+	int fd = self->v4l2.camera.dev.fd;
 
-	if (sync == camera->priv->sync)
+	if (sync == self->sync)
 		return;
 
-	camera->priv->sync = sync;
+	self->sync = sync;
 
-	if (!camera->v4l2.camera.dev.active)
+	if (!self->v4l2.camera.dev.active)
 		return;
 
 	if (sync) {
@@ -210,4 +209,9 @@ void ouvrt_camera_dk2_set_sync_exposure(OuvrtCameraDK2 *camera, gboolean sync)
 	} else {
 		mt9v034_sensor_disable_sync(fd);
 	}
+}
+
+void ouvrt_camera_dk2_set_tracker(OuvrtCameraDK2 *self, OuvrtTracker *tracker)
+{
+	g_set_object(&self->v4l2.camera.tracker, tracker);
 }
