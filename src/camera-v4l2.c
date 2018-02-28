@@ -97,6 +97,7 @@ static int ouvrt_camera_v4l2_start(OuvrtDevice *dev)
 		.type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
 		.memory = V4L2_MEMORY_MMAP,
 	};
+	__u32 prio = V4L2_PRIORITY_RECORD;
 	int fd = dev->fd;
 	int ret;
 	unsigned int i;
@@ -171,6 +172,10 @@ static int ouvrt_camera_v4l2_start(OuvrtDevice *dev)
 	}
 
 	g_print("v4l2: Started streaming\n");
+
+	ret = ioctl(dev->fd, VIDIOC_S_PRIORITY, &prio);
+	if (ret < 0)
+		g_print("v4l2: S_PRIORITY error\n");
 
 	camera->debug = debug_stream_new(width, height, camera->framerate);
 
@@ -334,8 +339,13 @@ static void ouvrt_camera_v4l2_stop(OuvrtDevice *dev)
 		.type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
 		.memory = V4L2_MEMORY_MMAP,
 	};
+	__u32 prio = V4L2_PRIORITY_UNSET;
 	int ret;
 	int i;
+
+	ret = ioctl(dev->fd, VIDIOC_S_PRIORITY, &prio);
+	if (ret < 0)
+		g_print("v4l2: S_PRIORITY error\n");
 
 	if (priv->offset[1]) {
 		for (i = 0; i < 3; i++) {
