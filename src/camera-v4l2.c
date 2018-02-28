@@ -216,6 +216,9 @@ static void ouvrt_camera_v4l2_thread(OuvrtDevice *dev)
 	void *raw;
 	int ret;
 
+	buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	buf.memory = priv->offset[1] ? V4L2_MEMORY_MMAP : V4L2_MEMORY_USERPTR;
+
 	pfd.fd = dev->fd;
 	pfd.events = POLLIN;
 
@@ -230,7 +233,6 @@ static void ouvrt_camera_v4l2_thread(OuvrtDevice *dev)
 		if (pfd.events & (POLLERR | POLLHUP | POLLNVAL))
 			break;
 
-		buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 		ret = ioctl(dev->fd, VIDIOC_DQBUF, &buf);
 		if (ret < 0) {
 			if (errno == ENODEV)
