@@ -49,7 +49,7 @@ static void debug_gst_client_disconnected(G_GNUC_UNUSED GstElement *sink,
 /*
  * Enables GStreamer debug output of GRAY8 frames into a shmsink.
  */
-struct debug_stream *debug_stream_new(int width, int height, int framerate)
+struct debug_stream *debug_stream_new(const struct debug_stream_desc *desc)
 {
 	struct debug_stream *gst;
 	GstElement *pipeline, *src, *sink;
@@ -77,11 +77,15 @@ struct debug_stream *debug_stream_new(int width, int height, int framerate)
 		g_error("Could not create shmsink GStreamer element");
 
 	caps = gst_caps_new_simple("video/x-raw",
-				   "format", G_TYPE_STRING, "GRAY8",
-				   "framerate", GST_TYPE_FRACTION, framerate, 1,
+				   "format", G_TYPE_STRING,
+					     (desc->format == FORMAT_GRAY) ?
+					     "GRAY8" : "YUY2",
+				   "framerate", GST_TYPE_FRACTION,
+						desc->framerate.numerator,
+						desc->framerate.denominator,
 				   "pixel-aspect-ratio", GST_TYPE_FRACTION, 1, 1,
-				   "width", G_TYPE_INT, width,
-				   "height", G_TYPE_INT, height,
+				   "width", G_TYPE_INT, desc->width,
+				   "height", G_TYPE_INT, desc->height,
 				   NULL);
 
 	g_object_set(src, "caps", caps, NULL);

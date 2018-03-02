@@ -25,7 +25,6 @@
 #define RIFT_SENSOR_WIDTH	1280
 #define RIFT_SENSOR_HEIGHT	960
 #define RIFT_SENSOR_FRAME_SIZE	(RIFT_SENSOR_WIDTH * RIFT_SENSOR_HEIGHT)
-#define RIFT_SENSOR_FRAMERATE	52
 
 #define RIFT_SENSOR_VS_PROBE_CONTROL_SIZE	26
 
@@ -429,8 +428,13 @@ static int rift_sensor_start(OuvrtDevice *dev)
 		}
 	}
 
-	self->debug = debug_stream_new(RIFT_SENSOR_WIDTH, RIFT_SENSOR_HEIGHT,
-				       RIFT_SENSOR_FRAMERATE);
+	static const struct debug_stream_desc desc = {
+		.width = RIFT_SENSOR_WIDTH,
+		.height = RIFT_SENSOR_HEIGHT,
+		.format = FORMAT_GRAY,
+		.framerate = { 625, 12 }, /* 19.2 ms per frame */
+	};
+	self->debug = debug_stream_new(&desc);
 
 	return 0;
 }

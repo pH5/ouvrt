@@ -177,7 +177,13 @@ static int ouvrt_camera_v4l2_start(OuvrtDevice *dev)
 	if (ret < 0)
 		g_print("v4l2: S_PRIORITY error\n");
 
-	camera->debug = debug_stream_new(width, height, camera->framerate);
+	struct debug_stream_desc desc = {
+		.width = width,
+		.height = height,
+		.format = FORMAT_GRAY,
+		.framerate = { camera->framerate, 1 },
+	};
+	camera->debug = debug_stream_new(&desc);
 
 	return ret;
 }
