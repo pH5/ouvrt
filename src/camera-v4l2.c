@@ -339,7 +339,7 @@ static void ouvrt_camera_v4l2_stop(OuvrtDevice *dev)
 		.type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
 		.memory = V4L2_MEMORY_MMAP,
 	};
-	__u32 prio = V4L2_PRIORITY_UNSET;
+	__u32 prio = V4L2_PRIORITY_BACKGROUND;
 	int ret;
 	int i;
 
