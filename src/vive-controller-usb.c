@@ -16,6 +16,7 @@
 #include "vive-firmware.h"
 #include "vive-hid-reports.h"
 #include "vive-imu.h"
+#include "buttons.h"
 #include "device.h"
 #include "hidraw.h"
 #include "imu.h"
@@ -142,6 +143,15 @@ static void vive_controller_decode_pulse_report(OuvrtViveControllerUSB *self,
 	}
 }
 
+static const struct button_map vive_controller_usb_button_map[6] = {
+	{ VIVE_CONTROLLER_USB_BUTTON_TRIGGER, OUVRT_BUTTON_TRIGGER },
+	{ VIVE_CONTROLLER_USB_BUTTON_GRIP, OUVRT_BUTTON_GRIP },
+	{ VIVE_CONTROLLER_USB_BUTTON_MENU, OUVRT_BUTTON_MENU },
+	{ VIVE_CONTROLLER_USB_BUTTON_SYSTEM, OUVRT_BUTTON_SYSTEM },
+	{ VIVE_CONTROLLER_USB_BUTTON_THUMB, OUVRT_BUTTON_THUMB },
+	{ VIVE_CONTROLLER_USB_BUTTON_TOUCH, OUVRT_TOUCH_THUMB },
+};
+
 void vive_controller_decode_button_message(OuvrtViveControllerUSB *self,
 					   const unsigned char *buf, size_t len)
 {
@@ -154,16 +164,8 @@ void vive_controller_decode_button_message(OuvrtViveControllerUSB *self,
 		return;
 
 	if (buttons != self->buttons) {
-		int i;
-		int num_buttons = 0;
-		uint8_t btns[32];
-
-		for (i = 0; i < 32; i++) {
-			if ((self->buttons ^ buttons) & (1 << i))
-				btns[num_buttons++] = i | ((buttons & (1 << i)) ? 0x80 : 0);
-		}
-		telemetry_send_buttons(self->dev.id, btns, num_buttons);
-
+		ouvrt_handle_buttons(self->dev.id, buttons, self->buttons,
+				     6, vive_controller_usb_button_map);
 		self->buttons = buttons;
 	}
 }

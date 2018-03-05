@@ -18,11 +18,13 @@
 #include "vive-hid-reports.h"
 #include "vive-imu.h"
 #include "lighthouse.h"
+#include "buttons.h"
 #include "device.h"
 #include "hidraw.h"
 #include "json.h"
 #include "maths.h"
 #include "usb-ids.h"
+#include "telemetry.h"
 
 struct _OuvrtViveController {
 	OuvrtDevice dev;
@@ -141,11 +143,23 @@ static void vive_controller_handle_battery(OuvrtViveController *self,
 	(void)charging;
 }
 
+static const struct button_map vive_controller_button_map[6] = {
+	{ VIVE_CONTROLLER_BUTTON_MENU, OUVRT_BUTTON_MENU },
+	{ VIVE_CONTROLLER_BUTTON_GRIP, OUVRT_BUTTON_GRIP },
+	{ VIVE_CONTROLLER_BUTTON_SYSTEM, OUVRT_BUTTON_SYSTEM },
+	{ VIVE_CONTROLLER_BUTTON_THUMB, OUVRT_BUTTON_THUMB },
+	{ VIVE_CONTROLLER_BUTTON_TOUCH, OUVRT_TOUCH_THUMB },
+	{ VIVE_CONTROLLER_BUTTON_TRIGGER, OUVRT_BUTTON_TRIGGER },
+};
+
 static void vive_controller_handle_buttons(OuvrtViveController *self,
 					   uint8_t buttons)
 {
-	if (buttons != self->buttons)
+	if (buttons != self->buttons) {
+		ouvrt_handle_buttons(self->dev.id, buttons, self->buttons,
+				     6, vive_controller_button_map);
 		self->buttons = buttons;
+	}
 }
 
 static void vive_controller_handle_touch_position(OuvrtViveController *self,
