@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include "motion-controller.h"
+#include "buttons.h"
 #include "device.h"
 #include "hidraw.h"
 #include "imu.h"
@@ -37,14 +38,20 @@ G_DEFINE_TYPE(OuvrtMotionController, ouvrt_motion_controller, OUVRT_TYPE_DEVICE)
 #define MOTION_CONTROLLER_BUTTON_PAD_PRESS	0x10
 #define MOTION_CONTROLLER_BUTTON_PAD_TOUCH	0x40
 
+static const struct button_map motion_controller_button_map[6] = {
+	{ MOTION_CONTROLLER_BUTTON_STICK, OUVRT_BUTTON_JOYSTICK },
+	{ MOTION_CONTROLLER_BUTTON_WINDOWS, OUVRT_BUTTON_SYSTEM },
+	{ MOTION_CONTROLLER_BUTTON_MENU, OUVRT_BUTTON_MENU },
+	{ MOTION_CONTROLLER_BUTTON_GRIP, OUVRT_BUTTON_GRIP },
+	{ MOTION_CONTROLLER_BUTTON_PAD_PRESS, OUVRT_BUTTON_THUMB },
+	{ MOTION_CONTROLLER_BUTTON_PAD_TOUCH, OUVRT_TOUCH_THUMB },
+};
+
 static void motion_controller_decode_message(OuvrtMotionController *self,
 					     const unsigned char *buf,
 					     const struct timespec *ts)
 {
-	if (buf[1] != self->buttons) {
-		self->buttons = buf[1];
-	}
-
+	uint8_t buttons = buf[1];
 	uint16_t stick[2] = {
 		buf[2] | ((buf[3] & 0xf) << 8),
 		((buf[3] & 0xf0) >> 4) | (buf[4] << 4),
@@ -113,6 +120,12 @@ static void motion_controller_decode_message(OuvrtMotionController *self,
 	self->imu.pose.translation.y = 0.0;
 	self->imu.pose.translation.z = 0.0;
 	telemetry_send_pose(self->dev.id, &self->imu.pose);
+
+	if (buttons != self->buttons) {
+		ouvrt_handle_buttons(self->dev.id, buttons, self->buttons,
+				     6, motion_controller_button_map);
+		self->buttons = buttons;
+	}
 }
 
 /*
