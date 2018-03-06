@@ -30,6 +30,8 @@ libouvrt = static_library(
 
 ouvrtd_sources = [
   gdbus_generated,
+  'buttons.c',
+  'buttons.h',
   'camera.c',
   'camera-dk2.c',
   'camera-dk2.h',
