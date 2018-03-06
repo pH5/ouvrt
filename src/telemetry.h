@@ -4,6 +4,7 @@
  * SPDX-License-Identifier:	LGPL-2.0+
  */
 #include <stdint.h>
+#include <unistd.h>
 
 #define TELEMETRY_DEFAULT_PORT			28532
 

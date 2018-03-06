@@ -7,6 +7,7 @@
 #define __DEBUG_H__
 
 #include <stdint.h>
+#include <unistd.h>
 
 #define DEBUG_MODE_SHM	1
 #define DEBUG_MODE_X	2
