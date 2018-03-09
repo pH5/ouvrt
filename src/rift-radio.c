@@ -471,7 +471,7 @@ static void rift_decode_touch_message(struct rift_touch_controller *touch,
 		map = (touch->base.id == RIFT_TOUCH_CONTROLLER_LEFT) ?
 		      touch_left_button_map : touch_right_button_map;
 
-		ouvrt_handle_buttons(touch->base.id, buttons, touch->buttons,
+		ouvrt_handle_buttons(touch->base.dev_id, buttons, touch->buttons,
 				     4, map);
 		touch->buttons = buttons;
 	}
