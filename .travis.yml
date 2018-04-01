@@ -1,0 +1,39 @@
+language: c
+
+sudo: required
+dist: trusty
+
+cache:
+  apt: true
+  pip: true
+
+matrix:
+  include:
+    - env:
+        - LABEL="minimal"
+        - MESON_OPTIONS="-Dgstreamer=false -Dopencv=false"
+    - env:
+        - LABEL="full"
+        - MESON_OPTIONS="-Dgstreamer=true -Dopencv=true"
+
+before_install:
+  - sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu/ xenial main restricted universe multiverse" -y
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq build-essential libglib2.0-dev libjson-glib-dev libudev-dev libusb-1.0-0-dev
+  - if [[ "$LABEL" == "full" ]]; then
+      sudo apt-get install -qq libgstreamer1.0-dev libopencv-dev;
+    fi
+
+install:
+  - pyenv global system 3.6
+  - pip3 install --user meson
+  - wget https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip
+  - unzip ninja-linux.zip
+
+before_script:
+  - export PATH="$PATH:$PWD"
+
+script:
+  - meson builddir --unity on $MESON_OPTIONS ||
+    (cat builddir/meson-logs/meson-log.txt ; false) &&
+    ninja -C builddir
