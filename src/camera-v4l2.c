@@ -17,6 +17,10 @@
 #include "debug.h"
 #include "tracker.h"
 
+#ifndef V4L2_CAP_META_CAPTURE
+#define V4L2_CAP_META_CAPTURE	0x00800000
+#endif
+
 struct _OuvrtCameraV4L2Private {
 	uint32_t offset[3];
 	void *buf[3];
