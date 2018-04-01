@@ -13,13 +13,13 @@ add_global_arguments('-Wall', language : 'c')
 
 gio_dep = dependency('gio-unix-2.0')
 glib_dep = dependency('glib-2.0')
-gobj_dep = dependency('gobject-2.0', version : '>= 2.44')
+gobj_dep = dependency('gobject-2.0', version : '>= 2.40')
 if with_gstreamer != 'false'
   gst_dep = dependency('gstreamer-1.0', required : with_gstreamer == 'true')
 else
   gst_dep = []
 endif
-json_glib_dep = dependency('json-glib-1.0', version : '>= 1.2')
+json_glib_dep = dependency('json-glib-1.0', version : '>= 1.1')
 if with_opencv != 'false'
   opencv_dep = dependency('opencv', required : with_opencv == 'true')
 else
