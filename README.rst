@@ -51,6 +51,7 @@ to build ouvrt:
 - JSON-GLib
 - OpenCV (optional)
 - libudev
+- Linux kernel headers (hidraw, uvc, v4l2)
 - Meson
 - zlib
 

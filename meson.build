@@ -33,6 +33,12 @@ zlib_dep = dependency('zlib')
 cc = meson.get_compiler('c')
 m_dep = cc.find_library('m', required : false)
 
+foreach h : ['linux/hidraw.h', 'linux/uvcvideo.h', 'linux/usb/video.h', 'linux/videodev2.h']
+  if not cc.compiles('#include <@0@>'.format(h), name : '@0@'.format(h))
+    error('Missing Linux kernel headers')
+  endif
+endforeach
+
 build_gst = with_gstreamer != 'false' and gst_dep.found()
 build_opencv = with_opencv != 'false' and opencv_dep.found()
 
