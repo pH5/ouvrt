@@ -144,7 +144,7 @@ static void psvr_set_mode(OuvrtPSVR *psvr, int mode)
 
 static void psvr_decode_sensor_message(OuvrtPSVR *self,
 				       const unsigned char *buf,
-				       size_t len G_GNUC_UNUSED)
+				       G_GNUC_UNUSED size_t len)
 {
 	const struct psvr_sensor_message *message = (void *)buf;
 	uint16_t volume = __le16_to_cpu(message->volume);
@@ -298,7 +298,7 @@ static void psvr_handle_status_report(OuvrtPSVR *psvr,
 	}
 }
 
-void psvr_handle_command_reply(OuvrtPSVR *psvr,
+void psvr_handle_command_reply(G_GNUC_UNUSED OuvrtPSVR *psvr,
 			       struct psvr_command_reply *reply)
 {
 	if (reply->error) {
@@ -592,7 +592,7 @@ static void ouvrt_psvr_init(OuvrtPSVR *self)
  *
  * Returns the newly allocated PlayStation VR device.
  */
-OuvrtDevice *psvr_new(const char *devnode G_GNUC_UNUSED)
+OuvrtDevice *psvr_new(G_GNUC_UNUSED const char *devnode)
 {
 	return OUVRT_DEVICE(g_object_new(OUVRT_TYPE_PSVR, NULL));
 }

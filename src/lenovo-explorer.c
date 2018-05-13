@@ -26,7 +26,7 @@ G_DEFINE_TYPE(OuvrtLenovoExplorer, ouvrt_lenovo_explorer, OUVRT_TYPE_DEVICE)
 /*
  * Opens the Lenovo Explorer device, powers it on, and reads device info.
  */
-static int lenovo_explorer_start(OuvrtDevice *dev)
+static int lenovo_explorer_start(G_GNUC_UNUSED OuvrtDevice *dev)
 {
 	return 0;
 }
@@ -85,7 +85,7 @@ static void lenovo_explorer_thread(OuvrtDevice *dev)
 /*
  * Powers off the Lenovo Explorer device.
  */
-static void lenovo_explorer_stop(OuvrtDevice *dev)
+static void lenovo_explorer_stop(G_GNUC_UNUSED OuvrtDevice *dev)
 {
 }
 
@@ -116,7 +116,7 @@ static void ouvrt_lenovo_explorer_init(OuvrtLenovoExplorer *self)
  *
  * Returns the newly allocated Lenovo Explorer device.
  */
-OuvrtDevice *lenovo_explorer_new(const char *devnode G_GNUC_UNUSED)
+OuvrtDevice *lenovo_explorer_new(G_GNUC_UNUSED const char *devnode)
 {
 	return OUVRT_DEVICE(g_object_new(OUVRT_TYPE_LENOVO_EXPLORER,
 					 NULL));

@@ -21,7 +21,7 @@ static GDBusObjectManagerServer *manager = NULL;
  */
 static void ouvrt_dbus_on_bus_acquired(GDBusConnection *connection,
 				       const gchar *name,
-				       gpointer user_data G_GNUC_UNUSED)
+				       G_GNUC_UNUSED gpointer user_data)
 {
 	g_print("ouvrtd: Acquired session bus, name: '%s'\n", name);
 
@@ -35,9 +35,9 @@ static void ouvrt_dbus_on_bus_acquired(GDBusConnection *connection,
 	g_dbus_object_manager_server_set_connection(manager, connection);
 }
 
-static void sender_vanished_handler(GDBusConnection *connection G_GNUC_UNUSED,
+static void sender_vanished_handler(G_GNUC_UNUSED GDBusConnection *connection,
 				    const gchar *name,
-				    gpointer user_data G_GNUC_UNUSED)
+				    G_GNUC_UNUSED gpointer user_data)
 {
 	g_print("Watched name %s disappeared from the bus\n", name);
 }
@@ -259,7 +259,7 @@ static void ouvrt_dbus_export_camera1_interface(OuvrtDevice *dev)
 }
 
 static void ouvrt_dbus_export_device_interface(gpointer data,
-					       gpointer user_data G_GNUC_UNUSED)
+					       G_GNUC_UNUSED gpointer user_data)
 {
 	OuvrtDevice *dev = OUVRT_DEVICE(data);
 
@@ -280,9 +280,9 @@ static void ouvrt_dbus_export_device_interface(gpointer data,
  * Exports Tracker1 and Camera1 interfaces via D-Bus as soon as the
  * Ouvrtd name was acquired on the bus.
  */
-static void ouvrt_dbus_on_name_acquired(GDBusConnection *connection G_GNUC_UNUSED,
+static void ouvrt_dbus_on_name_acquired(G_GNUC_UNUSED GDBusConnection *connection,
 					const gchar *name,
-					gpointer user_data G_GNUC_UNUSED)
+					G_GNUC_UNUSED gpointer user_data)
 {
 	g_print("ouvrtd: Acquired name \"%s\"\n", name);
 
@@ -294,9 +294,9 @@ static void ouvrt_dbus_on_name_acquired(GDBusConnection *connection G_GNUC_UNUSE
 /*
  * Reports when the Ouvrtd name on the bus was lost.
  */
-static void ouvrt_dbus_on_name_lost(GDBusConnection *connection G_GNUC_UNUSED,
-				    const gchar *name G_GNUC_UNUSED,
-				    gpointer user_data G_GNUC_UNUSED)
+static void ouvrt_dbus_on_name_lost(G_GNUC_UNUSED GDBusConnection *connection,
+				    G_GNUC_UNUSED const gchar *name,
+				    G_GNUC_UNUSED gpointer user_data)
 {
 	g_print("ouvrtd: Lost name %s\n", name);
 }

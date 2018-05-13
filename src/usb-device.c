@@ -160,6 +160,6 @@ static void ouvrt_usb_device_class_init(OuvrtUSBDeviceClass *klass)
 	OUVRT_DEVICE_CLASS(klass)->close = ouvrt_usb_device_close;
 }
 
-static void ouvrt_usb_device_init(OuvrtUSBDevice *self)
+static void ouvrt_usb_device_init(G_GNUC_UNUSED OuvrtUSBDevice *self)
 {
 }

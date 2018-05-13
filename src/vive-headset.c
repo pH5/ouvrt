@@ -278,9 +278,8 @@ static void vive_headset_thread(OuvrtDevice *dev)
 /*
  * Nothing to do here.
  */
-static void vive_headset_stop(OuvrtDevice *dev)
+static void vive_headset_stop(G_GNUC_UNUSED OuvrtDevice *dev)
 {
-	(void)dev;
 }
 
 /*
@@ -313,7 +312,7 @@ static void ouvrt_vive_headset_init(OuvrtViveHeadset *self)
  *
  * Returns the newly allocated Vive Headset device.
  */
-OuvrtDevice *vive_headset_new(const char *devnode G_GNUC_UNUSED)
+OuvrtDevice *vive_headset_new(G_GNUC_UNUSED const char *devnode)
 {
 	return OUVRT_DEVICE(g_object_new(OUVRT_TYPE_VIVE_HEADSET, NULL));
 }

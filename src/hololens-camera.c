@@ -29,7 +29,8 @@ struct _OuvrtHoloLensCamera {
 G_DEFINE_TYPE(OuvrtHoloLensCamera, ouvrt_hololens_camera, \
 	      OUVRT_TYPE_CAMERA_V4L2)
 
-static int hololens_camera_process_frame(OuvrtCamera *camera, void *frame)
+static int hololens_camera_process_frame(G_GNUC_UNUSED OuvrtCamera *camera,
+					 void *frame)
 {
 	uint8_t *buf = frame;
 	uint16_t gain; /* or could be additional exposure time */

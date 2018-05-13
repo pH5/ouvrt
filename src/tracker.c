@@ -29,7 +29,8 @@ void ouvrt_tracker_register_leds(OuvrtTracker *tracker, struct leds *leds)
 	leds_copy(&tracker->leds, leds);
 }
 
-void ouvrt_tracker_unregister_leds(OuvrtTracker *tracker, struct leds *leds)
+void ouvrt_tracker_unregister_leds(G_GNUC_UNUSED OuvrtTracker *tracker,
+				   G_GNUC_UNUSED struct leds *leds)
 {
 //	tracker->leds.gone = true;
 }

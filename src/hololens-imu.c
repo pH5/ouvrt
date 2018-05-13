@@ -135,7 +135,7 @@ static int hololens_imu_handle_imu_report(OuvrtHoloLensIMU *self,
 }
 
 static int
-hololens_imu_handle_control_report(OuvrtHoloLensIMU *self,
+hololens_imu_handle_control_report(G_GNUC_UNUSED OuvrtHoloLensIMU *self,
 				   struct hololens_control_report *report)
 {
 	if (report->code == 4) {
@@ -375,7 +375,7 @@ static void hololens_imu_thread(OuvrtDevice *dev)
 /*
  * Powers off the IMU.
  */
-static void hololens_imu_stop(OuvrtDevice *dev)
+static void hololens_imu_stop(G_GNUC_UNUSED OuvrtDevice *dev)
 {
 }
 

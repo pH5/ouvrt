@@ -32,7 +32,8 @@ struct _OuvrtCameraDK2 {
 
 G_DEFINE_TYPE(OuvrtCameraDK2, ouvrt_camera_dk2, OUVRT_TYPE_CAMERA_V4L2)
 
-static int camera_dk2_process_frame(OuvrtCamera *camera, void *raw)
+static int camera_dk2_process_frame(G_GNUC_UNUSED OuvrtCamera *camera,
+				    G_GNUC_UNUSED void *raw)
 {
 	return 0;
 }

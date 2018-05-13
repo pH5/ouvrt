@@ -9,7 +9,7 @@
 
 G_DEFINE_TYPE(OuvrtCamera, ouvrt_camera, OUVRT_TYPE_DEVICE)
 
-static void ouvrt_camera_class_init(OuvrtCameraClass *klass G_GNUC_UNUSED)
+static void ouvrt_camera_class_init(G_GNUC_UNUSED OuvrtCameraClass *klass)
 {
 }
 

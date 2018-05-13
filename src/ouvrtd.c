@@ -518,10 +518,9 @@ struct udev_source {
 	gpointer tag;
 };
 
-static gboolean udev_source_prepare(GSource *source, gint *timeout)
+static gboolean udev_source_prepare(G_GNUC_UNUSED GSource *source,
+				    gint *timeout)
 {
-	(void)source;
-
 	*timeout = -1;
 	return FALSE;
 }

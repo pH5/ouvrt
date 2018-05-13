@@ -22,8 +22,8 @@ struct debug_stream {
  * Enables the output of debug frames whenever a GStreamer shmsrc connects to
  * the ouvrtd-gst socket.
  */
-static void debug_gst_client_connected(GstElement *sink G_GNUC_UNUSED,
-				       gint arg1 G_GNUC_UNUSED,
+static void debug_gst_client_connected(G_GNUC_UNUSED GstElement *sink,
+				       G_GNUC_UNUSED gint arg1,
 				       gpointer data)
 {
 	struct debug_stream *gst = data;
@@ -36,14 +36,11 @@ static void debug_gst_client_connected(GstElement *sink G_GNUC_UNUSED,
  * Disables the output of debug frames whenever a GStreamer shmsrc disconnects
  * from the ouvrtd-gst socket.
  */
-static void debug_gst_client_disconnected(GstElement *sink G_GNUC_UNUSED,
-					  gint arg1 G_GNUC_UNUSED,
+static void debug_gst_client_disconnected(G_GNUC_UNUSED GstElement *sink,
+					  G_GNUC_UNUSED gint arg1,
 					  gpointer data)
 {
 	struct debug_stream *gst = data;
-
-	(void)sink;
-	(void)arg1;
 
 	gst->connected = FALSE;
 	printf("debug: disconnected\n");

@@ -913,12 +913,12 @@ OuvrtDevice *rift_new(enum rift_type type)
 	return &rift->dev;
 }
 
-OuvrtDevice *rift_dk2_new(const char *devnode G_GNUC_UNUSED)
+OuvrtDevice *rift_dk2_new(G_GNUC_UNUSED const char *devnode)
 {
 	return rift_new(RIFT_DK2);
 }
 
-OuvrtDevice *rift_cv1_new(const char *devnode G_GNUC_UNUSED)
+OuvrtDevice *rift_cv1_new(G_GNUC_UNUSED const char *devnode)
 {
 	return rift_new(RIFT_CV1);
 }

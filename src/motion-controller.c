@@ -49,7 +49,7 @@ static const struct button_map motion_controller_button_map[6] = {
 
 static void motion_controller_decode_message(OuvrtMotionController *self,
 					     const unsigned char *buf,
-					     const struct timespec *ts)
+					     G_GNUC_UNUSED const struct timespec *ts)
 {
 	uint8_t buttons = buf[1];
 	uint16_t stick[2] = {
@@ -131,7 +131,7 @@ static void motion_controller_decode_message(OuvrtMotionController *self,
 /*
  * Nothing to do here.
  */
-static int motion_controller_start(OuvrtDevice *dev)
+static int motion_controller_start(G_GNUC_UNUSED OuvrtDevice *dev)
 {
 	return 0;
 }
@@ -197,7 +197,7 @@ static void motion_controller_thread(OuvrtDevice *dev)
 /*
  * Nothing to do here.
  */
-static void motion_controller_stop(OuvrtDevice *dev)
+static void motion_controller_stop(G_GNUC_UNUSED OuvrtDevice *dev)
 {
 }
 
@@ -229,7 +229,7 @@ static void ouvrt_motion_controller_init(OuvrtMotionController *self)
  *
  * Returns the newly allocated Lenovo Explorer device.
  */
-OuvrtDevice *motion_controller_new(const char *devnode G_GNUC_UNUSED)
+OuvrtDevice *motion_controller_new(G_GNUC_UNUSED const char *devnode)
 {
 	return OUVRT_DEVICE(g_object_new(OUVRT_TYPE_MOTION_CONTROLLER,
 					 NULL));

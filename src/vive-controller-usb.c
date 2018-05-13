@@ -327,7 +327,7 @@ static void ouvrt_vive_controller_usb_init(OuvrtViveControllerUSB *self)
  *
  * Returns the newly allocated Vive Controller device.
  */
-OuvrtDevice *vive_controller_usb_new(const char *devnode G_GNUC_UNUSED)
+OuvrtDevice *vive_controller_usb_new(G_GNUC_UNUSED const char *devnode)
 {
 	return OUVRT_DEVICE(g_object_new(OUVRT_TYPE_VIVE_CONTROLLER_USB, NULL));
 }

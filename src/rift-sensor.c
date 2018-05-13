@@ -519,7 +519,7 @@ static void ouvrt_rift_sensor_init(OuvrtRiftSensor *self)
  *
  * Returns the newly allocated Oculus Sensor device.
  */
-OuvrtDevice *rift_sensor_new(const char *devnode)
+OuvrtDevice *rift_sensor_new(G_GNUC_UNUSED const char *devnode)
 {
 	OuvrtRiftSensor *camera;
 
