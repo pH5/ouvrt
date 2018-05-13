@@ -94,8 +94,11 @@ int ar0134_set_ae(libusb_device_handle *devh, bool enabled)
 	ret = ar0134_read_reg(devh, AR0134_AE_CTRL_REG, &val);
 	if (ret < 0)
 		return ret;
-	return ar0134_write_reg(devh, AR0134_AE_CTRL_REG, val |
-				AR0134_AE_ENABLE);
+	if (enabled)
+		val |= AR0134_AE_ENABLE;
+	else
+		val &= ~AR0134_AE_ENABLE;
+	return ar0134_write_reg(devh, AR0134_AE_CTRL_REG, val);
 }
 
 int ar0134_set_gain(libusb_device_handle *devh, uint16_t gain)
