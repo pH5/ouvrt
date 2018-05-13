@@ -160,6 +160,9 @@ int telemetry_init(int *argc, char **argv[])
 	};
 	int fd, ret;
 
+	(void)argc;
+	(void)argv;
+
 	if (telemetry_fd > 0)
 		return -EBUSY;
 
