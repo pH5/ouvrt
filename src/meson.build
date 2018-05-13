@@ -28,8 +28,22 @@ libouvrt = static_library(
   dependencies : libouvrt_deps
 )
 
-ouvrtd_sources = [
+libouvrt_dbus_sources = [
   gdbus_generated,
+  'dbus.c',
+  'dbus.h'
+]
+libouvrt_dbus = static_library(
+  'libouvrt-dbus',
+  libouvrt_dbus_sources,
+  dependencies : [
+    glib_dep,
+    gio_dep
+  ],
+  c_args : [ '-Wno-unused-parameter' ]
+)
+
+ouvrtd_sources = [
   'buttons.c',
   'buttons.h',
   'camera.c',
@@ -38,7 +52,6 @@ ouvrtd_sources = [
   'camera.h',
   'camera-v4l2.c',
   'camera-v4l2.h',
-  'dbus.c',
   'dbus.h',
   'debug.c',
   'debug.h',
@@ -122,6 +135,9 @@ executable(
   'ouvrtd',
   ouvrtd_sources,
   dependencies : ouvrtd_deps,
-  link_with : libouvrt,
+  link_with : [
+    libouvrt,
+    libouvrt_dbus
+  ],
   install : true
 )

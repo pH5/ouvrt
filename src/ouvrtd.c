@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <getopt.h>
 #include <glib.h>
+#include <gio/gio.h>
 #include <libudev.h>
 #include <locale.h>
 #include <poll.h>
@@ -17,7 +18,6 @@
 #include "dbus.h"
 #include "debug.h"
 #include "device.h"
-#include "gdbus-generated.h"
 #include "usb-ids.h"
 #include "psvr.h"
 #include "rift.h"
