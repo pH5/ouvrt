@@ -259,7 +259,8 @@ static void ouvrtd_device_add(struct udev_device *dev)
 {
 	const char *devnode, *parent_devpath, *serial, *subsystem, *value;
 	const char *parent_subsystem;
-	uint16_t vid, pid;
+	uint16_t vid = 0;
+	uint16_t pid = 0;
 	struct udev_device *parent;
 	OuvrtDevice *d;
 	int i, j = 0, iface;
