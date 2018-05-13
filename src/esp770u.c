@@ -185,8 +185,8 @@ static int esp770u_radio_write(libusb_device_handle *devh, const uint8_t *buf,
 			       size_t len)
 {
 	uint8_t data[127];
+	unsigned int i;
 	int ret;
-	int i;
 
 	if (len > 126)
 		return -EINVAL;

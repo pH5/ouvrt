@@ -474,8 +474,8 @@ static int rift_touch_parse_calibration(struct rift_touch_controller *touch,
 	JsonNode *node = json_from_string(json, NULL);
 	JsonObject *object = json_node_get_object(node);
 	JsonArray *array;
+	unsigned int i, j;
 	int version;
-	int i, j;
 
 	object = json_object_get_object_member(object, "TrackedObject");
 	if (!object) {
@@ -665,8 +665,8 @@ int rift_decode_pairing_message(struct rift_radio *radio, int fd,
 	uint32_t radio_address = __le32_to_cpu(message->pairing.id[1]);
 	struct rift_wireless_device *dev;
 	uint16_t maybe_channel;
+	unsigned int i;
 	int ret;
-	int i;
 
 	for (i = 0; i < sizeof *message; i++) {
 		if (((char *)message)[i])
