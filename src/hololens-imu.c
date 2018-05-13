@@ -221,7 +221,7 @@ static int hololens_imu_config_read(OuvrtDevice *dev, uint8_t command,
 				    uint8_t *buf, size_t count)
 {
 	struct hololens_control_report report;
-	int offset = 0;
+	unsigned int offset = 0;
 	int ret;
 
 	ret = hololens_imu_command_sync(dev, HOLOLENS_COMMAND_CONFIG_START,
@@ -257,7 +257,7 @@ static int hololens_imu_config_read(OuvrtDevice *dev, uint8_t command,
 			return -EINVAL;
 		}
 		if (offset + report.len > count) {
-			g_print("%s: Out of space at %d+%u/%lu\n", dev->name,
+			g_print("%s: Out of space at %u+%u/%lu\n", dev->name,
 				offset, report.len, count);
 			return -ENOSPC;
 		}
