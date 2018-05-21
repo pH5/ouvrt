@@ -9,6 +9,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
 #include <math.h>
 
@@ -44,6 +45,7 @@ struct _OuvrtRift {
 	int report_rate;
 	int report_interval;
 	gboolean flicker;
+	uint64_t last_message_time;
 	uint64_t last_sample_timestamp;
 	struct rift_radio radio;
 	struct imu_state imu;
@@ -503,7 +505,7 @@ static int rift_cv1_power_down(OuvrtRift *rift, uint8_t components)
  */
 static void rift_decode_sensor_message(OuvrtRift *rift,
 				       const unsigned char *buf,
-				       size_t len)
+				       size_t len, struct timespec *ts)
 {
 	struct rift_sensor_message *message = (void *)buf;
 	uint8_t num_samples;
@@ -517,7 +519,7 @@ static void rift_decode_sensor_message(OuvrtRift *rift,
 	uint8_t led_pattern_phase;
 	uint16_t exposure_count;
 	uint32_t exposure_timestamp;
-
+	uint64_t message_time;
 	struct imu_sample sample;
 	int32_t dt;
 	int i;
@@ -582,6 +584,9 @@ static void rift_decode_sensor_message(OuvrtRift *rift,
 
 		debug_imu_fifo_in(&rift->imu, 1);
 	}
+
+	message_time = ts->tv_sec * 1000000000 + ts->tv_nsec;
+	rift->last_message_time = message_time;
 
 	(void)exposure_timestamp;
 	(void)exposure_count;
@@ -759,6 +764,7 @@ static void rift_thread(OuvrtDevice *dev)
 	OuvrtRift *rift = OUVRT_RIFT(dev);
 	unsigned char buf[64];
 	struct pollfd fds[2];
+	struct timespec ts;
 	int count;
 	int ret;
 
@@ -775,6 +781,7 @@ static void rift_thread(OuvrtDevice *dev)
 		fds[1].revents = 0;
 
 		ret = poll(fds, 2, 1000);
+		clock_gettime(CLOCK_MONOTONIC, &ts);
 		if (ret == -1 || ret == 0 ||
 		    count > 9 * rift->report_rate) {
 			if (ret == -1 || ret == 0)
@@ -801,7 +808,7 @@ static void rift_thread(OuvrtDevice *dev)
 				continue;
 			}
 
-			rift_decode_sensor_message(rift, buf, sizeof(buf));
+			rift_decode_sensor_message(rift, buf, sizeof(buf), &ts);
 			count++;
 		}
 		if (fds[1].revents & POLLIN) {
