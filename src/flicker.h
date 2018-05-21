@@ -9,12 +9,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-struct flicker;
 struct blob;
 struct leds;
 
-struct flicker *flicker_new();
-void flicker_process(struct flicker *fl, struct blob *blobs, int num_blobs,
-		     int skipped, struct leds *leds);
+void flicker_process(struct blob *blobs, int num_blobs,
+		     uint8_t led_pattern_phase, struct leds *leds);
 
 #endif /* __BLOBWATCH_H__*/

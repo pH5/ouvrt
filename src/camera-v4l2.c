@@ -217,7 +217,6 @@ static void ouvrt_camera_v4l2_thread(OuvrtDevice *dev)
 	double timestamps[4];
 	struct timespec tp;
 	struct pollfd pfd;
-	int skipped;
 	void *raw;
 	int ret;
 
@@ -273,9 +272,6 @@ static void ouvrt_camera_v4l2_thread(OuvrtDevice *dev)
 		if (v4l2->pixelformat == V4L2_PIX_FMT_YUYV)
 			convert_yuyv_to_grayscale(raw, width, height);
 
-		skipped = buf.sequence - camera->sequence - 1;
-		if (skipped < 0)
-			skipped = 0;
 		camera->sequence = buf.sequence;
 
 		/*
@@ -285,9 +281,12 @@ static void ouvrt_camera_v4l2_thread(OuvrtDevice *dev)
 		 */
 		struct blobservation *ob = NULL;
 		if (camera->tracker) {
+			uint64_t sof_time = buf.timestamp.tv_sec * 1000000000 +
+					    buf.timestamp.tv_usec * 1000;
+
 			ouvrt_tracker_process_frame(camera->tracker,
-						    raw, width, height, skipped,
-						    &ob);
+						    raw, width, height,
+						    sof_time, &ob);
 		}
 
 		clock_gettime(CLOCK_MONOTONIC, &tp);

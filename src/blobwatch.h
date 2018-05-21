@@ -44,9 +44,8 @@ struct blobwatch;
 
 struct blobwatch *blobwatch_new(int width, int height);
 void blobwatch_process(struct blobwatch *bw, uint8_t *frame,
-		       int width, int height, int skipped,
-		       struct leds *leds,
-		       struct blobservation **output);
+		       int width, int height, uint8_t led_pattern_phase,
+		       struct leds *leds, struct blobservation **output);
 void blobwatch_set_flicker(bool enable);
 
 #endif /* __BLOBWATCH_H__*/

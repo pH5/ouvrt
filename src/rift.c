@@ -47,6 +47,8 @@ struct _OuvrtRift {
 	gboolean flicker;
 	uint64_t last_message_time;
 	uint64_t last_sample_timestamp;
+	uint32_t last_exposure_timestamp;
+	int32_t last_exposure_count;
 	struct rift_radio radio;
 	struct imu_state imu;
 };
@@ -586,11 +588,23 @@ static void rift_decode_sensor_message(OuvrtRift *rift,
 	}
 
 	message_time = ts->tv_sec * 1000000000 + ts->tv_nsec;
+
+	if (exposure_count != rift->last_exposure_count) {
+		int32_t sample_expo_dt = (int32_t)sample_timestamp -
+					 exposure_timestamp;
+		uint64_t exposure_time = message_time - (message_time -
+					 rift->last_message_time) *
+					 sample_expo_dt / dt;
+
+		ouvrt_tracker_add_exposure(rift->tracker, exposure_timestamp,
+					   exposure_time, led_pattern_phase);
+
+		rift->last_exposure_timestamp = exposure_timestamp;
+		rift->last_exposure_count = exposure_count;
+	}
+
 	rift->last_message_time = message_time;
 
-	(void)exposure_timestamp;
-	(void)exposure_count;
-	(void)led_pattern_phase;
 	(void)frame_id;
 	(void)frame_timestamp;
 	(void)frame_count;

@@ -15,31 +15,6 @@
 
 #include <stdio.h>
 
-/*
- * LED pattern detector internal state
- */
-struct flicker {
-	int phase;
-};
-
-/*
- * Allocates and initializes flicker structure.
- *
- * Returns the newly allocated flicker structure.
- */
-struct flicker *flicker_new()
-{
-	struct flicker *fl = malloc(sizeof(*fl));
-
-	if (!fl)
-		return NULL;
-
-	memset(fl, 0, sizeof(*fl));
-	fl->phase = -1;
-
-	return fl;
-}
-
 static int hamming_distance(uint16_t a, uint16_t b)
 {
 	uint16_t tmp = a ^ b;
@@ -72,51 +47,16 @@ static int pattern_find_id(uint16_t *patterns, int num_patterns,
 	return -2;
 }
 
-static int pattern_get_phase(uint16_t *patterns, int num_patterns, uint16_t pattern)
-{
-	int i, j;
-
-	for (i = 1; i < 10; i++) {
-		pattern = ((pattern & 0x1ff) << 1) | (pattern >> 9);
-		for (j = 0; j < num_patterns; j++)
-			if (pattern == patterns[j])
-				return i;
-	}
-
-	return -1;
-}
-
 /*
  * Records blob blinking patterns and compares against the blinking patterns
  * stored in the Rift DK2 to determine the corresponding LED IDs.
  */
-void flicker_process(struct flicker *fl, struct blob *blobs, int num_blobs,
-		     int skipped, struct leds *leds)
+void flicker_process(struct blob *blobs, int num_blobs,
+		     uint8_t led_pattern_phase, struct leds *leds)
 {
 	struct blob *b;
 	int success = 0;
-	int phase = fl->phase;
-
-	if (skipped) {
-		if (skipped == 1) {
-			/* Assume state unchanged */
-			for (b = blobs; b < blobs + num_blobs; b++) {
-				b->pattern = ((b->pattern >> 1) & 0x1ff) |
-					     (b->pattern & (1 << 9));
-				b->age++;
-			}
-			if (phase >= 0)
-				phase = (phase + 1) % 10;
-		} else {
-			/* Reset */
-			printf("flicker: Skipped %d frames, reset\n", skipped);
-			for (b = blobs; b < blobs + num_blobs; b++) {
-				b->pattern = 0;
-				b->age = 0;
-			}
-			phase = -1;
-		}
-	}
+	int phase = (led_pattern_phase + 1) % 10;
 
 	for (b = blobs; b < blobs + num_blobs; b++) {
 		uint16_t pattern;
@@ -154,35 +94,4 @@ void flicker_process(struct flicker *fl, struct blob *blobs, int num_blobs,
 					   leds->model.num_points, pattern,
 					   &b->led_id);
 	}
-
-	if (success < 0 || phase < 0) {
-		int phase_error[10] = { 0 };
-		int max_error = 0;
-		int max_phase = 0;
-		int i;
-
-		for (b = blobs; b < blobs + num_blobs; b++) {
-			int phase = pattern_get_phase(leds->patterns,
-						      leds->model.num_points,
-						      b->pattern);
-			if (phase >= 0)
-				phase_error[phase]++;
-		}
-
-		for (i = 0; i < 10; i++) {
-			if (phase_error[i] > max_error) {
-				max_error = phase_error[i];
-				max_phase = i;
-			}
-		}
-
-		if (max_error && success < 0 && phase != max_phase)
-			printf("too many errors(%d), corrected phase: %d->%d\n",
-			       success, phase, max_phase);
-		if (max_error)
-			phase = max_phase;
-	}
-
-	if (phase >= 0)
-		fl->phase = (phase + 1) % 10;
 }

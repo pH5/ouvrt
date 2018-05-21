@@ -54,7 +54,6 @@ struct blobwatch {
 	struct blobservation history[NUM_FRAMES_HISTORY];
 	struct extent_line *el;
 	bool debug;
-	struct flicker *fl;
 };
 
 /* temporary global */
@@ -82,7 +81,6 @@ struct blobwatch *blobwatch_new(int width, int height)
 	bw->height = height;
 	bw->last_observation = -1;
 	bw->debug = true;
-	bw->fl = flicker_new();
 	bw->el = calloc(height, sizeof(*bw->el));
 
 	return bw;
@@ -266,8 +264,8 @@ static int find_free_track(uint8_t *tracked)
  * history.
  */
 void blobwatch_process(struct blobwatch *bw, uint8_t *frame,
-		       int width, int height, int skipped, struct leds *leds,
-		       struct blobservation **output)
+		       int width, int height, uint8_t led_pattern_phase,
+		       struct leds *leds, struct blobservation **output)
 {
 	int last = bw->last_observation;
 	int current = (last + 1) % NUM_FRAMES_HISTORY;
@@ -363,7 +361,7 @@ void blobwatch_process(struct blobwatch *bw, uint8_t *frame,
 
 	if (rift_flicker) {
 		/* Identify blobs by their blinking pattern */
-		flicker_process(bw->fl, ob->blobs, ob->num_blobs, skipped,
+		flicker_process(ob->blobs, ob->num_blobs, led_pattern_phase,
 				leds);
 	}
 

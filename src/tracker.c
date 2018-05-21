@@ -17,6 +17,14 @@ struct _OuvrtTracker {
 	struct blobwatch *bw;
 	struct leds leds;
 	uint32_t radio_address;
+
+	uint64_t exposure_timestamp;
+	uint64_t exposure_time;
+	uint8_t led_pattern_phase;
+
+	uint64_t last_exposure_timestamp;
+	uint64_t last_exposure_time;
+	uint8_t last_led_pattern_phase;
 };
 
 G_DEFINE_TYPE(OuvrtTracker, ouvrt_tracker, G_TYPE_OBJECT)
@@ -45,14 +53,33 @@ uint32_t ouvrt_tracker_get_radio_address(OuvrtTracker *tracker)
 	return tracker->radio_address;
 }
 
+void ouvrt_tracker_add_exposure(OuvrtTracker *tracker,
+			        uint64_t device_timestamp, uint64_t time,
+			        uint8_t led_pattern_phase)
+{
+	tracker->last_exposure_timestamp = tracker->exposure_timestamp;
+	tracker->last_exposure_time = tracker->exposure_time;
+	tracker->last_led_pattern_phase = tracker->led_pattern_phase;
+	tracker->exposure_timestamp = device_timestamp;
+	tracker->exposure_time = time;
+	tracker->led_pattern_phase = led_pattern_phase;
+}
+
 void ouvrt_tracker_process_frame(OuvrtTracker *tracker, uint8_t *frame,
-				 int width, int height, int skipped,
+				 int width, int height, uint64_t sof_time,
 				 struct blobservation **ob)
 {
+	uint8_t led_pattern_phase;
+
 	if (tracker->bw == NULL)
 		tracker->bw = blobwatch_new(width, height);
 
-	blobwatch_process(tracker->bw, frame, width, height, skipped,
+	if (sof_time < tracker->exposure_time)
+		led_pattern_phase = tracker->last_led_pattern_phase;
+	else
+		led_pattern_phase = tracker->led_pattern_phase;
+
+	blobwatch_process(tracker->bw, frame, width, height, led_pattern_phase,
 			  &tracker->leds, ob);
 }
 

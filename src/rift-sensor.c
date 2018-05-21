@@ -151,7 +151,6 @@ static void default_frame_callback(OuvrtRiftSensor *self)
 {
 	struct timespec tp;
 	double timestamps[4] = {};
-	int skipped = 0;
 
 	clock_gettime(CLOCK_MONOTONIC, &tp);
 	timestamps[1] = tp.tv_sec + 1e-9 * tp.tv_nsec;
@@ -165,7 +164,8 @@ static void default_frame_callback(OuvrtRiftSensor *self)
 	if (self->tracker) {
 		ouvrt_tracker_process_frame(self->tracker,
 					    self->frame, RIFT_SENSOR_WIDTH,
-					    RIFT_SENSOR_HEIGHT, skipped, &ob);
+					    RIFT_SENSOR_HEIGHT, self->time,
+					    &ob);
 	}
 
 	clock_gettime(CLOCK_MONOTONIC, &tp);
