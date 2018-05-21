@@ -529,6 +529,8 @@ static void rift_decode_sensor_message(OuvrtRift *rift,
 	if (len < sizeof(*message))
 		return;
 
+	message_time = ts->tv_sec * 1000000000 + ts->tv_nsec;
+
 	num_samples = message->num_samples;
 	sample_count = __le16_to_cpu(message->sample_count);
 	/* 10⁻²°C */
@@ -542,16 +544,22 @@ static void rift_decode_sensor_message(OuvrtRift *rift,
 	dt = sample_timestamp - rift->last_sample_timestamp;
 	/* µs, wraps every ~600k years */
 	rift->last_sample_timestamp += dt;
-	if (dt + 1 >= (num_samples + 1) * rift->report_interval) {
-		g_print("Rift: got %u samples after %d µs, %u samples lost\n",
-			num_samples, dt,
-			(dt + 1) / rift->report_interval - num_samples);
-		return;
-	}
+
 	if ((dt < num_samples * rift->report_interval - 75) ||
 	    (dt > num_samples * rift->report_interval + 75)) {
-		g_print("Rift: got %u samples after %d µs, too much jitter\n",
-			num_samples, dt);
+		rift->last_message_time = message_time;
+		if (rift->last_sample_timestamp - dt == 0)
+			return;
+		if (dt < 0)
+			g_print("Rift: got %u samples after %d µs\n",
+				num_samples, dt);
+		else if (dt + 1 >= (num_samples + 1) * rift->report_interval)
+			g_print("Rift: got %u samples after %d µs, %u samples lost\n",
+				num_samples, dt,
+				(dt + 1) / rift->report_interval - num_samples);
+		else
+			g_print("Rift: got %u samples after %d µs, too much jitter\n",
+				num_samples, dt);
 		return;
 	}
 
@@ -586,8 +594,6 @@ static void rift_decode_sensor_message(OuvrtRift *rift,
 
 		debug_imu_fifo_in(&rift->imu, 1);
 	}
-
-	message_time = ts->tv_sec * 1000000000 + ts->tv_nsec;
 
 	if (exposure_count != rift->last_exposure_count) {
 		int32_t sample_expo_dt = (int32_t)sample_timestamp -
