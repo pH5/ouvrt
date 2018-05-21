@@ -44,7 +44,7 @@ struct _OuvrtRift {
 	int report_rate;
 	int report_interval;
 	gboolean flicker;
-	uint32_t last_sample_timestamp;
+	uint64_t last_sample_timestamp;
 	struct rift_radio radio;
 	struct imu_state imu;
 };
@@ -536,7 +536,8 @@ static void rift_decode_sensor_message(OuvrtRift *rift,
 	sample.time = 1e-6 * sample_timestamp;
 
 	dt = sample_timestamp - rift->last_sample_timestamp;
-	rift->last_sample_timestamp = sample_timestamp;
+	/* µs, wraps every ~600k years */
+	rift->last_sample_timestamp += dt;
 	if (dt + 1 >= (num_samples + 1) * rift->report_interval) {
 		g_print("Rift: got %u samples after %d µs, %u samples lost\n",
 			num_samples, dt,
