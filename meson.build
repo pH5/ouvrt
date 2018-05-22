@@ -3,7 +3,7 @@
 
 project('ouvrt', ['c', 'cpp'],
 	version : '0.1',
-	meson_version : '>= 0.35',
+	meson_version : '>= 0.40',
 	license : 'GPL')
 
 with_gstreamer = get_option('gstreamer')
@@ -43,30 +43,7 @@ if build_opencv
 	add_global_arguments('-DHAVE_OPENCV=1', language : 'c')
 endif
 
-gdbus_codegen = find_program('gdbus-codegen')
-
-tracker_xml = 'xml/de.phfuenf.ouvrt.Tracker1.xml'
-camera_xml = 'xml/de.phfuenf.ouvrt.Camera1.xml'
-
-gdbus_generated = custom_target(
-  'gdbus-generated.h',
-  input : [
-    tracker_xml,
-    camera_xml
-  ],
-  output : [
-    'gdbus-generated.c',
-    'gdbus-generated.h'
-  ],
-  command : [
-    gdbus_codegen,
-    '--interface-prefix', 'de.phfuenf.ouvrt.',
-    '--generate-c-code', 'gdbus-generated',
-    '--c-namespace', 'Ouvrt',
-    '--c-generate-object-manager',
-    '@INPUT@'
-  ]
-)
+subdir('xml')
 
 subdir('src')
 
