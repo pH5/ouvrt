@@ -607,12 +607,17 @@ static void ouvrtd_startup(struct udev *udev)
 	g_source_unref(&source->base);
 }
 
+static void device_stop(gpointer data, G_GNUC_UNUSED gpointer user_data)
+{
+	ouvrt_device_stop(data);
+}
+
 static void ouvrtd_signal_handler(int sig)
 {
 	signal(sig, SIG_IGN);
 	g_print(" - stopping all devices\n");
 
-	g_list_foreach(device_list, (GFunc)ouvrt_device_stop,
+	g_list_foreach(device_list, device_stop,
 		       NULL); /* user_data */
 
 	g_main_loop_quit(loop);
