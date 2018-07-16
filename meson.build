@@ -5,7 +5,11 @@ project('ouvrt', ['c', 'cpp'],
 	version : '0.1',
 	meson_version : '>= 0.46',
 	license : 'GPL',
-	default_options : ['buildtype=debugoptimized'])
+	default_options : [
+    'buildtype=debugoptimized',
+    'c_std=gnu11',
+  ]
+)
 
 with_gstreamer = get_option('gstreamer')
 with_opencv = get_option('opencv')
