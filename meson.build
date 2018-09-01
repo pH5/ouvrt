@@ -8,6 +8,7 @@ project('ouvrt', ['c', 'cpp'],
 	default_options : [
     'buildtype=debugoptimized',
     'c_std=gnu11',
+    'warning_level=2'
   ]
 )
 
