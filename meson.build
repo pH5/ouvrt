@@ -14,7 +14,7 @@ project('ouvrt', ['c', 'cpp'],
 with_gstreamer = get_option('gstreamer')
 with_opencv = get_option('opencv')
 
-add_global_arguments(['-Wall', '-Wextra'], language : 'c')
+add_global_arguments(['-fno-math-errno'], language : 'c')
 
 gio_dep = dependency('gio-unix-2.0')
 glib_dep = dependency('glib-2.0')
