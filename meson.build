@@ -3,7 +3,7 @@
 
 project('ouvrt', ['c', 'cpp'],
 	version : '0.1',
-	meson_version : '>= 0.40',
+	meson_version : '>= 0.46',
 	license : 'GPL')
 
 with_gstreamer = get_option('gstreamer')
