@@ -145,11 +145,32 @@ hololens_imu_handle_control_report(G_GNUC_UNUSED OuvrtHoloLensIMU *self,
 	return 0;
 }
 
+static void
+hololens_imu_handle_debug_report(OuvrtDevice *dev,
+				 struct hololens_debug_report *report)
+{
+	int i;
+
+	for (i = 0; i < 3; i++) {
+		if (report->message[i].code == 0)
+			continue;
+
+		g_print("%s: [%02x] %s\n", dev->name, report->message[i].code,
+			report->message[i].text);
+	}
+}
+
+union hololens_report {
+	__u8 id;
+	struct hololens_control_report control;
+	struct hololens_debug_report debug;
+} __attribute__((packed));
+
 /*
  * Blocks waiting for a reply to a sent command report.
  */
 int hololens_imu_wait_reply(OuvrtDevice *dev,
-			    struct hololens_control_report *report)
+			    union hololens_report *report)
 {
 	struct pollfd fds;
 	int ret;
@@ -158,6 +179,7 @@ int hololens_imu_wait_reply(OuvrtDevice *dev,
 	fds.events = POLLIN;
 	fds.revents = 0;
 
+again:
 	ret = poll(&fds, 1, 1000);
 	if (ret == -1) {
 		g_print("%s: Poll failure: %d\n", dev->name, errno);
@@ -181,6 +203,15 @@ int hololens_imu_wait_reply(OuvrtDevice *dev,
 	ret = read(dev->fd, report, sizeof(*report));
 	if (ret == -1)
 		return -errno;
+	if ((ret == HOLOLENS_IMU_REPORT_SIZE ||
+	     ret == HOLOLENS_IMU_REPORT_SIZE_V2) &&
+	    report->id == HOLOLENS_IMU_REPORT_ID)
+		goto again;
+	if (ret == HOLOLENS_DEBUG_REPORT_SIZE &&
+	    report->id == HOLOLENS_DEBUG_REPORT_ID) {
+		hololens_imu_handle_debug_report(dev, &report->debug);
+		goto again;
+	}
 	if (ret != 33 || report->id != 0x02) {
 		g_print("%s: Unexpected %d-byte read\n", dev->name, ret);
 		return -EINVAL;
@@ -194,7 +225,7 @@ int hololens_imu_wait_reply(OuvrtDevice *dev,
  * for an answer.
  */
 static int hololens_imu_command_sync(OuvrtDevice *dev, uint8_t command,
-				     struct hololens_control_report *report)
+				     union hololens_report *report)
 {
 	int ret;
 
@@ -220,7 +251,7 @@ static int hololens_imu_command_sync(OuvrtDevice *dev, uint8_t command,
 static int hololens_imu_config_read(OuvrtDevice *dev, uint8_t command,
 				    uint8_t *buf, size_t count)
 {
-	struct hololens_control_report report;
+	union hololens_report report;
 	unsigned int offset = 0;
 	int ret;
 
@@ -228,18 +259,19 @@ static int hololens_imu_config_read(OuvrtDevice *dev, uint8_t command,
 					&report);
 	if (ret < 0)
 		return ret;
-	if (report.code != 0x04) {
+
+	if (report.control.code != 0x04) {
 		g_print("%s: Unexpected reply 0x%02x\n", dev->name,
-			report.code);
+			report.control.code);
 		return -EINVAL;
 	}
 
 	ret = hololens_imu_command_sync(dev, command, &report);
 	if (ret < 0)
 		return ret;
-	if (report.code != 0x00) {
+	if (report.control.code != 0x00) {
 		g_print("%s: Unexpected reply 0x%02x\n", dev->name,
-			report.code);
+			report.control.code);
 		return -EINVAL;
 	}
 
@@ -249,20 +281,20 @@ static int hololens_imu_config_read(OuvrtDevice *dev, uint8_t command,
 						&report);
 		if (ret < 0)
 			return ret;
-		if (report.code == 0x02)
+		if (report.control.code == 0x02)
 			break;
-		if (report.code != 0x01 || report.len > 30) {
+		if (report.control.code != 0x01 || report.control.len > 30) {
 			g_print("%s: Unexpected reply 0x%02x\n", dev->name,
-				report.code);
+				report.control.code);
 			return -EINVAL;
 		}
-		if (offset + report.len > count) {
+		if (offset + report.control.len > count) {
 			g_print("%s: Out of space at %u+%u/%lu\n", dev->name,
-				offset, report.len, count);
+				offset, report.control.len, count);
 			return -ENOSPC;
 		}
-		memcpy(buf + offset, report.data, report.len);
-		offset += report.len;
+		memcpy(buf + offset, report.control.data, report.control.len);
+		offset += report.control.len;
 	}
 
 	return offset;
@@ -273,10 +305,12 @@ static int hololens_imu_config_read(OuvrtDevice *dev, uint8_t command,
  */
 static int hololens_imu_start(OuvrtDevice *dev)
 {
-	uint8_t config_meta[66];
+	uint8_t config_meta[84];
 	uint16_t config_len;
 	uint8_t *config;
 	int ret;
+
+	memset(config_meta, 0, sizeof(config_meta));
 
 	ret = hololens_imu_config_read(dev, HOLOLENS_COMMAND_CONFIG_META,
 				       config_meta, sizeof(config_meta));
@@ -284,6 +318,10 @@ static int hololens_imu_start(OuvrtDevice *dev)
 		g_print("%s: Failed to read configuration metadata: %d\n",
 			dev->name, ret);
 		return ret;
+	}
+	if (ret != 66 && ret != 84) {
+		g_print("%s: Unexpected configuration metadata:\n", dev->name);
+		return -EINVAL;
 	}
 
 	config_len = __le16_to_cpup((__le16 *)config_meta);
@@ -358,12 +396,26 @@ static void hololens_imu_thread(OuvrtDevice *dev)
 			continue;
 		}
 
-		if (ret == HOLOLENS_IMU_REPORT_SIZE &&
+		if (ret == HOLOLENS_IMU_REPORT_SIZE_V2 &&
+		    buf[0] == HOLOLENS_IMU_REPORT_ID) {
+			/*
+			 * Debug messages have been moved out of the main IMU
+			 * report in a firmware update.
+			 */
+			memset(buf + HOLOLENS_IMU_REPORT_SIZE_V2, 0,
+			       HOLOLENS_IMU_REPORT_SIZE -
+			       HOLOLENS_IMU_REPORT_SIZE_V2);
+			hololens_imu_handle_imu_report(self, (void *)buf);
+		} else if (ret == HOLOLENS_IMU_REPORT_SIZE &&
 		    buf[0] == HOLOLENS_IMU_REPORT_ID) {
 			hololens_imu_handle_imu_report(self, (void *)buf);
 		} else if (ret == HOLOLENS_CONTROL_REPORT_SIZE &&
 			   buf[0] == HOLOLENS_CONTROL_REPORT_ID) {
 			hololens_imu_handle_control_report(self, (void *)buf);
+		} else if (ret == HOLOLENS_DEBUG_REPORT_SIZE &&
+			   buf[0] == HOLOLENS_DEBUG_REPORT_ID) {
+			hololens_imu_handle_debug_report(&self->dev,
+							 (void *)buf);
 		} else {
 			g_print("%s: Error, invalid %d-byte report 0x%02x\n",
 				dev->name, ret, buf[0]);

@@ -10,6 +10,7 @@
 
 #define HOLOLENS_IMU_REPORT_ID				0x01
 #define HOLOLENS_IMU_REPORT_SIZE			497
+#define HOLOLENS_IMU_REPORT_SIZE_V2			381
 
 struct hololens_imu_message {
 	__u8 code;
@@ -44,11 +45,29 @@ struct hololens_control_report {
 	__u8 data[30];
 } __attribute__((packed));
 
+#define HOLOLENS_DEBUG_REPORT_ID			0x03
+#define HOLOLENS_DEBUG_REPORT_SIZE			497
+
+struct hololens_debug_message {
+	__le32 unknown1;
+	__le16 unknown2;
+	__u8 code;
+	__u8 text[56];
+} __attribute__((packed));
+
+struct hololens_debug_report {
+	__u8 id;
+	__le32 unknown;
+	struct hololens_debug_message message[3];
+	__u8 zeros[303];
+} __attribute__((packed));
+
 #define ASSERT_SIZE(report,size) \
 	_Static_assert((sizeof(struct report) == size), \
 		       "incorrect size: " #report)
 
 ASSERT_SIZE(hololens_imu_report, HOLOLENS_IMU_REPORT_SIZE);
 ASSERT_SIZE(hololens_control_report, HOLOLENS_CONTROL_REPORT_SIZE);
+ASSERT_SIZE(hololens_debug_report, HOLOLENS_DEBUG_REPORT_SIZE);
 
 #endif /* __HOLOLENS_HID_REPORTS__ */
