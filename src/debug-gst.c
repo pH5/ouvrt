@@ -71,8 +71,10 @@ struct debug_stream *debug_stream_new(int width, int height, int framerate)
 
 	src = gst_element_factory_make("appsrc", "src");
 	sink = gst_element_factory_make("shmsink", "sink");
-	if (src == NULL || sink == NULL)
-		g_error("Could not create elements");
+	if (src == NULL)
+		g_error("Could not create appsrc GStreamer element");
+	if (sink == NULL)
+		g_error("Could not create shmsink GStreamer element");
 
 	caps = gst_caps_new_simple("video/x-raw",
 		"format", G_TYPE_STRING, "GRAY8",
