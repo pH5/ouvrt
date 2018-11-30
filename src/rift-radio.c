@@ -169,13 +169,23 @@ int rift_radio_get_address(int fd, uint32_t *address)
 	struct rift_radio_data_report report = {
 		.id = RIFT_RADIO_DATA_REPORT_ID,
 	};
+	uint32_t id[3];
 	int ret;
 
 	ret = rift_radio_read(fd, 0x05, 0x03, 0x05, &report);
 	if (ret < 0)
 		return ret;
+	id[0] = __le32_to_cpup((__le32 *)report.payload);
+	id[1] = __le32_to_cpup((__le32 *)(report.payload + 4)),
+	id[2] = __le32_to_cpup((__le32 *)(report.payload + 8));
 
-	*address = __le32_to_cpup((__le32 *)report.payload);
+	g_print("Rift: Radio ID: %08x %08x", id[0], id[1]);
+	if (id[2] != id[0])
+		g_print(" %08x\n", id[2]);
+	else
+		g_print("\n");
+
+	*address = id[0];
 
 	return 0;
 }
