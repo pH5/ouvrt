@@ -96,6 +96,18 @@ struct psvr_serial_report {
         __u8 unknown3[8];
 } __attribute__((packed));
 
+#define PSVR_CALIBRATION_REPORT_ID			0x86
+#define PSVR_CALIBRATION_REPORT_SIZE			64
+
+struct psvr_calibration_report {
+        __u8 id;
+        __u8 index;
+        __u8 magic;
+        __u8 payload_length;
+	__le16 header;
+	__u8 payload[58];
+} __attribute__((packed));
+
 #define PSVR_STATUS_REPORT_ID				0xf0
 #define PSVR_STATUS_REPORT_SIZE				20
 
@@ -182,6 +194,7 @@ ASSERT_SIZE(psvr_processing_box_power_report, PSVR_PROCESSING_BOX_POWER_REPORT_S
 ASSERT_SIZE(psvr_set_mode_report, PSVR_SET_MODE_REPORT_SIZE);
 ASSERT_SIZE(psvr_device_info_request, PSVR_DEVICE_INFO_REQUEST_SIZE);
 ASSERT_SIZE(psvr_serial_report, PSVR_SERIAL_REPORT_SIZE);
+ASSERT_SIZE(psvr_calibration_report, PSVR_CALIBRATION_REPORT_SIZE);
 ASSERT_SIZE(psvr_status_report, PSVR_STATUS_REPORT_SIZE);
 ASSERT_SIZE(psvr_command_reply, PSVR_COMMAND_REPLY_SIZE);
 ASSERT_SIZE(psvr_sensor_message, PSVR_SENSOR_MESSAGE_SIZE);

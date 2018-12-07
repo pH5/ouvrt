@@ -42,9 +42,13 @@ struct _OuvrtPSVR {
 	uint8_t last_seq;
 	uint32_t last_timestamp;
 	struct imu_state imu;
+	vec3 acc_bias;
+	vec3 acc_scale;
 
 	uint8_t status_flags;
 	uint8_t volume;
+
+	uint8_t *calibration;
 };
 
 G_DEFINE_TYPE(OuvrtPSVR, ouvrt_psvr, OUVRT_TYPE_USB_DEVICE)
@@ -142,6 +146,24 @@ static void psvr_set_mode(OuvrtPSVR *psvr, int mode)
 	}
 }
 
+static void psvr_get_calibration(OuvrtPSVR *psvr, uint8_t index)
+{
+	struct psvr_device_info_request report = {
+		.id = PSVR_DEVICE_INFO_REQUEST_ID,
+		.magic = PSVR_CONTROL_MAGIC,
+		.payload_length = 8,
+		.request = PSVR_CALIBRATION_REPORT_ID,
+		.index = index,
+	};
+	int ret;
+
+	ret = psvr_control_send(psvr, &report, sizeof(report));
+	if (ret < 0) {
+		g_print("Failed to request calibration data %d: %d\n", index,
+			ret);
+	}
+}
+
 static void psvr_decode_sensor_message(OuvrtPSVR *self,
 				       const unsigned char *buf,
 				       G_GNUC_UNUSED size_t len)
@@ -172,6 +194,13 @@ static void psvr_decode_sensor_message(OuvrtPSVR *self,
 
 	if (message->state != self->state) {
 		self->state = message->state;
+
+		if (self->state == PSVR_STATE_RUNNING &&
+		    !self->calibration) {
+			g_print("PSVR: Requesting calibration data\n");
+			for (int i = 0; i < 5; i++)
+				psvr_get_calibration(self, i);
+		}
 
 		if (self->state == PSVR_STATE_RUNNING &&
 		    !self->vrmode) {
@@ -222,10 +251,14 @@ static void psvr_decode_sensor_message(OuvrtPSVR *self,
 		 *   /           ⎣ 0  0 -1 ⎦ ⎣z⎦      /
 		 * -z                                z
 		 *
+		 * Apply accelerometer scale and bias from the calibration data.
 		 */
-		imu.acceleration.x = raw.acc[1] *  (9.81 / 16384);
-		imu.acceleration.y = raw.acc[0] *  (9.81 / 16384);
-		imu.acceleration.z = raw.acc[2] * -(9.81 / 16384);
+		imu.acceleration.x = raw.acc[1] * self->acc_scale.x -
+				     self->acc_bias.x;
+		imu.acceleration.y = raw.acc[0] * self->acc_scale.y -
+				     self->acc_bias.y;
+		imu.acceleration.z = raw.acc[2] * self->acc_scale.z -
+				     self->acc_bias.z;
 		imu.angular_velocity.x = raw.gyro[1] *  (16.0 / 16384);
 		imu.angular_velocity.y = raw.gyro[0] *  (16.0 / 16384);
 		imu.angular_velocity.z = raw.gyro[2] * -(16.0 / 16384);
@@ -268,6 +301,47 @@ void psvr_handle_serial_report(OuvrtPSVR *psvr,
 	g_print("Firmware version: %u.%u\n",
 		report->firmware_version_major,
 		report->firmware_version_minor);
+}
+
+static void
+psvr_handle_calibration_report(OuvrtPSVR *psvr,
+			       struct psvr_calibration_report *report)
+{
+	if (!psvr->calibration)
+		psvr->calibration = malloc(290);
+
+	unsigned char *calibration = psvr->calibration;
+	memcpy(calibration + 58 * report->index, report->payload, 56);
+
+	if (report->index != 4)
+		return;
+
+	uint32_t version = __le32_to_cpup((__le32 *)calibration);
+	if (version != 2) {
+		g_print("Calibration data version != 2: %u\n", version);
+		return;
+	}
+
+	/*
+	 * The accelerometer calibration values look like measurements at rest
+	 * in the six major orientations, in units of 1 g.
+	 */
+	float *top_up = (float *)(calibration + 16 + 4 * 16);
+	float *left_up = (float *)(calibration + 16 + 5 * 16);
+	float *bottom_up = (float *)(calibration + 16 + 6 * 16);
+	float *right_up = (float *)(calibration + 16 + 7 * 16);
+	float *back_up = (float *)(calibration + 16 + 8 * 16);
+	float *front_up  = (float *)(calibration + 16 + 9 * 16);
+
+	const double acc_scale_factor = STANDARD_GRAVITY * 2.0 * 2.0 / 32767.0;
+	psvr->acc_scale.x = acc_scale_factor * (right_up[0] - left_up[0]);
+	psvr->acc_scale.y = acc_scale_factor * (top_up[1] - bottom_up[1]);
+	psvr->acc_scale.z = acc_scale_factor * -(back_up[2] - front_up[2]);
+
+	const double acc_bias_factor = STANDARD_GRAVITY * 0.5;
+	psvr->acc_bias.x = acc_bias_factor * (right_up[0] + left_up[0]);
+	psvr->acc_bias.y = acc_bias_factor * (top_up[1] + bottom_up[1]);
+	psvr->acc_bias.z = acc_bias_factor * (back_up[2] + front_up[2]);
 }
 
 static void psvr_handle_status_report(OuvrtPSVR *psvr,
@@ -319,6 +393,9 @@ static void psvr_handle_control_reply(OuvrtPSVR *psvr, unsigned char *buf,
 	} else if (buf[0] == PSVR_SERIAL_REPORT_ID &&
 		   len == PSVR_SERIAL_REPORT_SIZE) {
 		psvr_handle_serial_report(psvr, (void *)buf);
+	} else if (buf[0] == PSVR_CALIBRATION_REPORT_ID &&
+		   len == PSVR_CALIBRATION_REPORT_SIZE) {
+		psvr_handle_calibration_report(psvr, (void *)buf);
 	} else if (buf[0] == PSVR_STATUS_REPORT_ID &&
 		   len == PSVR_STATUS_REPORT_SIZE) {
 		psvr_handle_status_report(psvr, (void *)buf);
@@ -563,6 +640,9 @@ static void psvr_stop(OuvrtDevice *dev)
  */
 static void ouvrt_psvr_finalize(GObject *object)
 {
+	OuvrtPSVR *psvr = OUVRT_PSVR(object);
+
+	free(psvr->calibration);
 	G_OBJECT_CLASS(ouvrt_psvr_parent_class)->finalize(object);
 }
 
@@ -582,6 +662,11 @@ static void ouvrt_psvr_init(OuvrtPSVR *self)
 	self->vrmode = false;
 	self->state = PSVR_STATE_POWER_OFF;
 	self->imu.pose.rotation.w = 1.0;
+
+	/* ±2g range */
+	self->acc_scale.x = STANDARD_GRAVITY * 2.0 / 32767.0;
+	self->acc_scale.y = STANDARD_GRAVITY * 2.0 / 32767.0;
+	self->acc_scale.z = STANDARD_GRAVITY * 2.0 / -32767.0;
 
 	self->status_flags = 0;
 	self->volume = 0;
