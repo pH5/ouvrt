@@ -98,17 +98,28 @@ static void motion_controller_decode_message(OuvrtMotionController *self,
 		.gyro = { gyro[0], gyro[1], gyro[2] },
 	};
 
+	/*
+	 * Transform from IMU coordinate system into common coordinate system:
+	 *
+	 *    y                                y
+	 *    |          ⎡ 1  0  0 ⎤ ⎡x⎤       |
+	 *    +-- x  ->  ⎢ 0  1  0 ⎥ ⎢y⎥  ->   +-- x
+	 *   /           ⎣ 0  0 -1 ⎦ ⎣z⎦      /
+	 * -z                                z
+	 *
+	 * TODO: Apply accelerometer scale and bias from the calibration data.
+	 */
 	struct imu_sample sample = {
 		.time = raw.time * 1e-7,
 		.acceleration = {
 			.x = accel[0] * STANDARD_GRAVITY / 506200.,
-			.y = accel[1] * STANDARD_GRAVITY / 506200.,
-			.z = accel[2] * STANDARD_GRAVITY / 506200.,
+			.y = accel[2] * STANDARD_GRAVITY / 506200.,
+			.z = -accel[1] * STANDARD_GRAVITY / 506200.,
 		},
 		.angular_velocity = {
 			.x = gyro[0] * 1e-5,
-			.y = gyro[1] * 1e-5,
-			.z = gyro[2] * 1e-5,
+			.y = gyro[2] * 1e-5,
+			.z = -gyro[1] * 1e-5,
 		},
 	};
 
