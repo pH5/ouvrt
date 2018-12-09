@@ -164,7 +164,7 @@ static int rift_radio_read_calibration(int fd, uint8_t device_type, char **json,
 	return 0;
 }
 
-int rift_radio_get_address(int fd, uint32_t *address)
+int rift_radio_get_address(int fd, uint8_t address[5])
 {
 	struct rift_radio_data_report report = {
 		.id = RIFT_RADIO_DATA_REPORT_ID,
@@ -185,7 +185,7 @@ int rift_radio_get_address(int fd, uint32_t *address)
 	else
 		g_print("\n");
 
-	*address = id[0];
+	memcpy(address, report.payload, 5);
 
 	return 0;
 }
@@ -672,7 +672,7 @@ int rift_decode_pairing_message(struct rift_radio *radio, int fd,
 	};
 	uint8_t device_type = message->pairing.device_type;
 	uint32_t device_address = __le32_to_cpu(message->pairing.id[0]);
-	uint32_t radio_address = __le32_to_cpu(message->pairing.id[1]);
+	uint8_t *radio_address = (uint8_t *)&message->pairing.id[1];
 	struct rift_wireless_device *dev;
 	uint16_t maybe_channel;
 	unsigned int i;
@@ -725,17 +725,21 @@ int rift_decode_pairing_message(struct rift_radio *radio, int fd,
 		return -EINVAL;
 	}
 
-	g_print("Rift: Detected %s %08x: %s paired to %08x, firmware %s, rssi(?) %u\n",
+	g_print("Rift: Detected %s %08x: %s paired to %02x %02x %02x %02x %02x, firmware %s, rssi(?) %u\n",
 		dev->name, device_address,
-		(radio_address == radio->address) ? "already" : "currently",
-		radio_address, message->pairing.firmware,
+		memcmp(radio_address, radio->address, 5) ? "currently" : "already",
+		radio_address[0], radio_address[1], radio_address[2],
+		radio_address[3], radio_address[4],
+		message->pairing.firmware,
 		message->pairing.maybe_rssi);
 
 	if (dev->address == device_address)
 		return 0;
 
-	g_print("Rift: Pairing %s %08x to headset radio %08x, channel(?) %u ...\n",
-		dev->name, device_address, radio->address, maybe_channel);
+	g_print("Rift: Pairing %s %08x to headset radio %02x %02x %02x %02x %02x, channel(?) %u ...\n",
+		dev->name, device_address, radio->address[0], radio->address[1],
+		radio->address[2], radio->address[3], radio->address[4],
+		maybe_channel);
 
 	/* Step 1: set device address */
 	memset(report.payload, 0, sizeof(report.payload));
@@ -749,9 +753,8 @@ int rift_decode_pairing_message(struct rift_radio *radio, int fd,
 	report.payload[0] = 0x11;
 	report.payload[1] = 0x05;
 	report.payload[2] = device_type;
-	*(__le32 *)(report.payload + 3) = __cpu_to_le32(radio->address);
-	*(__le32 *)(report.payload + 7) = __cpu_to_le32(radio->address);
-	report.payload[11] = 0x8c;
+	memcpy(report.payload + 3, radio->address, 4);
+	memcpy(report.payload + 7, radio->address, 5);
 	*(__le16 *)(report.payload + 12) = __cpu_to_le16(maybe_channel);
 	*(__le16 *)(report.payload + 16) = __cpu_to_le16(2000);
 	ret = rift_radio_write(fd, 0x04, 0x09, 0x05, &report);

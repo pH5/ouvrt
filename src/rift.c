@@ -689,7 +689,7 @@ static int rift_start(OuvrtDevice *dev)
 			rift->radio.pairing = true;
 
 		ret = rift_radio_get_address(dev->fds[0],
-					     &rift->radio.address);
+					     rift->radio.address);
 		if (ret < 0)
 			return ret;
 

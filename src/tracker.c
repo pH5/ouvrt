@@ -16,7 +16,7 @@ struct _OuvrtTracker {
 	GObject parent_instance;
 	struct blobwatch *bw;
 	struct leds leds;
-	uint32_t radio_address;
+	uint8_t radio_address[5];
 
 	uint64_t exposure_timestamp;
 	uint64_t exposure_time;
@@ -43,14 +43,15 @@ void ouvrt_tracker_unregister_leds(G_GNUC_UNUSED OuvrtTracker *tracker,
 //	tracker->leds.gone = true;
 }
 
-void ouvrt_tracker_set_radio_address(OuvrtTracker *tracker, uint32_t address)
+void ouvrt_tracker_set_radio_address(OuvrtTracker *tracker,
+				     const uint8_t address[5])
 {
-	tracker->radio_address = address;
+	memcpy(tracker->radio_address, address, 5);
 }
 
-uint32_t ouvrt_tracker_get_radio_address(OuvrtTracker *tracker)
+void ouvrt_tracker_get_radio_address(OuvrtTracker *tracker, uint8_t address[5])
 {
-	return tracker->radio_address;
+	memcpy(address, tracker->radio_address, 5);
 }
 
 void ouvrt_tracker_add_exposure(OuvrtTracker *tracker,

@@ -72,13 +72,13 @@ struct rift_touch_controller {
 
 struct rift_radio {
 	const char *name;
-	uint32_t address;
+	uint8_t address[5];
 	bool pairing;
 	struct rift_remote remote;
 	struct rift_touch_controller touch[2];
 };
 
-int rift_radio_get_address(int fd, uint32_t *address);
+int rift_radio_get_address(int fd, uint8_t address[5]);
 int rift_get_firmware_version(int fd);
 
 void rift_decode_radio_report(struct rift_radio *radio, int fd,

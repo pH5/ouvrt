@@ -18,7 +18,7 @@ int esp770u_i2c_write(libusb_device_handle *devh, uint8_t addr, uint16_t reg,
 
 int esp770u_query_firmware_version(libusb_device_handle *devh, uint8_t *val);
 int esp770u_init_radio(libusb_device_handle *devh);
-int esp770u_setup_radio(libusb_device_handle *devh, uint32_t radio_id);
+int esp770u_setup_radio(libusb_device_handle *devh, uint8_t radio_id[5]);
 int esp770u_init_unknown(libusb_device_handle *devh);
 
 #endif /* __ESP770U_H__ */

@@ -41,6 +41,7 @@ struct _OuvrtRiftSensor {
 	uint8_t endpoint;
 
 	char *version;
+	uint8_t radio_id[5];
 	bool sync;
 
 	unsigned char *frame;
@@ -52,7 +53,6 @@ struct _OuvrtRiftSensor {
 	int64_t dt;
 
 	OuvrtTracker *tracker;
-	uint32_t radio_id;
 	struct debug_stream *debug;
 };
 
@@ -459,7 +459,7 @@ static void rift_sensor_thread(OuvrtDevice *dev)
 		if (ret < 0)
 			return;
 
-		self->radio_id = ouvrt_tracker_get_radio_address(self->tracker);
+		ouvrt_tracker_get_radio_address(self->tracker, self->radio_id);
 		if (self->radio_id) {
 			ret = esp770u_setup_radio(self->devh,
 						  self->radio_id);
@@ -570,7 +570,7 @@ void ouvrt_rift_sensor_set_tracker(OuvrtRiftSensor *self, OuvrtTracker *tracker)
 			g_print("%s: Synchronised exposure\n", self->dev.name);
 			ouvrt_rift_sensor_set_sync_exposure(self, true);
 
-			self->radio_id = ouvrt_tracker_get_radio_address(tracker);
+			ouvrt_tracker_get_radio_address(tracker, self->radio_id);
 			if (self->radio_id) {
 				ret = esp770u_setup_radio(self->devh,
 							  self->radio_id);

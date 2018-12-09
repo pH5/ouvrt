@@ -294,17 +294,17 @@ int esp770u_init_radio(libusb_device_handle *devh)
  * Setup nRF51288 to receive exposure synchronisation signals from the Rift HMD
  * with the given radio id.
  */
-int esp770u_setup_radio(libusb_device_handle *devh, uint32_t radio_id)
+int esp770u_setup_radio(libusb_device_handle *devh, uint8_t radio_id[5])
 {
 	int ret;
 
 	const uint8_t buf0[7] = {
 		0x40, 0x10,
-		radio_id & 0xff,
-		(radio_id >> 8) & 0xff,
-		(radio_id >> 16) & 0xff,
-		radio_id >> 24,
-		0x8c
+		radio_id[0],
+		radio_id[1],
+		radio_id[2],
+		radio_id[3],
+		radio_id[4],
 	};
 	ret = esp770u_radio_write(devh, buf0, sizeof buf0);
 	if (ret < 0)
