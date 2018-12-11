@@ -150,7 +150,7 @@ static int rift_sensor_open(OuvrtDevice *dev)
 static void default_frame_callback(OuvrtRiftSensor *self)
 {
 	struct timespec tp;
-	double timestamps[4] = {};
+	double timestamps[4] = { 0 };
 
 	clock_gettime(CLOCK_MONOTONIC, &tp);
 	timestamps[1] = tp.tv_sec + 1e-9 * tp.tv_nsec;
@@ -171,8 +171,8 @@ static void default_frame_callback(OuvrtRiftSensor *self)
 	clock_gettime(CLOCK_MONOTONIC, &tp);
 	timestamps[2] = tp.tv_sec + 1e-9 * tp.tv_nsec;
 
-	dquat rot = {};
-	dvec3 trans = {};
+	dquat rot = { 0 };
+	dvec3 trans = { 0 };
 
 	/* TODO: calculate pose */
 
