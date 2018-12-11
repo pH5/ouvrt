@@ -23,7 +23,7 @@ char *ouvrt_vive_get_config(OuvrtDevice *dev)
 		.id = VIVE_CONFIG_READ_REPORT_ID,
 	};
 	unsigned char *config_json;
-	void *config_z;
+	unsigned char *config_z;
 	z_stream strm;
 	int count = 0;
 	int ret;

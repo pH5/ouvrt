@@ -128,7 +128,7 @@ void debug_stream_frame_push(struct debug_stream *gst, void *src, size_t size,
 			     size_t attach_offset, struct blobservation *ob,
 			     dquat *rot, dvec3 *trans, double timestamps[3])
 {
-	struct ouvrt_debug_attachment *attach = src + attach_offset;
+	struct ouvrt_debug_attachment *attach;
 	unsigned int num;
 	GstBuffer *buf;
 	int ret;
@@ -137,6 +137,9 @@ void debug_stream_frame_push(struct debug_stream *gst, void *src, size_t size,
 		return;
 
 	if (ob) {
+		attach = (struct ouvrt_debug_attachment *)
+			 ((char *)src + attach_offset);
+
 		/* Copy blobs and flicker history */
 		memcpy(&attach->blobservation, ob, sizeof(*ob));
 
