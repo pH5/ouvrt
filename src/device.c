@@ -58,8 +58,9 @@ static int ouvrt_device_open_default(OuvrtDevice *dev)
 			dev->fds[i] = open(dev->devnodes[i],
 					   O_RDWR | O_NONBLOCK);
 			if (dev->fds[i] == -1) {
-				g_print("%s: Failed to open '%s': %d (%m)\n",
-					dev->name, dev->devnodes[i], errno);
+				g_print("%s: Failed to open '%s': %d (%s)\n",
+					dev->name, dev->devnodes[i], errno,
+					strerror(errno));
 				return -1;
 			}
 		}
