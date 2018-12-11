@@ -339,9 +339,9 @@ static void rift_decode_touch_message(struct rift_touch_controller *touch,
 	struct imu_sample *sample = &touch->imu.sample;
 	struct rift_touch_calibration *c = &touch->calibration;
 	const double a[3] = {
-		9.81 / 2048 * accel[0],
-		9.81 / 2048 * accel[1],
-		9.81 / 2048 * accel[2],
+		STANDARD_GRAVITY / 2048 * accel[0],
+		STANDARD_GRAVITY / 2048 * accel[1],
+		STANDARD_GRAVITY / 2048 * accel[2],
 	};
 	const double g[3] = {
 		2.0 / 2048 * gyro[0],

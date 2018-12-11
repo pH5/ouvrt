@@ -101,9 +101,9 @@ static void motion_controller_decode_message(OuvrtMotionController *self,
 	struct imu_sample sample = {
 		.time = raw.time * 1e-7,
 		.acceleration = {
-			.x = accel[0] * 9.81 / 506200.,
-			.y = accel[1] * 9.81 / 506200.,
-			.z = accel[2] * 9.81 / 506200.,
+			.x = accel[0] * STANDARD_GRAVITY / 506200.,
+			.y = accel[1] * STANDARD_GRAVITY / 506200.,
+			.z = accel[2] * STANDARD_GRAVITY / 506200.,
 		},
 		.angular_velocity = {
 			.x = gyro[0] * 1e-5,

@@ -10,6 +10,8 @@
 
 #include "maths.h"
 
+#define STANDARD_GRAVITY 9.80665 /* m/s² */
+
 /*
  * Raw IMU sample - a single measurement of acceleration, angular
  * velocity, and sample time. Units are hardware dependent and may

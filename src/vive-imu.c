@@ -60,7 +60,7 @@ int vive_imu_get_range_modes(OuvrtDevice *dev, struct vive_imu *imu)
 	 * (+/-2g, +/-4g, +/-8g, or +/-16g) into m/s².
 	 */
 	imu->gyro_range = M_PI / 180.0 * (250 << report.gyro_range);
-	imu->accel_range = 9.80665 * (2 << report.accel_range);
+	imu->accel_range = STANDARD_GRAVITY * (2 << report.accel_range);
 
 	return 0;
 }
