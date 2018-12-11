@@ -62,7 +62,7 @@ struct _OuvrtDeviceClass {
 	void (*close)(OuvrtDevice *dev);
 };
 
-G_DEFINE_AUTOPTR_CLEANUP_FUNC(OuvrtDevice, g_object_unref);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC(OuvrtDevice, g_object_unref)
 
 GType ouvrt_device_get_type(void);
 
