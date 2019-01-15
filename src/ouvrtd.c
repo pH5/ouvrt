@@ -24,6 +24,7 @@
 #include "rift-sensor.h"
 #include "camera-dk2.h"
 #include "hololens-camera.h"
+#include "hololens-camera2.h"
 #include "hololens-imu.h"
 #include "motion-controller.h"
 #include "lenovo-explorer.h"
@@ -34,7 +35,7 @@
 #include "vive-controller.h"
 #include "vive-controller-usb.h"
 
-#define NUM_MATCHES	13
+#define NUM_MATCHES	14
 
 struct interface_match {
 	int iface;
@@ -107,6 +108,12 @@ static const struct device_match device_matches[NUM_MATCHES] = {
 		.subsystem = "video4linux",
 		.name = "HoloLens Sensors",
 		.new = hololens_camera_new,
+	}, {
+		.vid = VID_MICROSOFT,
+		.pid = PID_HOLOLENS_SENSORS,
+		.subsystem = "usb",
+		.name = "HoloLens Sensors",
+		.new = hololens_camera2_new,
 	}, {
 		.vid = VID_MICROSOFT,
 		.pid = PID_HOLOLENS_SENSORS,

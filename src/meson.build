@@ -59,6 +59,8 @@ ouvrtd_sources = [
   'device.h',
   'hololens-camera.c',
   'hololens-camera.h',
+  'hololens-camera2.c',
+  'hololens-camera2.h',
   'hololens-hid-reports.h',
   'hololens-imu.c',
   'hololens-imu.h',
