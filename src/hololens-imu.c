@@ -73,7 +73,7 @@ static int hololens_imu_handle_imu_report(OuvrtHoloLensIMU *self,
 			      (int16_t)__le16_to_cpu(report->gyro[0][8 * i + 4]) +
 			      (int16_t)__le16_to_cpu(report->gyro[0][8 * i + 5]) +
 			      (int16_t)__le16_to_cpu(report->gyro[0][8 * i + 6]) +
-			      (int16_t)__le16_to_cpu(report->gyro[0][8 * i + 7]),
+			      (int16_t)__le16_to_cpu(report->gyro[0][8 * i + 7]);
 		raw.gyro[1] = (int16_t)__le16_to_cpu(report->gyro[1][8 * i + 0]) +
 			      (int16_t)__le16_to_cpu(report->gyro[1][8 * i + 1]) +
 			      (int16_t)__le16_to_cpu(report->gyro[1][8 * i + 2]) +
