@@ -176,7 +176,7 @@ int rift_radio_get_address(int fd, uint32_t *address)
 	if (ret < 0)
 		return ret;
 	id[0] = __le32_to_cpup((__le32 *)report.payload);
-	id[1] = __le32_to_cpup((__le32 *)(report.payload + 4)),
+	id[1] = __le32_to_cpup((__le32 *)(report.payload + 4));
 	id[2] = __le32_to_cpup((__le32 *)(report.payload + 8));
 
 	g_print("Rift: Radio ID: %08x %08x", id[0], id[1]);
