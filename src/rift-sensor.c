@@ -80,7 +80,7 @@ static int rift_sensor_get_calibration(OuvrtRiftSensor *self)
 	k4 = *(float *)(buf + 0x54);
 
 	g_print(" f = [ %7.3f %7.3f ], c = [ %7.3f %7.3f ]\n", fx, fy, cx, cy);
-	g_print(" k = [ %9.6f %9.6f %9.6f %9.6f ]\n", k1, k2, k3 ,k4);
+	g_print(" k = [ %9.6f %9.6f %9.6f %9.6f ]\n", k1, k2, k3, k4);
 
 	return 0;
 }
@@ -259,7 +259,7 @@ enum process_payload_return process_payload(OuvrtRiftSensor *self,
 
 	if (self->payload_size + payload_len > self->frame_size) {
 		g_print("%s: Frame buffer overflow: %u %u %u\n", self->dev.name,
-		       self->payload_size, payload_len, self->frame_size);
+			self->payload_size, payload_len, self->frame_size);
 		return PAYLOAD_OVERFLOW;
 	}
 

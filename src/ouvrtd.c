@@ -391,7 +391,7 @@ static void ouvrtd_device_add(struct udev_device *dev)
 		GList *link;
 
 		link = g_list_find_custom(device_list, parent_devpath,
-				(GCompareFunc)ouvrt_device_cmp_parent_devpath);
+					  (GCompareFunc)ouvrt_device_cmp_parent_devpath);
 		if (link) {
 			d = OUVRT_DEVICE(link->data);
 			if (d->devnodes[j]) {

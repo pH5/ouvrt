@@ -54,8 +54,8 @@ uint32_t ouvrt_tracker_get_radio_address(OuvrtTracker *tracker)
 }
 
 void ouvrt_tracker_add_exposure(OuvrtTracker *tracker,
-			        uint64_t device_timestamp, uint64_t time,
-			        uint8_t led_pattern_phase)
+				uint64_t device_timestamp, uint64_t time,
+				uint8_t led_pattern_phase)
 {
 	tracker->last_exposure_timestamp = tracker->exposure_timestamp;
 	tracker->last_exposure_time = tracker->exposure_time;

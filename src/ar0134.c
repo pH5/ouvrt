@@ -41,13 +41,13 @@
 static inline int ar0134_read_reg(libusb_device_handle *devh, uint16_t reg,
 				  uint16_t *val)
 {
-        return esp770u_i2c_read(devh, AR0134_I2C_ADDR, reg, val);
+	return esp770u_i2c_read(devh, AR0134_I2C_ADDR, reg, val);
 }
 
 static inline int ar0134_write_reg(libusb_device_handle *devh, uint16_t reg,
 				   uint16_t val)
 {
-        return esp770u_i2c_write(devh, AR0134_I2C_ADDR, reg, val);
+	return esp770u_i2c_write(devh, AR0134_I2C_ADDR, reg, val);
 }
 
 int ar0134_init(libusb_device_handle *devh)

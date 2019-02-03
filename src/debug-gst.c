@@ -77,12 +77,12 @@ struct debug_stream *debug_stream_new(int width, int height, int framerate)
 		g_error("Could not create shmsink GStreamer element");
 
 	caps = gst_caps_new_simple("video/x-raw",
-		"format", G_TYPE_STRING, "GRAY8",
-		"framerate", GST_TYPE_FRACTION, framerate, 1,
-		"pixel-aspect-ratio", GST_TYPE_FRACTION, 1, 1,
-		"width", G_TYPE_INT, width,
-		"height", G_TYPE_INT, height,
-		NULL);
+				   "format", G_TYPE_STRING, "GRAY8",
+				   "framerate", GST_TYPE_FRACTION, framerate, 1,
+				   "pixel-aspect-ratio", GST_TYPE_FRACTION, 1, 1,
+				   "width", G_TYPE_INT, width,
+				   "height", G_TYPE_INT, height,
+				   NULL);
 
 	g_object_set(src, "caps", caps, NULL);
 	g_object_set(src, "stream-type", 0, NULL);

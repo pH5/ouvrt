@@ -85,7 +85,7 @@ static int vive_controller_get_config(OuvrtViveController *self)
 	}
 
 	self->serial = json_object_get_string_member(object,
-							   "device_serial_number");
+						     "device_serial_number");
 
 	device_vid = json_object_get_int_member(object, "device_vid");
 	if (device_vid != VID_VALVE) {

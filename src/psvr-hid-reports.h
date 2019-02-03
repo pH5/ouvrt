@@ -70,10 +70,10 @@ struct psvr_set_mode_report {
 #define PSVR_DEVICE_INFO_REQUEST_SIZE			12
 
 struct psvr_device_info_request {
-        __u8 id;
-        __u8 unknown;
-        __u8 magic;
-        __u8 payload_length;
+	__u8 id;
+	__u8 unknown;
+	__u8 magic;
+	__u8 payload_length;
 	__u8 request;
 	__u8 index;
 	__u8 padding[6];
@@ -83,27 +83,27 @@ struct psvr_device_info_request {
 #define PSVR_SERIAL_REPORT_SIZE				52
 
 struct psvr_serial_report {
-        __u8 id;
-        __u8 status;
-        __u8 magic;
-        __u8 payload_length;
-        __u8 unknown0[2];
-        __u8 firmware_version_minor;
-        __u8 firmware_version_major;
-        __u8 unknown1[8];
-        __u8 serial[16];
-        __le32 unknown2[3];
-        __u8 unknown3[8];
+	__u8 id;
+	__u8 status;
+	__u8 magic;
+	__u8 payload_length;
+	__u8 unknown0[2];
+	__u8 firmware_version_minor;
+	__u8 firmware_version_major;
+	__u8 unknown1[8];
+	__u8 serial[16];
+	__le32 unknown2[3];
+	__u8 unknown3[8];
 } __attribute__((packed));
 
 #define PSVR_CALIBRATION_REPORT_ID			0x86
 #define PSVR_CALIBRATION_REPORT_SIZE			64
 
 struct psvr_calibration_report {
-        __u8 id;
-        __u8 index;
-        __u8 magic;
-        __u8 payload_length;
+	__u8 id;
+	__u8 index;
+	__u8 magic;
+	__u8 payload_length;
 	__le16 header;
 	__u8 payload[58];
 } __attribute__((packed));

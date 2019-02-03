@@ -19,8 +19,8 @@ int uvc_set_cur(libusb_device_handle *dev, uint8_t interface, uint8_t entity,
 		uint8_t selector, void *data, uint16_t wLength)
 {
 	uint8_t bmRequestType = LIBUSB_ENDPOINT_OUT |
-		LIBUSB_REQUEST_TYPE_CLASS |
-		LIBUSB_RECIPIENT_INTERFACE;
+				LIBUSB_REQUEST_TYPE_CLASS |
+				LIBUSB_RECIPIENT_INTERFACE;
 	uint8_t bRequest = SET_CUR;
 	uint16_t wValue = selector << 8;
 	uint16_t wIndex = entity << 8 | interface;
@@ -48,7 +48,7 @@ int uvc_get_cur(libusb_device_handle *dev, uint8_t interface, uint8_t entity,
 
 	ret = libusb_control_transfer(dev, bmRequestType, bRequest, wValue,
 				      wIndex, data, wLength, TIMEOUT);
-        if (ret < 0) {
+	if (ret < 0) {
 		g_print("UVC: Failed to transfer GET CUR %u %u %u: %d (%s)\n",
 			interface, entity, selector, ret, libusb_strerror(ret));
 	}

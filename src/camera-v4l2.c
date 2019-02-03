@@ -243,7 +243,7 @@ static void ouvrt_camera_v4l2_thread(OuvrtDevice *dev)
 				g_print("v4l2: camera disconnected, disabling\n");
 			else
 				g_print("v4l2: DQBUF error: %d, disabling camera\n",
-				        errno);
+					errno);
 			break;
 		}
 
@@ -390,5 +390,5 @@ static void ouvrt_camera_v4l2_class_init(OuvrtCameraV4L2Class *klass)
  */
 static void ouvrt_camera_v4l2_init(OuvrtCameraV4L2 *self)
 {
-        self->priv = ouvrt_camera_v4l2_get_instance_private(self);
+	self->priv = ouvrt_camera_v4l2_get_instance_private(self);
 }

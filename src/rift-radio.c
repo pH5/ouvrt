@@ -332,8 +332,8 @@ static void rift_decode_touch_message(struct rift_touch_controller *touch,
 	touch->last_timestamp = timestamp;
 
 	if (!(timestamp ||
-	    accel[0] || accel[1] || accel[2] ||
-	    gyro[0] || gyro[1] || gyro[2]))
+	      accel[0] || accel[1] || accel[2] ||
+	      gyro[0] || gyro[1] || gyro[2]))
 		return;
 
 	struct imu_sample *sample = &touch->imu.sample;
@@ -779,7 +779,7 @@ int rift_decode_pairing_message(struct rift_radio *radio, int fd,
 }
 
 int rift_decode_radio_message(struct rift_radio *radio, int fd,
-			       const struct rift_radio_message *message)
+			      const struct rift_radio_message *message)
 {
 	if (radio->pairing)
 		return rift_decode_pairing_message(radio, fd, message);

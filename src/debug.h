@@ -50,7 +50,7 @@ static inline void debug_stream_init(int *argc, char **argv[])
 }
 
 static inline struct debug_stream *debug_stream_new(int width, int height,
-					      int framerate)
+						    int framerate)
 {
 	return NULL;
 }

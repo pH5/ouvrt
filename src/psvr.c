@@ -400,7 +400,7 @@ static void psvr_handle_control_reply(OuvrtPSVR *psvr, unsigned char *buf,
 		   len == PSVR_STATUS_REPORT_SIZE) {
 		psvr_handle_status_report(psvr, (void *)buf);
 	} else if (buf[0] == PSVR_COMMAND_REPLY_ID &&
-			len == PSVR_COMMAND_REPLY_SIZE) {
+		   len == PSVR_COMMAND_REPLY_SIZE) {
 		psvr_handle_command_reply(psvr, (void *)buf);
 	} else {
 		g_print("PSVR: Unknown report:\n");

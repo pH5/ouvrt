@@ -302,7 +302,7 @@ static void ouvrt_dbus_on_name_lost(G_GNUC_UNUSED GDBusConnection *connection,
 }
 
 /*
- * Requests ownership of the Ouvrtd name on the bus and installs 
+ * Requests ownership of the Ouvrtd name on the bus and installs
  * the callback functions.
  */
 guint ouvrt_dbus_own_name(void)

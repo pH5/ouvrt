@@ -843,7 +843,7 @@ static void rift_thread(OuvrtDevice *dev)
 			    (buf[0] != RIFT_RADIO_REPORT_ID &&
 			     buf[0] != RIFT_RADIO_UNKNOWN_MESSAGE_ID)) {
 				g_print("%s: Error, invalid %d-byte report 0x%02x\n",
-						dev->name, ret, buf[0]);
+					dev->name, ret, buf[0]);
 				continue;
 			}
 
