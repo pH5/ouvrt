@@ -4,6 +4,6 @@
 executable(
   'dump-eeprom',
   'dump-eeprom.c',
-	include_directories : inc_src,
-	link_with : libouvrt
+  include_directories : inc_src,
+  link_with : libouvrt
 )

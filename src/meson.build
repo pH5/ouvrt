@@ -113,10 +113,10 @@ ouvrtd_sources = [
   'vive-imu.h'
 ]
 if build_gst
-	ouvrtd_sources += [ 'debug-gst.c' ]
+  ouvrtd_sources += [ 'debug-gst.c' ]
 endif
 if build_opencv
-	ouvrtd_sources += [ 'opencv.cpp' ]
+  ouvrtd_sources += [ 'opencv.cpp' ]
 endif
 ouvrtd_deps = [
   glib_dep,
