@@ -88,6 +88,13 @@ corresponding to the Rift DK2 and the DK2 Positional Tracker. Then run ouvrtd::
 
   $ ./ouvrtd
 
+If compiled with PipeWire support, the daemon will create a PipeWire stream
+for each camera. An example camera observer Python script using the PipeWire
+GStreamer plugin to show all cameras is included in the scripts directory::
+
+  $ apt-get install gstreamer1.0-pipewire
+  $ scripts/ouvrt-cameras.py
+
 If compiled with GStreamer support, the daemon will create a shared memory
 socket /tmp/ouvrtd-gst-0 and, if a DK2 Positional Tracker is connected, write
 frames into it as soon as a GStreamer shmsrc connects to it. To see the
