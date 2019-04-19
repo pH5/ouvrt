@@ -248,14 +248,14 @@ vive_controller_decode_message(OuvrtViveController *self,
 		if (type & 0x10) {
 			if (type & 1)
 				vive_controller_handle_buttons(self, *buf++);
+			if (type & 4) {
+				vive_controller_handle_analog_trigger(self,
+								      *buf++);
+			}
 			if (type & 2) {
 				vive_controller_handle_touch_position(self,
 								      buf);
 				buf += 4;
-			}
-			if (type & 4) {
-				vive_controller_handle_analog_trigger(self,
-								      *buf++);
 			}
 		} else {
 			if (type & 1)
