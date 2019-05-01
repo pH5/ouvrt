@@ -498,7 +498,8 @@ static void ouvrt_rift_sensor_finalize(GObject *object)
 {
 	OuvrtRiftSensor *self = OUVRT_RIFT_SENSOR(object);
 
-	g_object_unref(self->tracker);
+	if (self->tracker)
+		g_object_unref(self->tracker);
 }
 
 static void ouvrt_rift_sensor_class_init(OuvrtRiftSensorClass *klass)
