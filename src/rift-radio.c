@@ -758,8 +758,12 @@ int rift_decode_pairing_message(struct rift_radio *radio, int fd,
 	report.payload[0] = 0x11;
 	report.payload[1] = 0x05;
 	report.payload[2] = device_type;
-	memcpy(report.payload + 3, radio->address, 4);
-	memcpy(report.payload + 7, radio->address, 5);
+	if (getenv("OUVRT_UNPAIR")) {
+		g_print("Rift: OUVRT_UNPAIR environment variable is set, unpairing\n");
+	} else {
+		memcpy(report.payload + 3, radio->address, 4);
+		memcpy(report.payload + 7, radio->address, 5);
+	}
 	*(__le16 *)(report.payload + 12) = __cpu_to_le16(maybe_channel);
 	*(__le16 *)(report.payload + 16) = __cpu_to_le16(2000);
 	ret = rift_radio_write(fd, 0x04, 0x09, 0x05, &report);
