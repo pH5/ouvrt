@@ -157,9 +157,9 @@ static void ouvrt_tracker1_on_flicker_changed(GObject *object,
 /*
  * Exports a Tracker1 interface via D-Bus.
  */
-static void ouvrt_dbus_export_tracker1_interface(OuvrtDevice *dev)
+static void ouvrt_dbus_export_tracker1_interface(OuvrtObjectSkeleton *object,
+						 OuvrtDevice *dev)
 {
-	OuvrtObjectSkeleton *object;
 	OuvrtTracker1 *tracker;
 
 	g_print("Exporting Tracker1 interface for device %s\n", dev->devnode);
@@ -177,13 +177,8 @@ static void ouvrt_dbus_export_tracker1_interface(OuvrtDevice *dev)
 	g_signal_connect(tracker, "notify::flicker",
 			 G_CALLBACK(ouvrt_tracker1_on_flicker_changed), dev);
 
-	object = ouvrt_object_skeleton_new("/de/phfuenf/ouvrt/tracker0");
 	ouvrt_object_skeleton_set_tracker1(object, tracker);
 	g_object_unref(tracker);
-
-	g_dbus_object_manager_server_export(manager,
-					    G_DBUS_OBJECT_SKELETON(object));
-	g_object_unref(object);
 }
 
 /*
@@ -216,11 +211,11 @@ static void ouvrt_camera1_on_sync_exposure_changed(GObject *object,
 /*
  * Exports a Camera1 interface via D-Bus.
  */
-static void ouvrt_dbus_export_camera1_interface(OuvrtDevice *dev)
+static void ouvrt_dbus_export_camera1_interface(OuvrtObjectSkeleton *object,
+						OuvrtDevice *dev)
 {
 	OuvrtCamera *camera = OUVRT_CAMERA(dev);
 	double *A = camera->camera_matrix.m;
-	OuvrtObjectSkeleton *object;
 	OuvrtCamera1 *camera1;
 	const gchar *caps;
 	GVariant *variant;
@@ -249,31 +244,34 @@ static void ouvrt_dbus_export_camera1_interface(OuvrtDevice *dev)
 			 G_CALLBACK(ouvrt_camera1_on_sync_exposure_changed),
 			 dev);
 
-	object = ouvrt_object_skeleton_new("/de/phfuenf/ouvrt/camera0");
 	ouvrt_object_skeleton_set_camera1(object, camera1);
 	g_object_unref(camera1);
-
-	g_dbus_object_manager_server_export(manager,
-					    G_DBUS_OBJECT_SKELETON(object));
-	g_object_unref(object);
 }
 
 static void ouvrt_dbus_export_device_interface(gpointer data,
 					       G_GNUC_UNUSED gpointer user_data)
 {
 	OuvrtDevice *dev = OUVRT_DEVICE(data);
+	gchar *object_path =
+		g_strdup_printf("/de/phfuenf/ouvrt/dev_%lu", dev->id);
+	OuvrtObjectSkeleton *object = ouvrt_object_skeleton_new(object_path);
 
 	g_debug("TODO: register %s with DBus\n", dev->devnode);
 
 	if (dev->type == DEVICE_TYPE_HMD) {
 		/* Export a Tracker1 interface */
-		ouvrt_dbus_export_tracker1_interface(dev);
+		ouvrt_dbus_export_tracker1_interface(object, dev);
 	}
 
 	if (OUVRT_IS_CAMERA(dev)) {
 		/* Export a Camera1 interface */
-		ouvrt_dbus_export_camera1_interface(dev);
+		ouvrt_dbus_export_camera1_interface(object, dev);
 	}
+
+	g_dbus_object_manager_server_export(manager,
+					    G_DBUS_OBJECT_SKELETON(object));
+	g_object_unref(object);
+	g_free(object_path);
 }
 
 /*
