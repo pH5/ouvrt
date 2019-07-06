@@ -60,6 +60,9 @@ struct _OuvrtDeviceClass {
 	void (*thread)(OuvrtDevice *dev);
 	void (*stop)(OuvrtDevice *dev);
 	void (*close)(OuvrtDevice *dev);
+
+	void (*radio_start_discovery)(OuvrtDevice *dev);
+	void (*radio_stop_discovery)(OuvrtDevice *dev);
 };
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC(OuvrtDevice, g_object_unref)
@@ -71,5 +74,8 @@ int ouvrt_device_open(OuvrtDevice *dev);
 int ouvrt_device_start(OuvrtDevice *dev);
 void ouvrt_device_stop(OuvrtDevice *dev);
 void ouvrt_device_close(OuvrtDevice *dev);
+
+void ouvrt_device_radio_start_discovery(OuvrtDevice *dev);
+void ouvrt_device_radio_stop_discovery(OuvrtDevice *dev);
 
 #endif /* __DEVICE_H__ */

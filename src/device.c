@@ -198,3 +198,19 @@ void ouvrt_device_stop(OuvrtDevice *dev)
 	OUVRT_DEVICE_GET_CLASS(dev)->stop(dev);
 	OUVRT_DEVICE_GET_CLASS(dev)->close(dev);
 }
+
+void ouvrt_device_radio_start_discovery(OuvrtDevice *dev)
+{
+	OuvrtDeviceClass *klass = OUVRT_DEVICE_GET_CLASS(dev);
+
+	if (klass->radio_start_discovery)
+		klass->radio_start_discovery(dev);
+}
+
+void ouvrt_device_radio_stop_discovery(OuvrtDevice *dev)
+{
+	OuvrtDeviceClass *klass = OUVRT_DEVICE_GET_CLASS(dev);
+
+	if (klass->radio_stop_discovery)
+		klass->radio_stop_discovery(dev);
+}
