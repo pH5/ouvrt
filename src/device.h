@@ -43,6 +43,7 @@ struct _OuvrtDevice {
 	char *name;
 	char *serial;
 	gboolean active;
+	gboolean has_radio;
 	union {
 		int fd;
 		int fds[3];

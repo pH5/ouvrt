@@ -1,0 +1,28 @@
+<node>
+	<!--
+	  de.phfuenf.ouvrt.Radio1:
+
+	  A radio adapter used to connect to wireless devices.
+	  It can be put into discovery mode for pairing.
+	-->
+	<interface name="de.phfuenf.ouvrt.Radio1">
+		<!--
+		  StartDiscovery:
+
+		  Put the radio into discovery mode. This will allow it to
+		  detect wireless devices that broadcast pairing requests, and
+		  to subsequently pair them. Other communication with wireless
+		  devices may not be possible during discovery.
+		-->
+		<method name="StartDiscovery"/>
+		<!--
+		  StopDiscovery:
+
+		  Put the radio out of discovery mode. It will only be able
+		  to communicate with paired wireless devices.
+		-->
+		<method name="StopDiscovery"/>
+		<property name="Address" type="s" access="read"/>
+		<property name="Discovering" type="b" access="read"/>
+	</interface>
+</node>

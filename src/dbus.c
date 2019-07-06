@@ -248,6 +248,71 @@ static void ouvrt_dbus_export_camera1_interface(OuvrtObjectSkeleton *object,
 	g_object_unref(camera1);
 }
 
+static gboolean
+ouvrt_radio1_on_handle_start_discovery(OuvrtRadio1 *object,
+				       GDBusMethodInvocation *invocation,
+				       gpointer user_data)
+{
+	OuvrtDevice *dev = OUVRT_DEVICE(user_data);
+	const gchar *sender;
+
+	sender = g_dbus_method_invocation_get_sender(invocation);
+
+	g_print("Radio1 interface of device %s set to discovery mode by %s\n",
+		dev->devnode, sender);
+
+	ouvrt_device_radio_start_discovery(dev);
+
+	ouvrt_radio1_complete_start_discovery(object, invocation);
+
+	return TRUE;
+}
+
+static gboolean
+ouvrt_radio1_on_handle_stop_discovery(OuvrtRadio1 *object,
+				      GDBusMethodInvocation *invocation,
+				      gpointer user_data)
+{
+	OuvrtDevice *dev = OUVRT_DEVICE(user_data);
+	const gchar *sender;
+
+	sender = g_dbus_method_invocation_get_sender(invocation);
+
+	g_print("Radio1 interface of device %s set to normal mode by %s\n",
+		dev->devnode, sender);
+
+	ouvrt_device_radio_stop_discovery(dev);
+
+	ouvrt_radio1_complete_stop_discovery(object, invocation);
+
+	return TRUE;
+}
+
+/*
+ * Exports a Radio1 interface via D-Bus.
+ */
+static void ouvrt_dbus_export_radio1_interface(OuvrtObjectSkeleton *object,
+					       OuvrtDevice *dev)
+{
+	OuvrtRadio1 *radio = ouvrt_radio1_skeleton_new();
+
+	g_print("Exporting Radio1 interface for device %s\n", dev->devnode);
+
+
+	ouvrt_radio1_set_discovering(radio, FALSE);
+	ouvrt_radio1_set_address(radio, "00:00:00:00:00");
+
+	g_signal_connect(radio, "handle-start-discovery",
+			 G_CALLBACK(ouvrt_radio1_on_handle_start_discovery),
+			 dev);
+	g_signal_connect(radio, "handle-stop-discovery",
+			 G_CALLBACK(ouvrt_radio1_on_handle_stop_discovery),
+			 dev);
+
+	ouvrt_object_skeleton_set_radio1(object, radio);
+	g_object_unref(radio);
+}
+
 void ouvrt_dbus_export_device(OuvrtDevice *dev)
 {
 	gchar *object_path;
@@ -264,6 +329,11 @@ void ouvrt_dbus_export_device(OuvrtDevice *dev)
 	if (dev->type == DEVICE_TYPE_HMD) {
 		/* Export a Tracker1 interface */
 		ouvrt_dbus_export_tracker1_interface(object, dev);
+	}
+
+	if (dev->has_radio) {
+		/* Export a Radio1 interface */
+		ouvrt_dbus_export_radio1_interface(object, dev);
 	}
 
 	if (OUVRT_IS_CAMERA(dev)) {
