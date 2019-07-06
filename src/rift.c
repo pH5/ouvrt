@@ -45,6 +45,8 @@ struct _OuvrtRift {
 	int report_rate;
 	int report_interval;
 	gboolean flicker;
+	bool reboot;
+	uint8_t boot_mode;
 	uint64_t last_message_time;
 	uint64_t last_sample_timestamp;
 	uint32_t last_exposure_timestamp;
@@ -896,6 +898,59 @@ static void rift_stop(OuvrtDevice *dev)
 	hid_send_feature_report(fd, &report, sizeof(report));
 
 	rift_set_report_rate(rift, 50);
+
+	if (rift->type == RIFT_CV1 && rift->reboot) {
+		struct rift_bootload_report report = {
+			.id = RIFT_BOOTLOAD_REPORT_ID,
+			.bootload = rift->boot_mode,
+		};
+
+		g_print("%s: Rebooting ...\n", dev->name);
+
+		close(rift->dev.fds[1]);
+		rift->dev.fds[1] = -1;
+		hid_send_feature_report(fd, &report, sizeof(report));
+		close(fd);
+		rift->dev.fds[0] = -1;
+	}
+}
+
+static void rift_radio_start_discovery(OuvrtDevice *dev)
+{
+	OuvrtRift *rift = OUVRT_RIFT(dev);
+	int ret;
+
+	ret = rift_get_boot_mode(rift);
+	if (ret < 0)
+		return;
+	if (ret == RIFT_BOOT_RADIO_PAIRING) {
+		g_print("Rift: Already in radio pairing mode\n");
+		return;
+	}
+
+	g_print("Rift: Rebooting in radio pairing mode\n");
+	rift->boot_mode = RIFT_BOOT_RADIO_PAIRING;
+	rift->reboot = true;
+	ouvrt_device_stop(dev);
+}
+
+static void rift_radio_stop_discovery(OuvrtDevice *dev)
+{
+	OuvrtRift *rift = OUVRT_RIFT(dev);
+	int ret;
+
+	ret = rift_get_boot_mode(rift);
+	if (ret < 0)
+		return;
+	if (ret == RIFT_BOOT_NORMAL) {
+		g_print("Rift: Already in normal mode\n");
+		return;
+	}
+
+	g_print("Rift: Rebooting in normal mode\n");
+	rift->boot_mode = RIFT_BOOT_NORMAL;
+	rift->reboot = true;
+	ouvrt_device_stop(dev);
 }
 
 /*
@@ -915,6 +970,8 @@ static void ouvrt_rift_class_init(OuvrtRiftClass *klass)
 	OUVRT_DEVICE_CLASS(klass)->start = rift_start;
 	OUVRT_DEVICE_CLASS(klass)->thread = rift_thread;
 	OUVRT_DEVICE_CLASS(klass)->stop = rift_stop;
+	OUVRT_DEVICE_CLASS(klass)->radio_start_discovery = rift_radio_start_discovery;
+	OUVRT_DEVICE_CLASS(klass)->radio_stop_discovery = rift_radio_stop_discovery;
 }
 
 static void ouvrt_rift_init(OuvrtRift *self)
@@ -940,6 +997,7 @@ OuvrtDevice *rift_new(enum rift_type type)
 	if (rift == NULL)
 		return NULL;
 
+	rift->dev.has_radio = type == RIFT_CV1;
 	rift->tracker = ouvrt_tracker_new();
 	rift->type = type;
 
