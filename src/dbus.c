@@ -248,10 +248,8 @@ static void ouvrt_dbus_export_camera1_interface(OuvrtObjectSkeleton *object,
 	g_object_unref(camera1);
 }
 
-static void ouvrt_dbus_export_device_interface(gpointer data,
-					       G_GNUC_UNUSED gpointer user_data)
+void ouvrt_dbus_export_device(OuvrtDevice *dev)
 {
-	OuvrtDevice *dev = OUVRT_DEVICE(data);
 	gchar *object_path =
 		g_strdup_printf("/de/phfuenf/ouvrt/dev_%lu", dev->id);
 	OuvrtObjectSkeleton *object = ouvrt_object_skeleton_new(object_path);
@@ -274,19 +272,37 @@ static void ouvrt_dbus_export_device_interface(gpointer data,
 	g_free(object_path);
 }
 
+void ouvrt_dbus_unexport_device(OuvrtDevice *dev)
+{
+	gchar *object_path =
+		g_strdup_printf("/de/phfuenf/ouvrt/dev_%lu", dev->id);
+
+	if (manager) {
+		g_print("D-Bus: Unexporting %s\n", object_path);
+		g_dbus_object_manager_server_unexport(manager, object_path);
+	}
+
+	g_free(object_path);
+}
+
+static void __ouvrt_dbus_export_device(gpointer data,
+				       gpointer user_data G_GNUC_UNUSED)
+{
+	ouvrt_dbus_export_device(OUVRT_DEVICE(data));
+}
+
 /*
  * Exports Tracker1 and Camera1 interfaces via D-Bus as soon as the
  * Ouvrtd name was acquired on the bus.
  */
-static void ouvrt_dbus_on_name_acquired(G_GNUC_UNUSED GDBusConnection *connection,
-					const gchar *name,
-					G_GNUC_UNUSED gpointer user_data)
+static void
+ouvrt_dbus_on_name_acquired(GDBusConnection *connection G_GNUC_UNUSED,
+			    const gchar *name, gpointer user_data)
 {
 	g_print("ouvrtd: Acquired name \"%s\"\n", name);
 
 	/* Now we are ready to serve our objects */
-	g_list_foreach(device_list, ouvrt_dbus_export_device_interface,
-		       NULL); /* user_data */
+	g_list_foreach(device_list, __ouvrt_dbus_export_device, user_data);
 }
 
 /*

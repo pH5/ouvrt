@@ -416,7 +416,7 @@ static void ouvrtd_device_add(struct udev_device *dev)
 					break;
 			}
 			if (j == device_matches[i].num_interfaces)
-				ouvrt_device_start(d);
+				goto start;
 
 			return;
 		}
@@ -451,11 +451,14 @@ static void ouvrtd_device_add(struct udev_device *dev)
 
 	device_list = g_list_append(device_list, d);
 
-	for (j = 0; j < device_matches[i].num_interfaces; j++)
+	for (j = 0; j < device_matches[i].num_interfaces; j++) {
 		if (d->devnodes[j] == NULL)
-			break;
-	if (j == device_matches[i].num_interfaces)
-		ouvrt_device_start(d);
+			return;
+	}
+
+start:
+	ouvrt_device_start(d);
+	ouvrt_dbus_export_device(d);
 }
 
 /*
@@ -473,6 +476,7 @@ static gint ouvrt_device_cmp_devnode(OuvrtDevice *dev, const char *devnode)
 static int ouvrtd_device_remove(struct udev_device *dev)
 {
 	const char *devnode;
+	OuvrtDevice *d;
 	GList *link;
 
 	devnode = udev_device_get_devnode(dev);
@@ -481,9 +485,13 @@ static int ouvrtd_device_remove(struct udev_device *dev)
 	if (link == NULL)
 		return 0;
 
+	d = OUVRT_DEVICE(link->data);
+
+	ouvrt_dbus_unexport_device(d);
+
 	g_print("Removing device: %s\n", devnode);
 	device_list = g_list_remove_link(device_list, link);
-	g_object_unref(OUVRT_DEVICE(link->data));
+	g_object_unref(d);
 	g_list_free_1(link);
 	num_devices--;
 
