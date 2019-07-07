@@ -37,7 +37,7 @@ extern "C" void estimate_initial_pose(struct blob *blobs, int num_blobs,
 
 	/* count identified leds */
 	for (i = 0; i < num_blobs; i++) {
-		if (blobs[i].led_id < 0)
+		if (blobs[i].led_id < 0 || blobs[i].led_id >= num_pos)
 			continue;
 		if (taken & (1ULL << blobs[i].led_id))
 			continue;
