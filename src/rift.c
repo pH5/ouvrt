@@ -59,9 +59,9 @@ G_DEFINE_TYPE(OuvrtRift, ouvrt_rift, OUVRT_TYPE_DEVICE)
  * Unpacks three signed 21-bit values packed into a big-endian 64-bit value
  * and stores them in a floating point vector after multiplying by scale.
  */
-static void unpack_3x21bit(float scale, __be64 *buf, vec3 *v)
+static inline void unpack_3x21bit(float scale, __be64 buf, vec3 *v)
 {
-	uint64_t xyz = __be64_to_cpup(buf);
+	uint64_t xyz = __be64_to_cpu(buf);
 
 	v->x = scale * ((int64_t)xyz >> 43);
 	v->y = scale * ((int64_t)(xyz << 21) >> 43);
@@ -118,15 +118,15 @@ static int rift_get_imu_calibration(OuvrtRift *rift)
 		return ret;
 
 	/* 10⁻⁴ m/s² */
-	unpack_3x21bit(1e-4f, &report.accel_offset, &accel_offset);
+	unpack_3x21bit(1e-4f, report.accel_offset, &accel_offset);
 	/* 10⁻⁴ rad/s */
-	unpack_3x21bit(1e-4f, &report.gyro_offset, &gyro_offset);
+	unpack_3x21bit(1e-4f, report.gyro_offset, &gyro_offset);
 
 	for (i = 0; i < 3; i++) {
-		unpack_3x21bit(scale, &report.accel_matrix[i],
+		unpack_3x21bit(scale, report.accel_matrix[i],
 			       (vec3 *)&accel_matrix[i]);
 		accel_matrix[i][i] += 1.0f;
-		unpack_3x21bit(scale, &report.gyro_matrix[i],
+		unpack_3x21bit(scale, report.gyro_matrix[i],
 			       (vec3 *)&gyro_matrix[i]);
 		gyro_matrix[i][i] += 1.0f;
 	}
@@ -585,10 +585,10 @@ static void rift_decode_sensor_message(OuvrtRift *rift,
 	num_samples = num_samples > 1 ? 2 : 1;
 	for (i = 0; i < num_samples; i++) {
 		/* 10⁻⁴ m/s² */
-		unpack_3x21bit(1e-4f, &message->sample[i].accel,
+		unpack_3x21bit(1e-4f, message->sample[i].accel,
 			       &sample.acceleration);
 		/* 10⁻⁴ rad/s */
-		unpack_3x21bit(1e-4f, &message->sample[i].gyro,
+		unpack_3x21bit(1e-4f, message->sample[i].gyro,
 			       &sample.angular_velocity);
 
 		telemetry_send_imu_sample(rift->dev.id, &sample);

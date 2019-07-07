@@ -123,6 +123,11 @@ static int rift_radio_read_calibration(int fd, uint8_t device_type, char **json,
 	struct rift_radio_data_report report = {
 		.id = RIFT_RADIO_DATA_REPORT_ID,
 	};
+	struct touch_calibration_header {
+		__le16 maybe_version;
+		__le16 size;
+	} __attribute__((packed)) *header =
+		(struct touch_calibration_header *)report.flash.data;
 	uint16_t offset;
 	uint16_t size;
 	char *tmp;
@@ -134,10 +139,10 @@ static int rift_radio_read_calibration(int fd, uint8_t device_type, char **json,
 	if (ret < 0)
 		return ret;
 
-	if (__le16_to_cpup((__le16 *)&report.flash.data[0]) != 1)
+	if (header->maybe_version != 1)
 		return -EINVAL;
 
-	size = __le16_to_cpup((__le16 *)&report.flash.data[2]);
+	size = __le16_to_cpu(header->size);
 
 	tmp = g_malloc(size + 1);
 
