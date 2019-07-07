@@ -351,12 +351,13 @@ vive_controller_decode_message(OuvrtViveController *self,
 		uint32_t ts1 = ((message->timestamp_hi - 1) << 24) | start[i];
 		uint32_t ts2 = (message->timestamp_hi << 24) | start[i];
 		uint32_t ts3 = ((message->timestamp_hi + 1) << 24) | start[i];
-		uint32_t ref = self->timestamp;
+		int32_t dts1 = ts1 - self->timestamp;
+		int32_t dts2 = ts2 - self->timestamp;
+		int32_t dts3 = ts3 - self->timestamp;
 		uint32_t timestamp;
 
-		timestamp = (abs(ts1 - ref) < abs(ts2 - ref)) ? ts1 :
-			    (abs(ts2 - ref) < abs(ts3 - ref)) ? ts2 :
-								ts3;
+		timestamp = (abs(dts1) < abs(dts2)) ? ts1 :
+			    (abs(dts2) < abs(dts3)) ? ts2 : ts3;
 
 		lighthouse_watchman_handle_pulse(&self->watchman,
 						 buf[i] >> 3, duration[i],
