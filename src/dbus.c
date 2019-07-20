@@ -250,9 +250,14 @@ static void ouvrt_dbus_export_camera1_interface(OuvrtObjectSkeleton *object,
 
 void ouvrt_dbus_export_device(OuvrtDevice *dev)
 {
-	gchar *object_path =
-		g_strdup_printf("/de/phfuenf/ouvrt/dev_%lu", dev->id);
-	OuvrtObjectSkeleton *object = ouvrt_object_skeleton_new(object_path);
+	gchar *object_path;
+	OuvrtObjectSkeleton *object;
+
+	if (!manager)
+		return;
+
+	object_path = g_strdup_printf("/de/phfuenf/ouvrt/dev_%lu", dev->id);
+	object = ouvrt_object_skeleton_new(object_path);
 
 	g_debug("TODO: register %s with DBus\n", dev->devnode);
 
