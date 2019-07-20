@@ -157,35 +157,37 @@ static void camera_dk2_get_calibration(OuvrtCameraDK2 *self)
 OuvrtDevice *camera_dk2_new(const char *devnode)
 {
 	OuvrtCameraDK2 *camera;
+	OuvrtDevice *dev;
 	char buf[0x20 + 1];
 	int ret;
-	int fd;
 
 	camera = g_object_new(OUVRT_TYPE_CAMERA_DK2, NULL);
 	if (!camera)
 		return NULL;
 
-	fd = open(devnode, O_RDWR);
-	if (fd == -1) {
-		g_print("Camera DK2: Failed to open '%s': %d\n",
-			devnode, errno);
+	dev = &camera->v4l2.camera.dev;
+	dev->devnode = g_strdup(devnode);
+
+	ret = ouvrt_device_open(&camera->v4l2.camera.dev);
+	if (ret < 0) {
+		if (ret != -ENODEV) {
+			g_print("Camera DK2: Failed to open '%s': %d\n",
+				devnode, ret);
+		}
 		g_object_unref(camera);
 		return NULL;
 	}
 
-	camera->v4l2.camera.dev.devnode = g_strdup(devnode);
-	camera->v4l2.camera.dev.fd = fd;
-
 	/* I have no idea what this does */
-	esp570_setup_unknown_3(fd);
+	esp570_setup_unknown_3(dev->fd);
 
 	memset(buf, 0, sizeof(buf));
 
-	ret = esp570_eeprom_read(fd, 0x0ff0, 0x10, buf);
+	ret = esp570_eeprom_read(dev->fd, 0x0ff0, 0x10, buf);
 	if (ret == 0x10)
 		camera->version = g_strdup(buf);
 
-	ret = esp570_eeprom_read(fd, 0x2800, 0x20, buf);
+	ret = esp570_eeprom_read(dev->fd, 0x2800, 0x20, buf);
 	if (ret == 0x20)
 		camera->v4l2.camera.dev.serial = strdup(buf);
 
