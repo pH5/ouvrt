@@ -1,7 +1,7 @@
 /*
  * Device base class
  * Copyright 2015 Philipp Zabel
- * SPDX-License-Identifier:	LGPL-2.0+ or BSL-1.0
+ * SPDX-License-Identifier: (LGPL-2.1-or-later OR BSL-1.0)
  */
 #ifndef __DEVICE_H__
 #define __DEVICE_H__

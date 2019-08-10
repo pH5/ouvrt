@@ -1,7 +1,7 @@
 /*
  * HTC Vive Controller
  * Copyright 2016 Philipp Zabel
- * SPDX-License-Identifier:	LGPL-2.0+
+ * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 #ifndef __VIVE_CONTROLLER_H__
 #define __VIVE_CONTROLLER_H__

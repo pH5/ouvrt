@@ -1,7 +1,7 @@
 /*
  * Aptina MT9V034 Image Sensor initialization
  * Copyright 2014 Philipp Zabel
- * SPDX-License-Identifier:	LGPL-2.0+ or BSL-1.0
+ * SPDX-License-Identifier: (LGPL-2.1-or-later OR BSL-1.0)
  */
 #ifndef __MT9V034_H__
 #define __MT9V034_H__

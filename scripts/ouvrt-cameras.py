@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # PipeWire ouvrt camera observer
 # Copyright 2019 Philipp Zabel
-# SPDX-License-Identifier:	GPL-2.0+
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 import gi, signal, os, sys
 gi.require_version('Gst', '1.0')

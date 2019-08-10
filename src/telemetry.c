@@ -1,7 +1,7 @@
 /*
  * UDP Telemetry
  * Copyright 2017 Philipp Zabel
- * SPDX-License-Identifier:	LGPL-2.0+
+ * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 #include <errno.h>
 #include <netinet/in.h>

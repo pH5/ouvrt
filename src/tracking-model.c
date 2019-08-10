@@ -1,7 +1,7 @@
 /*
  * A 3D object of tracking reference points
  * Copyright 2015 Philipp Zabel
- * SPDX-License-Identifier:	LGPL-2.0+
+ * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 #include <stdio.h>
 #include <stdlib.h>

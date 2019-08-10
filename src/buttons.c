@@ -1,7 +1,7 @@
 /*
  * Button helper code
  * Copyright 2018 Philipp Zabel
- * SPDX-License-Identifier:	LGPL-2.0+
+ * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 #include <glib.h>
 #include <stdint.h>

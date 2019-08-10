@@ -1,7 +1,7 @@
 /*
  * Microsoft HoloLens Sensors (Windows Mixed Reality) stereo camera
  * Copyright 2019 Philipp Zabel
- * SPDX-License-Identifier:	LGPL-2.0+
+ * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 #ifndef __HOLOLENS_CAMERA2_H__
 #define __HOLOLENS_CAMERA2_H__

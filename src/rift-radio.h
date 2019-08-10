@@ -1,7 +1,7 @@
 /*
  * Oculus Rift CV1 Radio
  * Copyright 2016 Philipp Zabel
- * SPDX-License-Identifier:	LGPL-2.0+ or BSL-1.0
+ * SPDX-License-Identifier: (LGPL-2.1-or-later OR BSL-1.0)
  */
 #ifndef __RIFT_RADIO_H__
 #define __RIFT_RADIO_H__

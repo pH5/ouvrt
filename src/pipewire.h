@@ -1,3 +1,8 @@
+/*
+ * PipeWire integration and debug streams
+ * Copyright 2019 Philipp Zabel
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
 #ifndef __OUVRT_PIPEWIRE_H__
 #define __OUVRT_PIPEWIRE_H__
 

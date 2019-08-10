@@ -1,3 +1,8 @@
+/*
+ * hidraw convenience functions
+ * Copyright 2019 Philipp Zabel
+ * SPDX-License-Identifier: LGPL-2.1-or-later
+ */
 #ifndef __HIDRAW_H__
 #define __HIDRAW_H__
 

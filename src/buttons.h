@@ -1,7 +1,7 @@
 /*
  * Button helper code
  * Copyright 2018 Philipp Zabel
- * SPDX-License-Identifier:	LGPL-2.0+
+ * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 #ifndef __BUTTON_H__
 #define __BUTTON_H__

@@ -1,7 +1,7 @@
 /*
 * USB Vendor and Product IDs
 * Copyright 2017 Philipp Zabel
-* SPDX-License-Identifier:	LGPL-2.0+
+* SPDX-License-Identifier: LGPL-2.1-or-later
 */
 #ifndef __USB_IDS_H__
 #define __USB_IDS_H__

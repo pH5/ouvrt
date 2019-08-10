@@ -1,7 +1,7 @@
 /*
  * Etron Technology eSP770U webcam controller specific UVC functionality
  * Copyright 2017 Philipp Zabel
- * SPDX-License-Identifier:	LGPL-2.0+
+ * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 #ifndef __ESP770U_H__
 #define __ESP770U_H__

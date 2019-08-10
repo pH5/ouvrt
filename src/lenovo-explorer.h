@@ -1,7 +1,7 @@
 /*
  * Lenovo Explorer
  * Copyright 2017 Philipp Zabel
- * SPDX-License-Identifier:	LGPL-2.0+
+ * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 #ifndef __LENOVO_EXPLORER_H__
 #define __LENOVO_EXPLORER_H__

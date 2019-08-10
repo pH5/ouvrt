@@ -1,5 +1,5 @@
 # Copyright 2016-2018 Philipp Zabel
-# SPDX-License-Identifier:	GPL-2.0+
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 libouvrt_sources = [
   'ar0134.c',

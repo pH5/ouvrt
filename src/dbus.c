@@ -1,7 +1,7 @@
 /*
  * D-Bus interface implementation
  * Copyright 2015 Philipp Zabel
- * SPDX-License-Identifier:	GPL-2.0+
+ * SPDX-License-Identifier: GPL-2.0-or-later
  */
 #include <glib.h>
 #include <gio/gio.h>

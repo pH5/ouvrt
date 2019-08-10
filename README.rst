@@ -1,3 +1,7 @@
+..
+  Copyright 2019 Philipp Zabel
+  SPDX-License-Identifier: GPL-2.0-or-later
+
 ouvrt
 =====
 

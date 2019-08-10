@@ -1,7 +1,7 @@
 /*
  * Microsoft HoloLens Sensors (Windows Mixed Reality) IMU
  * Copyright 2017 Philipp Zabel
- * SPDX-License-Identifier:	LGPL-2.0+
+ * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 #include <asm/byteorder.h>
 #include <errno.h>

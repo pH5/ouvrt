@@ -1,7 +1,7 @@
 /*
  * Oculus Rift Sensor (CV1 external camera)
  * Copyright 2017-2018 Philipp Zabel
- * SPDX-License-Identifier:	LGPL-2.0+
+ * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 #ifndef __RIFT_SENSOR_H__
 #define __RIFT_SENSOR_H__

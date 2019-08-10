@@ -1,7 +1,7 @@
 /*
  * Dumps the Oculus Positional Tracker DK2 EEPROM
  * Copyright 2014 Philipp Zabel
- * SPDX-License-Identifier:	GPL-2.0+
+ * SPDX-License-Identifier: GPL-2.0-or-later
  */
 #include <stdint.h>
 #include <stdio.h>

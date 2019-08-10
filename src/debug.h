@@ -1,7 +1,7 @@
 /*
  * Debug output helpers
  * Copyright 2015 Philipp Zabel
- * SPDX-License-Identifier:	GPL-2.0+
+ * SPDX-License-Identifier: GPL-2.0-or-later
  */
 #ifndef __DEBUG_H__
 #define __DEBUG_H__

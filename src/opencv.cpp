@@ -1,7 +1,7 @@
 /*
  * Pose estimation using OpenCV
  * Copyright 2015 Philipp Zabel
- * SPDX-License-Identifier:	LGPL-2.0+ or BSL-1.0
+ * SPDX-License-Identifier: (LGPL-2.1-or-later OR BSL-1.0)
  */
 #include <opencv2/calib3d/calib3d.hpp>
 #if CV_MAJOR_VERSION >= 4
