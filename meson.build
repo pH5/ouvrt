@@ -38,7 +38,10 @@ else
 endif
 json_glib_dep = dependency('json-glib-1.0', version : '>= 1.2')
 if with_opencv != 'false'
-  opencv_dep = dependency('opencv', required : with_opencv == 'true')
+  opencv_dep = dependency('opencv4', required : false)
+  if not opencv_dep.found()
+    opencv_dep = dependency('opencv', required : with_opencv == 'true')
+  endif
 else
   opencv_dep = []
 endif
