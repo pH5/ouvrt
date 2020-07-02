@@ -186,7 +186,7 @@ static void vive_controller_handle_imu_sample(OuvrtViveController *self,
 					      uint8_t *buf)
 {
 	/* Time in 48 MHz ticks, but we are missing the low byte */
-	uint32_t timestamp = self->timestamp | *buf;
+	uint32_t timestamp = self->timestamp | (*buf << 8);
 	int16_t accel[3] = {
 		__le16_to_cpup((__le16 *)(buf + 1)),
 		__le16_to_cpup((__le16 *)(buf + 3)),
